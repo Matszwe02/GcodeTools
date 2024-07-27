@@ -2,6 +2,8 @@ import os
 import numpy as np
 import re
 import json
+import time
+from timeit import timeit
 
 
 DEBUG_GCODE_LINES = True
@@ -148,7 +150,7 @@ class CoordSystem:
 
 class GcodeBlock:
     
-    def __init__(self, position:Position, offset:Position, arc:Arc=None, command=None):
+    def __init__(self, position:Position, offset:Position, arc:Arc=None, command=None, meta={}):
         
         self.position = position.copy()
         self.offset = offset.copy()
@@ -156,22 +158,19 @@ class GcodeBlock:
         if arc is not None:
             self.arc = arc.copy()
         self.command = command
+        self.meta = json.loads(json.dumps(meta))
 
 
     def to_dict(self):
-        if self.arc is None:
-            return {
+        return_dict = {
                 'command': self.command,
                 'position': self.position.__dict__,
                 'offset': self.offset.__dict__,
+                'meta': self.meta,
                 'arc': None
             }
-        return {
-            'commands': self.command,
-            'position': self.position.__dict__,
-            'offset': self.offset.__dict__,
-            'arc': self.arc.__dict__
-        }
+        if self.arc is not None: return_dict['arc'] = self.arc.__dict__
+        return return_dict
 
 
 
@@ -198,7 +197,7 @@ class Gcode:
     def line_to_dict(self, line):
         params = ['', []]
         line_parts = line.split(';')[0].split(' ')  
-        if len(line_parts) > 0:
+        if line_parts:
             params[0] = line_parts[0]
 
             for param in line_parts[1:]:
@@ -207,7 +206,6 @@ class Gcode:
                 params[1].append(param)
         
         return params
-
 
 
     def line_to_position(self, line):
@@ -239,24 +237,45 @@ class Gcode:
         return Arc(I, J, K, dir=dir)
 
 
-
     def generate_moves(self):
         
         self.coord_system = CoordSystem()
-        blocks:list[GcodeBlock] = []
-        blocks.append(GcodeBlock(Position(0, 0, 0, 0, 600), Position(0, 0, 0, 0)))
-        appended_lines = []
+        self.gcode_blocks:list[GcodeBlock] = []
+        # blocks.append(GcodeBlock(Position(0, 0, 0, 0, 600), Position(0, 0, 0, 0)))
+        # self.coord_system.apply_position(Position(0, 0, 0, 0, 600))
         
-        for line in self.gcode.split('\n'):
-            
+        meta = {'object': None, 'type': None, 'line_no': 0}
+        
+        for id, line in enumerate(filter(str.strip, self.gcode.split('\n'))):
+            meta['line_no'] = id
             command = None
-            handle_movement = False
             arc = None
             line_skipped = False
             
             line_dict = self.line_to_dict(line)
+            raw_pos = Position()
             
-            if line_dict[0] == ABSOLUTE_COORDS:
+            if line[0] == ';':
+                if line.startswith('; printing object'):
+                    meta['object'] = line.removeprefix('; printing object').strip().replace(' ', '_')
+                if line.startswith('; stop printing'):
+                    meta['object'] = None
+                if line.startswith(';TYPE:'):
+                    meta['type'] = line.removeprefix(';TYPE:').strip().replace(' ', '_')
+                if line == ';WIPE_START':
+                    meta['type'] = 'Wipe'
+                if line == ';WIPE_END':
+                    meta['type'] = None
+            
+            if line_dict[0] in ['G1', 'G0']:
+                raw_pos = self.line_to_position(line_dict)
+            
+            elif line_dict[0] in ['G2', 'G3']:
+                arc = self.line_to_arc(line_dict)
+                arc.plane = self.coord_system.arc_plane
+                raw_pos = self.line_to_position(line_dict)
+            
+            elif line_dict[0] == ABSOLUTE_COORDS:
                 self.coord_system.set_coords(True)
             elif line_dict[0] == RELATIVE_COORDS:
                 self.coord_system.set_coords(False)
@@ -277,40 +296,22 @@ class Gcode:
             elif line_dict[0] == ARC_PLANE_YZ:
                 self.coord_system.arc_plane = 19
             
-            elif line_dict[0] in ['G2', 'G3']:
-                arc = self.line_to_arc(line_dict)
-                arc.plane = self.coord_system.arc_plane
-                handle_movement = True
-
-            elif line_dict[0] in ['G1', 'G0']:
-                handle_movement = True
-            
             elif line_dict[0] in TRIM_GCODES:
                 pass
             
             else:
-                # appended_lines.append(line)
                 command = line.strip()
                 line_skipped = True
             
             if DEBUG_GCODE_LINES and not line_skipped:
-                # appended_lines.append('; CMD: ' + line)
                 command = '; CMD: ' + line.strip()
-                
             
-            raw_pos = Position()
-            if handle_movement:
-                raw_pos = self.line_to_position(line_dict)
             new_pos = self.coord_system.apply_position(raw_pos)
-            gcode_block = GcodeBlock(new_pos, self.coord_system.offset, arc=arc, command=command)
+            gcode_block = GcodeBlock(new_pos, self.coord_system.offset, arc=arc, command=command, meta=meta)
             
-            blocks.append(gcode_block)
-            # appended_lines = []
+            self.gcode_blocks.append(gcode_block)
         
-        
-        blocks.append(GcodeBlock(Position(), Position(), command=command))
-        self.gcode_blocks = blocks
-
+        self.gcode_blocks.append(GcodeBlock(Position(), Position(), command=command, meta=meta))
 
 
 
@@ -356,6 +357,7 @@ class GcodeTools:
         start_gcode = []
         end_gcode = []
         layers = []
+        objects_layers = {}
         
         start_id, end_id = -1, -1
         
@@ -380,9 +382,9 @@ class GcodeTools:
             
         start_id, end_id = -1, -1
         for id, block in enumerate(gcode):
-            if block.command == "; Filament gcode":
-                end_id = id
             if block.command == "; filament end gcode":
+                end_id = id
+            if block.command == "; Filament gcode":
                 start_id = id + 1
             if start_id > 0 and end_id > 0:
                 start_gcode = gcode[:start_id]
@@ -390,19 +392,35 @@ class GcodeTools:
             
                 
         layer = []
+        objects_layer = {}
         for block in object_gcode:
             if block.command == ";BEFORE_LAYER_CHANGE":
                 layers.append(layer)
+                # objects_layers.append(objects_layer)
+                
+                for id in objects_layer.keys():
+                    if id not in objects_layers:
+                        objects_layers[id] = []
+                    objects_layers[id].append(objects_layer[id])
+                
             elif block.command == ";AFTER_LAYER_CHANGE":
                 layer = []
+                objects_layer = {}
             else:
                 layer.append(block)
+                
+                objects_key = block.meta['object'] or 'Travel'
+                if objects_key not in objects_layer:
+                    objects_layer[objects_key] = []
+                objects_layer[objects_key].append(block)
+        
         
         layers.append(layer)
         
         self.start_gcode = start_gcode
         self.end_gcode = end_gcode
         self.layers = layers
+        self.objects_layers = objects_layers
 
 
 
@@ -416,31 +434,32 @@ class GcodeTools:
         with open(os.path.join(path, 'gcode.json'), 'w') as f:
             f.write(json.dumps(self.gcode, indent=4, cls=CustomEncoder))
             
-        with open(os.path.join(path, 'layers.json'), 'w') as f:
-            f.write(json.dumps(self.layers, indent=4, cls=CustomEncoder))
+        with open(os.path.join(path, 'objects_layers.json'), 'w') as f:
+            f.write(json.dumps(self.objects_layers, indent=4, cls=CustomEncoder))
+            
+        with open(os.path.join(path, 'start_gcode.json'), 'w') as f:
+            f.write(json.dumps(self.start_gcode, indent=4, cls=CustomEncoder))
+            
+        with open(os.path.join(path, 'end_gcode.json'), 'w') as f:
+            f.write(json.dumps(self.end_gcode, indent=4, cls=CustomEncoder))
             
         with open(os.path.join(path, 'metadata.json'), 'w') as f:
             f.write(json.dumps(self.metadata, indent=4))
 
 
 
-with open('dsa.gcode', 'r') as f:
-    gcode_file = f.read()
+def main():
+
+    with open('cube.gcode', 'r') as f:
+        gcode_file = f.read()
+    tools = GcodeTools(gcode_file)
+    tools.read_metadata()
+    tools.split()
+    tools.log_json()
 
 
-# gcode = Gcode()
-# gcode.read_gcode(gcode_file)
-# gcode.generate_moves()
 
-tools = GcodeTools(gcode_file)
-tools.read_metadata()
-tools.split()
-tools.log_json()
-
-# gcode_tools = GcodeTools()
-
-# gcode_tools.read_gcode(gcode_file)
-# gcode_tools.split_layers()
-
-# print(gcode_tools.layers[1])
-
+if __name__ == '__main__':
+        
+    main()
+    
