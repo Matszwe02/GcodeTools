@@ -1,9 +1,9 @@
 import os
-import numpy as np
+# import numpy as np
 import re
 import json
 import time
-from timeit import timeit
+import math
 
 
 DEBUG_GCODE_LINES = True
@@ -32,7 +32,10 @@ class Arc:
         self.K = K
         self.dir = dir
         self.plane=plane
-
+    
+    def subdivide(self): # TODO: 
+        raise NotImplementedError()
+    
     def to_dict(self):
         return {'I': self.I, 'J': self.J, 'K': self.K, 'dir': self.dir, 'plane': self.plane}
     
@@ -43,27 +46,62 @@ class Arc:
 
 
 class Position:
-    def __init__(self, X=None, Y=None, Z=None, E=None, F=None):
+    def __init__(self, X: float | None = None, Y: float | None = None, Z: float | None = None, E: float | None = None, F: float | None = None):
         self.X = X
         self.Y = Y
         self.Z = Z
         self.E = E
         self.F = F
     
+    def nullable_add(a: float | None, b: float | None) -> float | None:
+        if a is None: return b
+        if b is None: return a
+        return a + b
+    
+    def nullable_subtr(a: float | None, b: float | None) -> float | None:
+        if a is None: return b
+        if b is None: return a
+        return a - b
+    
+    def zeroable_add(a: float | None, b: float | None) -> float:
+        if a is None and b is None: return 0
+        if a is None: return b
+        if b is None: return a
+        return a + b
+    
+    def zeroable_subtr(a: float | None, b: float | None) -> float:
+        if a is None and b is None: return 0
+        if a is None: return b
+        if b is None: return a
+        return a - b
+    
+    def oneable_mul(a: float | None, b: float | None) -> float | None:
+        if a is None or b is None: return a
+        return a * b
+    
     def __add__(self, other):
-        X = self.X + other.X if self.X is not None and other.X is not None else self.X or other.X
-        Y = self.Y + other.Y if self.Y is not None and other.Y is not None else self.Y or other.Y
-        Z = self.Z + other.Z if self.Z is not None and other.Z is not None else self.Z or other.Z
-        E = self.E + other.E if self.E is not None and other.E is not None else self.E or other.E
-        F = self.F + other.F if self.F is not None and other.F is not None else self.F or other.F
+        X = self.nullable_add(self.X, other.X)
+        Y = self.nullable_add(self.Y, other.Y)
+        Z = self.nullable_add(self.Z, other.Z)
+        E = self.nullable_add(self.E, other.E)
+        F = self.nullable_add(self.F, other.F)
         return Position(X, Y, Z, E, F)
 
     def __sub__(self, other):
-        X = self.X - other.X if self.X is not None and other.X is not None else self.X or other.X
-        Y = self.Y - other.Y if self.Y is not None and other.Y is not None else self.Y or other.Y
-        Z = self.Z - other.Z if self.Z is not None and other.Z is not None else self.Z or other.Z
-        E = self.E - other.E if self.E is not None and other.E is not None else self.E or other.E
-        F = self.F - other.F if self.F is not None and other.F is not None else self.F or other.F
+        X = self.nullable_subtr(self.X, other.X)
+        Y = self.nullable_subtr(self.Y, other.Y)
+        Z = self.nullable_subtr(self.Z, other.Z)
+        E = self.nullable_subtr(self.E, other.E)
+        F = self.nullable_subtr(self.F, other.F)
+        return Position(X, Y, Z, E, F)
+    
+    def __mul__(self, other):
+        if not isinstance(other, Position): other = Position(other, other, other, other, other)
+        X = self.oneable_mul(self.X, other.X)
+        Y = self.oneable_mul(self.Y, other.Y)
+        Z = self.oneable_mul(self.Z, other.Z)
+        E = self.oneable_mul(self.E, other.E)
+        F = self.oneable_mul(self.F, other.F)
         return Position(X, Y, Z, E, F)
 
     def valid(self, other):
@@ -85,7 +123,6 @@ class Position:
         return Position(F=self.F)
     
     def add(self, other):
-        
         if other.X is not None: self.X += other.X
         if other.Y is not None: self.Y += other.Y
         if other.Z is not None: self.Z += other.Z
@@ -93,13 +130,32 @@ class Position:
         if other.F is not None: self.F = other.F
     
     def set(self, other):
-        
         if other.X is not None: self.X = other.X
         if other.Y is not None: self.Y = other.Y
         if other.Z is not None: self.Z = other.Z
         if other.E is not None: self.E = other.E
         if other.F is not None: self.F = other.F
+    
+    def distance(self, other) -> tuple[float, float, float, float]:
+        X = self.zeroable_subtr(self.X, other.X)
+        Y = self.zeroable_subtr(self.Y, other.Y)
+        Z = self.zeroable_subtr(self.Z, other.Z)
+        E = self.zeroable_subtr(self.E, other.E)
+        return X, Y, Z, E
+    
+    def combined_distance(self, other):
+        X, Y, Z, E = self.distance(other)
+        return X, Y, Z, E, math.sqrt(X^2 + Y^2 + Z^2)
+    
+    def subdivide(self, next, step = 0.1):
+        dist_x, dist_y, dist_z, dist_e, dist = self.combined_distance(next)
+        pos_list = []
+        if dist <= step: return [self]
         
+        for i in range(dist // step):
+            pos_list.append(self + Position(dist_x, dist_y, dist_z, dist_e) * i)
+        return pos_list
+    
     def to_dict(self):
         return {'X': self.X, 'Y': self.Y, 'Z': self.Z, 'E': self.E, 'F': self.F}
     
