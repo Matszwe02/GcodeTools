@@ -1,4 +1,5 @@
 import math
+import json
 
 
 
@@ -35,14 +36,14 @@ class Position:
         self.F = F
 
 
-    def nullable_op(a: float | None, b: float | None, on_none = None, operation = lambda x, y: x + y):
+    def nullable_op(self, a: float | None, b: float | None, on_none = None, operation = lambda x, y: x + y):
         if a is None and b is None: return on_none
         if a is None: return b
         if b is None: return a
         return operation(a, b)
 
 
-    def operation(self, other, operation: function):
+    def operation(self, other, operation):
         X = operation(self.X, other.X)
         Y = operation(self.Y, other.Y)
         Z = operation(self.Z, other.Z)
@@ -121,6 +122,26 @@ class Position:
         return pos_list
 
 
+    def to_str(self, previous = None, rel_e = False):
+        out = 'G1 '
+        if previous is None:
+            if self.X is not None: out += f"X{self.X:.4f} "
+            if self.Y is not None: out += f"Y{self.Y:.4f} "
+            if self.Z is not None: out += f"Z{self.Z:.4f} "
+            if self.E is not None: out += f"E{self.E:.4f} "
+            if self.F is not None: out += f"F{self.F:.4f} "
+            return out
+        
+        if self.X != previous.X and self.X is not None: out += f"X{self.X:.4f} "
+        if self.Y != previous.Y and self.Y is not None: out += f"Y{self.Y:.4f} "
+        if self.Z != previous.Z and self.Z is not None: out += f"Z{self.Z:.4f} "
+        if self.E != previous.E and self.E is not None: out += f"E{self.E - previous.E:.4f} "
+        if self.F != previous.F and self.F is not None: out += f"F{self.F:.4f} "
+        out.removesuffix(" ")
+        if len(out) < 4: return None
+        return out
+
+
     def to_dict(self):
         return {'X': self.X, 'Y': self.Y, 'Z': self.Z, 'E': self.E, 'F': self.F}
 
@@ -172,7 +193,7 @@ class CoordSystem:
 
 class GcodeBlock:
     
-    def __init__(self, position:Position, offset:Position, arc:Arc=None, command=None, meta={}):
+    def __init__(self, position: Position, offset: Position, arc: Arc = None, command: str | None = None, meta = {}):
         
         self.position = position.copy()
         self.offset = offset.copy()

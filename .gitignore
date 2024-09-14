@@ -1,3 +1,4 @@
 *.json
 .venv
 *.gcode
+__pycache__

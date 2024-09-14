@@ -11,17 +11,13 @@ from gcode_class import Gcode
 
 class GcodeTools:
     
-    def __init__(self, gcode: list[GcodeBlock] | str = None):
-        self.gcode = None
+    def __init__(self, gcode: Gcode):
+        self.gcode = gcode
+        self.gcode_blocks = self.gcode.gcode_blocks
         
         self.start_gcode = None
         self.end_gcode = None
         self.object_gcode = None
-        
-        if type(gcode) == str:
-            self.gcode = Gcode(gcode).gcode_blocks
-        elif type(gcode) == list[GcodeBlock]:
-            self.gcode = gcode
         
         self.precision = 0.02
 
@@ -29,13 +25,13 @@ class GcodeTools:
     def read_metadata(self):
         self.metadata = {}
         start_id, end_id = -1, -1
-        for id, block in enumerate(self.gcode):
+        for id, block in enumerate(self.gcode.gcode_blocks):
             if block.command == "; CONFIG_BLOCK_START":
                 start_id = id
             if block.command == "; CONFIG_BLOCK_END":
                 end_id = id
                 
-        for gcode in self.gcode[start_id + 1 : end_id]:
+        for gcode in self.gcode.gcode_blocks[start_id + 1 : end_id]:
             line = gcode.command
             key = line[1:line.find('=')].strip()
             value = line[line.find('=') + 1:].strip()
@@ -44,7 +40,7 @@ class GcodeTools:
 
 
     def split(self):
-        gcode = self.gcode
+        gcode = self.gcode.gcode_blocks
         object_gcode = []
         start_gcode = []
         end_gcode = []
@@ -122,7 +118,7 @@ class GcodeTools:
                 return super().default(obj)
 
         with open(os.path.join(path, 'gcode.json'), 'w') as f:
-            f.write(json.dumps(self.gcode, indent=4, cls=CustomEncoder))
+            f.write(json.dumps(self.gcode.gcode_blocks, indent=4, cls=CustomEncoder))
             
         with open(os.path.join(path, 'objects_layers.json'), 'w') as f:
             f.write(json.dumps(self.objects_layers, indent=4, cls=CustomEncoder))
@@ -139,13 +135,14 @@ class GcodeTools:
 
 
 def main():
-
-    with open('cube.gcode', 'r') as f:
-        gcode_file = f.read()
-    tools = GcodeTools(gcode_file)
+    
+    gcode = Gcode().from_file('test.gcode')
+    tools = GcodeTools(gcode)
     tools.read_metadata()
     tools.split()
     tools.log_json()
+    
+    tools.gcode.write_file('new.gcode')
 
 
 

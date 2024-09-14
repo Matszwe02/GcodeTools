@@ -21,20 +21,46 @@ DEBUG_GCODE_LINES = True
 
 class Gcode:
     
-    def __init__(self, gcode_str: str = ""):
+    def __init__(self):
         
         self.gcode = ''
         self.coord_system = CoordSystem()
         self.gcode_blocks:list[GcodeBlock] = []
-        
-        if gcode_str != "":
-            self.from_str(gcode_str)
 
 
     def from_str(self, gcode_str):
-        
         self.gcode = gcode_str
         self.generate_moves()
+        return self
+    
+    
+    def from_file(self, filename: str):
+        with open(filename, 'r') as f:
+            self.from_str(f.read())
+        return self
+
+# TODO: trim coord system from original gcode
+    def write_str(self):
+        out_str = ''
+        last_pos = None
+        for block in self.gcode_blocks:
+            command = block.command
+            if command is None or command.startswith('; CMD: ') or len(command) == 0:
+                if last_pos is None:
+                    newline = block.position.to_str(rel_e=True)
+                else:
+                    newline = block.position.to_str(last_pos, rel_e=True)
+                
+                if newline is not None: out_str += newline
+                last_pos = block.position
+            out_str += command
+            out_str += '\n'
+        return out_str
+
+
+    def write_file(self, filename: str):
+        with open(filename, 'w') as f:
+            f.write(self.write_str())
 
 
     def line_to_dict(self, line):
