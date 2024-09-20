@@ -1,4 +1,5 @@
 from gcode_types import *
+from tqdm import tqdm
 
 
 ABSOLUTE_COORDS = 'G90'
@@ -43,13 +44,22 @@ class Gcode:
     def write_str(self):
         out_str = ''
         last_pos = None
-        for block in self.gcode_blocks:
+
+        # for block in self.gcode_blocks:
+        for block in tqdm(self.gcode_blocks, desc="Writing G-code", unit="line"):
             command = block.command
             if command is None or command.startswith('; CMD: ') or len(command) == 0:
-                if last_pos is None:
+                
+                if block.arc is not None:
+                    newline = block.arc.to_str()
+                    # positions = block.arc.subdivide(step=0.5)
+                    # for pos in positions:
+                    #     out_str += pos.to_str() + '\n'
+                elif last_pos is None:
                     newline = block.position.to_str(rel_e=True)
                 else:
                     newline = block.position.to_str(last_pos, rel_e=True)
+                
                 
                 if newline is not None: out_str += newline
                 last_pos = block.position
@@ -77,35 +87,6 @@ class Gcode:
         return params
 
 
-    def line_to_position(self, line):
-        
-        X, Y, Z, E, F = None, None, None, None, None
-        
-        for param in line[1]:
-            if param[0] == 'X': X = float(param[1:])
-            if param[0] == 'Y': Y = float(param[1:])
-            if param[0] == 'Z': Z = float(param[1:])
-            if param[0] == 'E': E = float(param[1:])
-            if param[0] == 'F': F = float(param[1:])
-        
-        return Position(X, Y, Z, E, F)
-
-
-    def line_to_arc(self, line):
-        
-        I, J, K, dir = None, None, None, 0
-        
-        for param in line[1]:
-            if param[0] == 'I': I = float(param[1:])
-            if param[0] == 'J': J = float(param[1:])
-            if param[0] == 'K': K = float(param[1:])
-        
-        if line[0] == 'G2': dir=2
-        if line[0] == 'G3': dir=3
-        
-        return Arc(I, J, K, dir=dir)
-
-
     def generate_moves(self):
         
         self.coord_system = CoordSystem()
@@ -113,7 +94,9 @@ class Gcode:
         
         meta = {'object': None, 'type': None, 'line_no': 0}
         
-        for id, line in enumerate(filter(str.strip, self.gcode.split('\n'))):
+        gcode_lines = list(filter(str.strip, self.gcode.split('\n')))
+        for id, line in enumerate(tqdm(gcode_lines, 'Generating moves', unit='line')):
+        # for id, line in enumerate(filter(str.strip, self.gcode.split('\n'))):
             meta['line_no'] = id
             command = None
             arc = None
@@ -135,12 +118,11 @@ class Gcode:
                     meta['type'] = None
             
             if line_dict[0] in ['G1', 'G0']:
-                raw_pos = self.line_to_position(line_dict)
+                raw_pos = Position().from_params(line_dict)
             
             elif line_dict[0] in ['G2', 'G3']:
-                arc = self.line_to_arc(line_dict)
-                arc.plane = self.coord_system.arc_plane
-                raw_pos = self.line_to_position(line_dict)
+                arc = Arc(plane=self.coord_system.arc_plane).from_params(line_dict, self.coord_system).copy()
+                raw_pos = Position().from_params(line_dict)
             
             elif line_dict[0] == ABSOLUTE_COORDS:
                 self.coord_system.set_coords(True)
@@ -153,7 +135,8 @@ class Gcode:
                 self.coord_system.set_extruder(False)
             
             elif line_dict[0] == SET_POSITION:
-                raw_pos = self.line_to_position(line_dict).copy()
+                raw_pos = Position().from_params(line_dict)
+                # raw_pos = self.line_to_position(line_dict).copy()
                 self.coord_system.set_offset(raw_pos)
             
             elif line_dict[0] == ARC_PLANE_XY:

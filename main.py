@@ -111,6 +111,7 @@ class GcodeTools:
 
 
     def log_json(self, path='.'):
+        print('Logging json...')
         class CustomEncoder(json.JSONEncoder):
             def default(self, obj):
                 if hasattr(obj, 'to_dict'):
@@ -131,16 +132,17 @@ class GcodeTools:
             
         with open(os.path.join(path, 'metadata.json'), 'w') as f:
             f.write(json.dumps(self.metadata, indent=4))
+        print('Json logged')
 
 
 
 def main():
     
-    gcode = Gcode().from_file('test.gcode')
+    gcode = Gcode().from_file('3DBenchy_ABS_44m21s.gcode')
     tools = GcodeTools(gcode)
     tools.read_metadata()
     tools.split()
-    tools.log_json()
+    # tools.log_json()
     
     tools.gcode.write_file('new.gcode')
 
