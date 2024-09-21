@@ -2,18 +2,6 @@ from gcode_types import *
 from tqdm import tqdm
 
 
-ABSOLUTE_COORDS = 'G90'
-RELATIVE_COORDS = 'G91'
-
-ABSOLUTE_EXTRUDER = 'M82'
-RELATIVE_EXTRUDER = 'M83'
-
-SET_POSITION = 'G92'
-
-ARC_PLANE_XY = 'G17'
-ARC_PLANE_XZ = 'G18'
-ARC_PLANE_YZ = 'G19'
-
 TRIM_GCODES = ['M73', 'EXCLUDE_OBJECT_DEFINE', 'EXCLUDE_OBJECT_START', 'EXCLUDE_OBJECT_END']
 
 DEBUG_GCODE_LINES = True
@@ -40,29 +28,28 @@ class Gcode:
             self.from_str(f.read())
         return self
 
-# TODO: trim coord system from original gcode
+
     def write_str(self):
         out_str = ''
-        last_pos = None
+        last_move = None
 
         # for block in self.gcode_blocks:
         for block in tqdm(self.gcode_blocks, desc="Writing G-code", unit="line"):
             command = block.command
             if command is None or command.startswith('; CMD: ') or len(command) == 0:
                 
-                if block.arc is not None:
-                    newline = block.arc.to_str()
+                # if block.arc is not None:
+                #     newline = block.arc.to_str()
                     # positions = block.arc.subdivide(step=0.5)
                     # for pos in positions:
                     #     out_str += pos.to_str() + '\n'
-                elif last_pos is None:
-                    newline = block.position.to_str(rel_e=True)
-                else:
-                    newline = block.position.to_str(last_pos, rel_e=True)
+                # elif last_pos is None:
+                out_str += block.move.to_str(last_move)
                 
+                last_move = block.move.copy()
                 
-                if newline is not None: out_str += newline
-                last_pos = block.position
+                # if newline is not None: out_str += newline
+                # last_pos = block.move
             out_str += command
             out_str += '\n'
         return out_str
@@ -103,7 +90,7 @@ class Gcode:
             line_skipped = False
             
             line_dict = self.line_to_dict(line)
-            raw_pos = Position()
+            move = Move(self.coord_system)
             
             if line[0] == ';':
                 if line.startswith('; printing object'):
@@ -118,32 +105,34 @@ class Gcode:
                     meta['type'] = None
             
             if line_dict[0] in ['G1', 'G0']:
-                raw_pos = Position().from_params(line_dict)
+                move = Move(self.coord_system.copy()).from_params(line_dict)
             
             elif line_dict[0] in ['G2', 'G3']:
-                arc = Arc(plane=self.coord_system.arc_plane).from_params(line_dict, self.coord_system).copy()
-                raw_pos = Position().from_params(line_dict)
+                move = Move(self.coord_system.copy()).from_params(line_dict)
+                
+                # arc = Arc(plane=self.coord_system.arc_plane).from_params(line_dict, self.coord_system).copy()
+                # move = Position().from_params(line_dict)
             
-            elif line_dict[0] == ABSOLUTE_COORDS:
-                self.coord_system.set_coords(True)
-            elif line_dict[0] == RELATIVE_COORDS:
-                self.coord_system.set_coords(False)
+            elif line_dict[0] == Static.ABSOLUTE_COORDS:
+                self.coord_system.set_xyz_coords(True)
+            elif line_dict[0] == Static.RELATIVE_COORDS:
+                self.coord_system.set_xyz_coords(False)
 
-            elif line_dict[0] == ABSOLUTE_EXTRUDER:
-                self.coord_system.set_extruder(True)
-            elif line_dict[0] == RELATIVE_EXTRUDER:
-                self.coord_system.set_extruder(False)
+            elif line_dict[0] == Static.ABSOLUTE_EXTRUDER:
+                self.coord_system.set_e_coords(True)
+            elif line_dict[0] == Static.RELATIVE_EXTRUDER:
+                self.coord_system.set_e_coords(False)
             
-            elif line_dict[0] == SET_POSITION:
-                raw_pos = Position().from_params(line_dict)
-                # raw_pos = self.line_to_position(line_dict).copy()
-                self.coord_system.set_offset(raw_pos)
+            elif line_dict[0] == Static.SET_POSITION:
+                # move = Position().from_params(line_dict)
+                # move = self.line_to_position(line_dict).copy()
+                self.coord_system.set_offset(move.position)
             
-            elif line_dict[0] == ARC_PLANE_XY:
+            elif line_dict[0] == Static.ARC_PLANE_XY:
                 self.coord_system.arc_plane = 17
-            elif line_dict[0] == ARC_PLANE_XZ:
+            elif line_dict[0] == Static.ARC_PLANE_XZ:
                 self.coord_system.arc_plane = 18
-            elif line_dict[0] == ARC_PLANE_YZ:
+            elif line_dict[0] == Static.ARC_PLANE_YZ:
                 self.coord_system.arc_plane = 19
             
             elif line_dict[0] in TRIM_GCODES:
@@ -156,10 +145,11 @@ class Gcode:
             if DEBUG_GCODE_LINES and not line_skipped:
                 command = '; CMD: ' + line.strip()
             
-            new_pos = self.coord_system.apply_position(raw_pos)
-            gcode_block = GcodeBlock(new_pos, self.coord_system.offset, arc=arc, command=command, meta=meta)
+            new_pos = self.coord_system.apply_move(move.copy())
+            move.position.set(new_pos)
+            gcode_block = GcodeBlock(move.copy(), command=command, meta=meta)
             
             self.gcode_blocks.append(gcode_block)
         
-        self.gcode_blocks.append(GcodeBlock(Position(), Position(), command=command, meta=meta))
+        # self.gcode_blocks.append(GcodeBlock(Move(), command=command, meta=meta))
 

@@ -3,13 +3,32 @@ import json
 
 
 
-class Position:
-    def __init__(self, X: float | None = None, Y: float | None = None, Z: float | None = None, E: float | None = None, F: float | None = None):
+class Static:
+    ABSOLUTE_COORDS = 'G90'
+    RELATIVE_COORDS = 'G91'
+
+    ABSOLUTE_EXTRUDER = 'M82'
+    RELATIVE_EXTRUDER = 'M83'
+
+    SET_POSITION = 'G92'
+
+    ARC_PLANE_XY = 'G17'
+    ARC_PLANE_XZ = 'G18'
+    ARC_PLANE_YZ = 'G19'
+
+
+
+class Vector:
+
+    def zero():
+        return Vector(0, 0, 0, 0)
+
+
+    def __init__(self, X: float | None = None, Y: float | None = None, Z: float | None = None, E: float | None = None):
         self.X = X
         self.Y = Y
         self.Z = Z
         self.E = E
-        self.F = F
 
 
     def from_params(self, params: list[list[str]]):
@@ -18,7 +37,6 @@ class Position:
             if param[0] == 'Y': self.Y = float(param[1:])
             if param[0] == 'Z': self.Z = float(param[1:])
             if param[0] == 'E': self.E = float(param[1:])
-            if param[0] == 'F': self.F = float(param[1:])
         return self
 
 
@@ -34,8 +52,7 @@ class Position:
         Y = operation(self.Y, other.Y)
         Z = operation(self.Z, other.Z)
         E = operation(self.E, other.E)
-        F = operation(self.F, other.F)
-        return Position(X, Y, Z, E, F)
+        return Vector(X, Y, Z, E)
 
 
     def __add__(self, other):
@@ -49,27 +66,23 @@ class Position:
 
 
     def __mul__(self, other):
-        if not isinstance(other, Position): other = Position(other, other, other, other, other)
+        if not isinstance(other, Vector): other = Vector(other, other, other, other, other)
         scale = lambda a,b: a if a is None or b is None else a * b
         return self.operation(other, scale)
 
 
     def valid(self, other):
-        """Return Vector of self, with valid dimensions from other"""
+        """Return Vector with non-null dimensions from other Vector"""
         valid = lambda a, b: a if b is not None else None
         return self.operation(other, valid)
 
 
     def xyz(self):
-        return Position(X=self.X, Y=self.Y, Z=self.Z)
+        return Vector(X=self.X, Y=self.Y, Z=self.Z)
 
 
     def e(self):
-        return Position(E=self.E)
-
-
-    def f(self):
-        return Position(F=self.F)
+        return Vector(E=self.E)
 
 
     def add(self, other):
@@ -77,7 +90,6 @@ class Position:
         if other.Y is not None: self.Y += other.Y
         if other.Z is not None: self.Z += other.Z
         if other.E is not None: self.E += other.E
-        if other.F is not None: self.F = other.F
 
 
     def set(self, other):
@@ -85,7 +97,6 @@ class Position:
         if other.Y is not None: self.Y = other.Y
         if other.Z is not None: self.Z = other.Z
         if other.E is not None: self.E = other.E
-        if other.F is not None: self.F = other.F
 
 
     def distance(self, other):
@@ -93,204 +104,208 @@ class Position:
         return self.operation(other, subtr)
 
 
-    def combined_distance(self, other):
-        dist = self.distance(other)
-        return dist, math.sqrt(dist.X^2 + dist.Y^2 + dist.Z^2)
-
-
-    def subdivide(self, next, step = 0.1):
-        dist_pos, dist = self.combined_distance(next)
-        pos_list = []
-        if dist <= step: return [self]
-        
-        for i in range(round(dist / step)):
-            pos_list.append(self + dist_pos * i)
-        return pos_list
-
-
-    def to_str(self, previous = None, rel_e = False):
-        append_nullable = lambda param, value: '' if value is None else f'{param}{value:.4f} '
-        
-        out = 'G1 '
-        if previous is None:
-            out += append_nullable('X', self.X)
-            out += append_nullable('Y', self.Y)
-            out += append_nullable('Z', self.Z)
-            out += append_nullable('E', self.E)
-            out += append_nullable('F', self.F)
-            return out
-        
-        if self.X != previous.X: out += append_nullable('X', self.X)
-        if self.Y != previous.Y: out += append_nullable('Y', self.Y)
-        if self.Z != previous.Z: out += append_nullable('Z', self.Z)
-        if self.E != previous.E and self.E is not None: out += f"E{self.E - previous.E:.4f} "
-        if self.F != previous.F: out += append_nullable('F', self.F)
-        
-        if len(out) < 4: return ''
-        return out.removesuffix(" ")
+    def copy(self):
+        """Create a deep copy"""
+        return Vector(X=self.X, Y=self.Y, Z=self.Z, E=self.E)
 
 
     def to_dict(self):
-        return {'X': self.X, 'Y': self.Y, 'Z': self.Z, 'E': self.E, 'F': self.F}
+        return {'X': self.X, 'Y': self.Y, 'Z': self.Z, 'E': self.E}
 
 
-    def copy(self):
-        """Create a deep copy of this Position instance."""
-        return Position(X=self.X, Y=self.Y, Z=self.Z, E=self.E, F=self.F)
+    def __bool__(self):
+        return any(coord is not None for coord in [self.X, self.Y, self.Z, self.E])
 
 
 
 class CoordSystem:
-    def __init__(self, absolute_coords=True, absolute_extruder=True, speed=600, arc_plane=17):
-        self.absolute_coords = absolute_coords
-        self.absolute_extruder = absolute_extruder
-        self.arc_plane = arc_plane
+
+    def __init__(self, abs_xyz=True, abs_e=True, speed=600, arc_plane=17, position = Vector.zero(), offset = Vector.zero()):
+        self.abs_xyz = abs_xyz
+        self.abs_e = abs_e
         self.speed = speed
-        self.position = Position(0, 0, 0, 0)
-        self.offset = Position(0, 0, 0, 0)
+        self.arc_plane = arc_plane
+        self.position = position
+        self.offset = offset
 
 
-    def set_coords(self, absolute_coords=None):
-        if absolute_coords is not None:
-            self.absolute_coords = absolute_coords
+    def set_xyz_coords(self, abs_xyz=None):
+        if abs_xyz is not None:
+            self.abs_xyz = abs_xyz
 
 
-    def set_extruder(self, absolute_extruder=None):
-        if absolute_extruder is not None:
-            self.absolute_extruder = absolute_extruder
+    def set_e_coords(self, abs_e=None):
+        if abs_e is not None:
+            self.abs_e = abs_e
 
 
-    def apply_position(self, position:Position):
-        if self.absolute_coords:
-            self.position.set(position.xyz() + self.offset.xyz())
+    def apply_move(self, move):
+        if type(move) is not Move or not move.position: return Vector()
+        if self.abs_xyz:
+            self.position.set(move.position.xyz() + self.offset.xyz())
         else:
-            self.position.add(position.xyz())
+            self.position.add(move.position.xyz())
         
-        if self.absolute_extruder:
-            self.position.set(position.e() + self.offset.e())
+        if self.abs_e:
+            self.position.set(move.position.e() + self.offset.e())
         else:
-            self.position.add(position.e())
+            self.position.add(move.position.e())
         
-        self.position.set(position.f())
+        if move.speed is not None:
+            self.speed = move.speed
+        
         return self.position
 
 
-    def set_offset(self, pos: Position):
+    def set_offset(self, pos: Vector):
         self.offset = (self.position - pos).valid(pos)
 
 
-
-class Arc:
-    def __init__(self, I=None, J=None, K=None, dir=0, plane=0, next_pos: Position = Position(), prev_pos: Position = Position()):
-        """I, J, K optional; direction 2=CW, 3=CCW; plane 17=XY, 18=XZ, 19=YZ"""
-        self.I = I
-        self.J = J
-        self.K = K
-        self.dir = dir
-        self.plane=plane
-        self.next_pos = next_pos
-        self.prev_pos = prev_pos
-
-
-    def from_params(self, params: list[list[str]], coords: CoordSystem):
-        
-        for param in params[1]:
-            if param[0] == 'I': self.I = float(param[1:])
-            if param[0] == 'J': self.J = float(param[1:])
-            if param[0] == 'K': self.K = float(param[1:])
-        
-        if params[0] == 'G2': self.dir=2
-        if params[0] == 'G3': self.dir=3
-        
-        self.next_pos = Position().from_params(params).copy()
-        self.prev_pos = coords.position.copy()
-        
-        return self
-
-# FIXME: check calculations
-    def subdivide(self, step=0.1) -> list[Position]:
-        def interpolate(t):
-            t = max(0, min(1, t))
-            # return Position(
-            #     X=self.prev_pos.X + (self.next_pos.X - self.prev_pos.X) * t,
-            #     Y=self.prev_pos.Y + (self.next_pos.Y - self.prev_pos.Y) * t,
-            #     Z=self.prev_pos.Z + (self.next_pos.Z - self.prev_pos.Z) * t,
-            #     E=self.prev_pos.E + (self.next_pos.E - self.prev_pos.E) * t,
-            #     F=self.next_pos.F
-            # )
-            return self.prev_pos + (self.next_pos - self.prev_pos) * t
-
-        def arc_length(theta):
-            radius = math.sqrt(self.I**2 + self.J**2)
-            return abs(radius * theta)
-
-        def angle_to_t(angle):
-            full_angle = 2 * math.pi if self.dir == 2 else -2 * math.pi
-            return angle / full_angle
-
-        positions = []
-        total_length = arc_length(2 * math.pi)
-        
-        if total_length <= step:
-            positions.append(self.prev_pos)
-            positions.append(self.next_pos)
-            return positions
-
-        angle_step = step / (total_length / (2 * math.pi))
-        current_angle = 0
-        
-        while current_angle < 2 * math.pi:
-            t = angle_to_t(current_angle)
-            new_position = interpolate(t)
-            
-            if self.dir == 2:  # CW
-                new_position.X += self.I - self.I * math.cos(current_angle) + self.J * math.sin(current_angle)
-                new_position.Y += self.J - self.I * math.sin(current_angle) - self.J * math.cos(current_angle)
-            else:  # CCW
-                new_position.X += self.I - self.I * math.cos(-current_angle) + self.J * math.sin(-current_angle)
-                new_position.Y += self.J - self.I * math.sin(-current_angle) - self.J * math.cos(-current_angle)
-            
-            positions.append(new_position)
-            current_angle += angle_step
-        
-        positions.append(self.next_pos)
-        
-        return positions
-
-
-    def to_str(self):        
-        append_nullable = lambda param, value: '' if value is None else f'{param}{value:.4f} '
-        
-        command = "G2" if self.dir == 2 else "G3"
-        
-        out = f"{command} "
-        
-        out += append_nullable('I', self.I)
-        out += append_nullable('J', self.J)
-        out += append_nullable('K', self.K)
-
-        return out.removesuffix(" ")
-
-
     def to_dict(self):
-        return {'I': self.I, 'J': self.J, 'K': self.K, 'dir': self.dir, 'plane': self.plane}
+        return {'abs_xyz' : self.abs_xyz, "abs_e" : self.abs_e, "speed" : self.speed, "position": self.position.to_dict()}
 
 
     def copy(self):
-        """Create a deep copy of this Arc instance."""
-        return Arc(I=self.I, J=self.J, K=self.K, dir=self.dir, plane=self.plane, next_pos=self.next_pos.copy(), prev_pos=self.prev_pos.copy())
+        return CoordSystem(abs_xyz=self.abs_xyz, abs_e=self.abs_e, speed=self.speed, arc_plane=self.arc_plane, position=self.position.copy(), offset=self.offset.copy())
+
+
+
+class Move:
+
+    def __init__(self, coords: CoordSystem, position = Vector(), speed: float|None = None):
+        self.position = position.copy()
+        self.speed = speed
+        self.coords = coords.copy()
+
+
+    def from_params(self, params: list[list[str]]):
+        for param in params[1]:
+            if param[0] == 'F': self.speed = float(param[1:])
+        self.position.from_params(params)
+        return self
+
+
+    def distance(self) -> Vector:
+        distance = lambda a, b: self.position.nullable_op(a, b, 0, lambda x, y: x - y)
+        return self.position.operation(self.coords.position, distance)
+
+
+    def float_distance(self, distance: Vector):
+        return math.sqrt(distance.X^2 + distance.Y^2 + distance.Z^2)
+
+
+    def subdivide(self, step = 0.1) -> list[Vector]:
+        dist_pos = self.distance()
+        dist = self.float_distance(dist_pos)
+        pos_list = []
+        if dist <= step: return [self]
+        stop = round(dist / step)
+        for i in range(stop):
+            i_normal = i / stop
+            pos_list.append(self.coords.position * (1 - i_normal) + self.position * i_normal)
+        return pos_list
+
+
+    def to_str(self, last_move = None):
+        nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, 5)}'
+        
+        out = ''
+        cmd = 'G0'
+        
+        if self.position.X != self.coords.position.X: out += nullable('X', self.position.X, 0 if self.coords.abs_xyz else self.coords.position.X)
+        if self.position.Y != self.coords.position.Y: out += nullable('Y', self.position.Y, 0 if self.coords.abs_xyz else self.coords.position.Y)
+        if self.position.Z != self.coords.position.Z: out += nullable('Z', self.position.Z, 0 if self.coords.abs_xyz else self.coords.position.Z)
+        if self.position.E != self.coords.position.E: 
+            cmd = 'G1'
+            out += nullable('E', self.position.E, 0 if self.coords.abs_e else self.coords.position.E)
+        
+        if self.speed is not None:
+            out += nullable('F', self.speed, 0)
+        
+        if type(last_move) == Move:
+            if last_move.coords.abs_xyz != self.coords.abs_xyz:
+                cmd = (Static.ABSOLUTE_COORDS if self.coords.abs_xyz else Static.RELATIVE_COORDS) + '\n' + cmd
+            if last_move.coords.abs_e != self.coords.abs_e:
+                cmd = (Static.ABSOLUTE_EXTRUDER if self.coords.abs_e else Static.RELATIVE_EXTRUDER) + '\n' + cmd
+                
+        
+        if len(out) < 4: return ''
+        return cmd + out
+
+
+    def to_dict(self):
+        return {'Current' : self.position, "Previous" : self.coords.position}
+
+
+    def copy(self):
+        """Create a deep copy"""
+        return Move(position=self.position.copy(), speed=self.speed, coords=self.coords.copy())
+
+
+
+
+# TODO: arc support
+# class Arc:
+#     def __init__(self, I=None, J=None, K=None, dir=0, plane=0, next_pos: Position = Position(), prev_pos: Position = Position()):
+#         """I, J, K optional; direction 2=CW, 3=CCW; plane 17=XY, 18=XZ, 19=YZ"""
+#         self.I = I
+#         self.J = J
+#         self.K = K
+#         self.dir = dir
+#         self.plane=plane
+#         self.next_pos = next_pos
+#         self.prev_pos = prev_pos
+
+
+#     def from_params(self, params: list[list[str]], coords: CoordSystem):
+        
+#         for param in params[1]:
+#             if param[0] == 'I': self.I = float(param[1:])
+#             if param[0] == 'J': self.J = float(param[1:])
+#             if param[0] == 'K': self.K = float(param[1:])
+        
+#         if params[0] == 'G2': self.dir=2
+#         if params[0] == 'G3': self.dir=3
+        
+#         self.next_pos = Position().from_params(params).copy()
+#         self.prev_pos = coords.position.copy()
+        
+#         return self
+
+#     def to_str(self):        
+#         append_nullable = lambda param, value: '' if value is None else f'{param}{round(value, 5)} '
+        
+#         command = "G2" if self.dir == 2 else "G3"
+        
+#         out = f"{command} "
+        
+#         out += append_nullable('I', self.I)
+#         out += append_nullable('J', self.J)
+#         out += append_nullable('K', self.K)
+        
+#         out += (self.next_pos - self.prev_pos).to_str()[3:]
+
+#         return out.removesuffix(" ")
+
+
+#     def to_dict(self):
+#         return {'I': self.I, 'J': self.J, 'K': self.K, 'dir': self.dir, 'plane': self.plane}
+
+
+#     def copy(self):
+#         """Create a deep copy of this Arc instance."""
+#         return Arc(I=self.I, J=self.J, K=self.K, dir=self.dir, plane=self.plane, next_pos=self.next_pos.copy(), prev_pos=self.prev_pos.copy())
 
 
 
 class GcodeBlock:
     
-    def __init__(self, position: Position, offset: Position, arc: Arc = None, command: str | None = None, meta = {}):
+    def __init__(self, move: Move, command: str | None = None, meta = {}):
         
-        self.position = position.copy()
-        self.offset = offset.copy()
+        self.move = move.copy()
         self.arc = None
-        if arc is not None:
-            self.arc = arc.copy()
+        # if arc is not None:
+        #     self.arc = arc.copy()
         self.command = command
         self.meta = json.loads(json.dumps(meta))
 
@@ -298,10 +313,7 @@ class GcodeBlock:
     def to_dict(self):
         return_dict = {
                 'command': self.command,
-                'position': self.position.__dict__,
-                'offset': self.offset.__dict__,
-                'meta': self.meta,
-                'arc': None
+                'move': self.move.__dict__,
+                'meta': self.meta
             }
-        if self.arc is not None: return_dict['arc'] = self.arc.__dict__
         return return_dict
