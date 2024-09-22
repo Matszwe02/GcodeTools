@@ -61,6 +61,20 @@ class Gcode:
         return params
 
 
+    def read_meta(self, line: str, meta: dict):
+        if line.startswith('; printing object'):
+            meta['object'] = line.removeprefix('; printing object').strip().replace(' ', '_')
+        if line.startswith('; stop printing'):
+            meta['object'] = None
+        if line.startswith(';TYPE:'):
+            meta['type'] = line.removeprefix(';TYPE:').strip().replace(' ', '_')
+        if line == ';WIPE_START':
+            meta['type'] = 'Wipe'
+        if line == ';WIPE_END':
+            meta['type'] = None
+        return meta
+
+
     def generate_moves(self):
         
         self.coord_system = CoordSystem()
@@ -79,16 +93,7 @@ class Gcode:
             move = Move(self.coord_system)
             
             if line[0] == ';':
-                if line.startswith('; printing object'):
-                    meta['object'] = line.removeprefix('; printing object').strip().replace(' ', '_')
-                if line.startswith('; stop printing'):
-                    meta['object'] = None
-                if line.startswith(';TYPE:'):
-                    meta['type'] = line.removeprefix(';TYPE:').strip().replace(' ', '_')
-                if line == ';WIPE_START':
-                    meta['type'] = 'Wipe'
-                if line == ';WIPE_END':
-                    meta['type'] = None
+                meta = self.read_meta(line, meta)
             
             if line_dict[0] in ['G1', 'G0']:
                 move = Move(self.coord_system.copy()).from_params(line_dict)

@@ -10,6 +10,9 @@ class Config:
     
     speed = 600
     """Default speed in mm/min"""
+    
+    step = 0.1
+    """Step over which maths iterate"""
 
 
 
@@ -128,11 +131,6 @@ class Vector:
         if other.E is not None: self.E = other.E
 
 
-    def distance(self, other):
-        subtr = lambda a, b: self.nullable_op(a, b, 0, lambda x, y: x - y)
-        return self.operation(other, subtr)
-
-
     def copy(self):
         """Create a deep copy"""
         return Vector(self.X, self.Y, self.Z, self.E)
@@ -214,7 +212,7 @@ class Move:
         return self
 
 
-    def distance(self) -> Vector:
+    def distance(self):
         distance = lambda a, b: self.position.nullable_op(a, b, 0, lambda x, y: x - y)
         return self.position.operation(self.coords.position, distance)
 
@@ -223,7 +221,7 @@ class Move:
         return math.sqrt(distance.X^2 + distance.Y^2 + distance.Z^2)
 
 
-    def subdivide(self, step = 0.1) -> list[Vector]:
+    def subdivide(self, step = Config.step) -> list[Vector]:
         dist_pos = self.distance()
         dist = self.float_distance(dist_pos)
         pos_list = []
@@ -240,6 +238,14 @@ class Move:
             self.coords.set_abs_xyz(abs_xyz)
         if abs_e is not None:
             self.coords.set_abs_e(abs_e)
+
+
+    def flowrate(self):
+        """Returns flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement"""
+        dist_vec = self.distance()
+        distance = self.float_distance(dist_vec)
+        if distance < Config.step: return None
+        return dist_vec.e() / distance
 
 
     def to_str(self, last_move = None):
