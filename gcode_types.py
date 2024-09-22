@@ -3,10 +3,21 @@ import json
 
 
 
+class Config:
+    """G-Code configuration"""
+    precision = 5
+    """N decimal digits"""
+    
+    speed = 600
+    """Default speed in mm/min"""
+
+
+
 class Static:
+    """G-Code command definitions"""
     ABSOLUTE_COORDS = 'G90'
     RELATIVE_COORDS = 'G91'
-
+    
     ABSOLUTE_EXTRUDER = 'M82'
     RELATIVE_EXTRUDER = 'M83'
 
@@ -16,22 +27,35 @@ class Static:
     ARC_PLANE_XZ = 'G18'
     ARC_PLANE_YZ = 'G19'
 
+    ARC_PLANES = {'G17': 17, 'G18' : 18, 'G19': 19}
+
+
+    ABSOLUTE_COORDS_DESC = 'G90; Absolute Coordinates'
+    RELATIVE_COORDS_DESC = 'G91; Relative Coordinates'
+    ABSOLUTE_EXTRUDER_DESC = 'M82; Absolute Extruder'
+    RELATIVE_EXTRUDER_DESC = 'M83; Relative Extruder'
+    ARC_PLANE_XY_DESC = 'G17; Arc Plane XY'
+    ARC_PLANE_XZ_DESC = 'G18; Arc Plane XZ'
+    ARC_PLANE_YZ_DESC = 'G19; Arc Plane YZ'
+
 
 
 class Vector:
 
     def zero():
+        """Vector(0, 0, 0, 0)"""
         return Vector(0, 0, 0, 0)
 
 
     def __init__(self, X: float | None = None, Y: float | None = None, Z: float | None = None, E: float | None = None):
+        """Vector(None, None, None, None)"""
         self.X = X
         self.Y = Y
         self.Z = Z
         self.E = E
 
 
-    def from_params(self, params: list[list[str]]):
+    def from_params(self, params: dict[str, list[str]]):
         for param in params[1]:
             if param[0] == 'X': self.X = float(param[1:])
             if param[0] == 'Y': self.Y = float(param[1:])
@@ -48,6 +72,7 @@ class Vector:
 
 
     def operation(self, other, operation):
+        if type(other) is not Vector: raise TypeError(f'Invalid operation between Vector and {type(other)}')
         X = operation(self.X, other.X)
         Y = operation(self.Y, other.Y)
         Z = operation(self.Z, other.Z)
@@ -86,6 +111,8 @@ class Vector:
 
 
     def add(self, other):
+        """Adds Vector's dimensions to other's that are not None"""
+        if type(other) is not Vector: raise TypeError('Can only add Vector to Vector')
         if other.X is not None: self.X += other.X
         if other.Y is not None: self.Y += other.Y
         if other.Z is not None: self.Z += other.Z
@@ -93,6 +120,8 @@ class Vector:
 
 
     def set(self, other):
+        """Sets Vector's dimensions to other's that are not None"""
+        if type(other) is not Vector: raise TypeError('Can only set Vector to Vector')
         if other.X is not None: self.X = other.X
         if other.Y is not None: self.Y = other.Y
         if other.Z is not None: self.Z = other.Z
@@ -106,7 +135,7 @@ class Vector:
 
     def copy(self):
         """Create a deep copy"""
-        return Vector(X=self.X, Y=self.Y, Z=self.Z, E=self.E)
+        return Vector(self.X, self.Y, self.Z, self.E)
 
 
     def to_dict(self):
@@ -120,7 +149,7 @@ class Vector:
 
 class CoordSystem:
 
-    def __init__(self, abs_xyz=True, abs_e=True, speed=600, arc_plane=17, position = Vector.zero(), offset = Vector.zero()):
+    def __init__(self, abs_xyz=True, abs_e=True, speed=Config.speed, arc_plane=Static.ARC_PLANES[Static.ARC_PLANE_XY], position = Vector.zero(), offset = Vector.zero()):
         self.abs_xyz = abs_xyz
         self.abs_e = abs_e
         self.speed = speed
@@ -129,12 +158,12 @@ class CoordSystem:
         self.offset = offset
 
 
-    def set_xyz_coords(self, abs_xyz=None):
+    def set_abs_xyz(self, abs_xyz=None):
         if abs_xyz is not None:
             self.abs_xyz = abs_xyz
 
 
-    def set_e_coords(self, abs_e=None):
+    def set_abs_e(self, abs_e=None):
         if abs_e is not None:
             self.abs_e = abs_e
 
@@ -158,15 +187,15 @@ class CoordSystem:
 
 
     def set_offset(self, pos: Vector):
-        self.offset = (self.position - pos).valid(pos)
+        self.offset.set((self.position - pos).valid(pos))
 
 
     def to_dict(self):
-        return {'abs_xyz' : self.abs_xyz, "abs_e" : self.abs_e, "speed" : self.speed, "position": self.position.to_dict()}
+        return {'abs_xyz' : self.abs_xyz, "abs_e" : self.abs_e, "speed" : self.speed, "position": self.position, "offset": self.offset}
 
 
     def copy(self):
-        return CoordSystem(abs_xyz=self.abs_xyz, abs_e=self.abs_e, speed=self.speed, arc_plane=self.arc_plane, position=self.position.copy(), offset=self.offset.copy())
+        return CoordSystem(self.abs_xyz, self.abs_e, self.speed, self.arc_plane, self.position.copy(), self.offset.copy())
 
 
 
@@ -178,7 +207,7 @@ class Move:
         self.coords = coords.copy()
 
 
-    def from_params(self, params: list[list[str]]):
+    def from_params(self, params: dict[str, list[str]]):
         for param in params[1]:
             if param[0] == 'F': self.speed = float(param[1:])
         self.position.from_params(params)
@@ -206,30 +235,43 @@ class Move:
         return pos_list
 
 
+    def set_coord_system(self, abs_xyz: float|None = None, abs_e: float|None = None):
+        if abs_xyz is not None:
+            self.coords.set_abs_xyz(abs_xyz)
+        if abs_e is not None:
+            self.coords.set_abs_e(abs_e)
+
+
     def to_str(self, last_move = None):
-        nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, 5)}'
+        nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, Config.precision)}'
         
-        out = ''
-        cmd = 'G0'
+        out = 'G1'
+        cmd = ''
         
-        if self.position.X != self.coords.position.X: out += nullable('X', self.position.X, 0 if self.coords.abs_xyz else self.coords.position.X)
-        if self.position.Y != self.coords.position.Y: out += nullable('Y', self.position.Y, 0 if self.coords.abs_xyz else self.coords.position.Y)
-        if self.position.Z != self.coords.position.Z: out += nullable('Z', self.position.Z, 0 if self.coords.abs_xyz else self.coords.position.Z)
-        if self.position.E != self.coords.position.E: 
-            cmd = 'G1'
-            out += nullable('E', self.position.E, 0 if self.coords.abs_e else self.coords.position.E)
+        offset = Vector.zero()
+        if not self.coords.abs_xyz:
+            offset.set(self.coords.position.xyz())
+        if not self.coords.abs_e:
+            offset.set(self.coords.position.e())
+        
+        if self.position.X != self.coords.position.X: out += nullable('X', self.position.X, offset.X)
+        if self.position.Y != self.coords.position.Y: out += nullable('Y', self.position.Y, offset.Y)
+        if self.position.Z != self.coords.position.Z: out += nullable('Z', self.position.Z, offset.Z)
+        if self.position.E != self.coords.position.E: out += nullable('E', self.position.E, offset.E)
         
         if self.speed is not None:
             out += nullable('F', self.speed, 0)
         
         if type(last_move) == Move:
             if last_move.coords.abs_xyz != self.coords.abs_xyz:
-                cmd = (Static.ABSOLUTE_COORDS if self.coords.abs_xyz else Static.RELATIVE_COORDS) + '\n' + cmd
+                cmd = (Static.ABSOLUTE_COORDS_DESC if self.coords.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n' + cmd
             if last_move.coords.abs_e != self.coords.abs_e:
-                cmd = (Static.ABSOLUTE_EXTRUDER if self.coords.abs_e else Static.RELATIVE_EXTRUDER) + '\n' + cmd
-                
+                cmd = (Static.ABSOLUTE_EXTRUDER_DESC if self.coords.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + cmd
+        else:
+            cmd = (Static.ABSOLUTE_COORDS_DESC if self.coords.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n' + cmd
+            cmd = (Static.ABSOLUTE_EXTRUDER_DESC if self.coords.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + cmd
         
-        if len(out) < 4: return ''
+        if len(out) < 4: return cmd
         return cmd + out
 
 
@@ -239,7 +281,7 @@ class Move:
 
     def copy(self):
         """Create a deep copy"""
-        return Move(position=self.position.copy(), speed=self.speed, coords=self.coords.copy())
+        return Move(self.coords.copy(), self.position.copy(), self.speed)
 
 
 
