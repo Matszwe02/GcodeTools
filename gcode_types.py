@@ -201,8 +201,10 @@ class Move:
 
     def __init__(self, coords: CoordSystem, position = Vector(), speed: float|None = None):
         self.position = position.copy()
-        self.speed = speed
+        """The end vector of Move"""
         self.coords = coords.copy()
+        """Coords hold position, which is the beginning vector of Move"""
+        self.speed = speed
 
 
     def from_params(self, params: dict[str, list[str]]):
@@ -240,12 +242,22 @@ class Move:
             self.coords.set_abs_e(abs_e)
 
 
-    def flowrate(self):
+    def get_flowrate(self):
         """Returns flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement"""
         dist_vec = self.distance()
         distance = self.float_distance(dist_vec)
         if distance < Config.step: return None
         return dist_vec.e() / distance
+
+
+    def set_flowrate(self, flowrate: float):
+        """Sets flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement, otherwise returns E mm"""
+        dist_vec = self.distance()
+        distance = self.float_distance(dist_vec)
+        if distance < Config.step: return None
+        flow = distance * flowrate
+        self.position.E = self.coords.position.E + flow
+        return flow
 
 
     def to_str(self, last_move = None):

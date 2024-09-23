@@ -2,3 +2,5 @@
 .venv
 *.gcode
 __pycache__
+
+main.py
