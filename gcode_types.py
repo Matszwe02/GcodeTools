@@ -94,7 +94,7 @@ class Vector:
 
 
     def __mul__(self, other):
-        if not isinstance(other, Vector): other = Vector(other, other, other, other, other)
+        if not isinstance(other, Vector): other = Vector(other, other, other, other)
         scale = lambda a,b: a if a is None or b is None else a * b
         return self.operation(other, scale)
 
@@ -360,13 +360,14 @@ class Move:
 
 class GcodeBlock:
     
-    def __init__(self, move: Move, command: str | None = None, meta = {}):
+    def __init__(self, move: Move, command: str | None = None, emit_command = True, meta = {}):
         
         self.move = move.copy()
         self.arc = None
         # if arc is not None:
         #     self.arc = arc.copy()
         self.command = command
+        self.emit_command = emit_command
         self.meta = json.loads(json.dumps(meta))
 
 
@@ -374,6 +375,7 @@ class GcodeBlock:
         return_dict = {
                 'command': self.command,
                 'move': self.move.__dict__,
+                'emit_command': self.emit_command,
                 'meta': self.meta
             }
         return return_dict

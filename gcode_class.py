@@ -35,7 +35,7 @@ class Gcode:
 
         for block in tqdm(self.gcode_blocks, desc="Writing G-code", unit="line"):
             command = block.command
-            if command is None or command.startswith('; CMD: ') or len(command) == 0:
+            if command is None or not block.emit_command or len(command) == 0:
                 
                 out_str += block.move.to_str(last_move)
                 last_move = block.move.copy()
@@ -87,7 +87,7 @@ class Gcode:
             meta['line_no'] = id
             command = None
             # arc = None
-            line_skipped = False
+            emit_command = False
             
             line_dict = self.line_to_dict(line)
             move = Move(self.coord_system)
@@ -120,15 +120,16 @@ class Gcode:
                 pass
             
             else:
-                command = line.strip()
-                line_skipped = True
+                # command = line.strip()
+                # line_skipped = True
+                emit_command = True
             
-            if DEBUG_GCODE_LINES and not line_skipped:
-                command = '; CMD: ' + line.strip()
+            # if DEBUG_GCODE_LINES and not line_skipped:
+            command = line.strip()
             
             new_pos = self.coord_system.apply_move(move.copy())
             move.position.set(new_pos)
-            gcode_block = GcodeBlock(move.copy(), command=command, meta=meta)
+            gcode_block = GcodeBlock(move.copy(), command=command, emit_command=emit_command, meta=meta)
             
             self.gcode_blocks.append(gcode_block)
         
