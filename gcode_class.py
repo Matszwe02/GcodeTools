@@ -35,12 +35,17 @@ class Gcode:
 
         for block in tqdm(self.gcode_blocks, desc="Writing G-code", unit="line"):
             command = block.command
-            if command is None or not block.emit_command or len(command) == 0:
-                
-                out_str += block.move.to_str(last_move)
-                last_move = block.move.copy()
-                
-            out_str += command + '\n'
+            line_str = ''
+            
+            line_str += block.move.to_str(last_move)
+            last_move = block.move.copy()
+            
+            if line_str != '': line_str += '\n'
+            
+            if block.emit_command:
+                line_str += command + '\n'
+            
+            out_str += line_str
         return out_str
 
 
