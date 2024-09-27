@@ -30,8 +30,8 @@ class Keywords:
     GCODE_END = [("EXCLUDE_OBJECT_END", "; EXECUTABLE_BLOCK_END")]
     
     
-    def get_keyword_line(line_no: int, lines: list[GcodeBlock], keyword: list[tuple[str, str]], seek_limit = 20):
-        
+    def get_keyword_line(line_no: int, blocks: Blocks, keyword: list[tuple[str, str]], seek_limit = 20):
+        lines = blocks.b
         for option in keyword:
             if lines[line_no].command.startswith(option[0]):
                 if option[1] == "": return True
@@ -48,7 +48,7 @@ class GcodeTools:
     
     def __init__(self, gcode: Gcode):
         self.gcode = gcode
-        self.gcode_blocks = self.gcode.gcode_blocks
+        # self.gcode_blocks = self.gcode.blocks
         
         self.start_gcode = None
         self.end_gcode = None
@@ -60,12 +60,12 @@ class GcodeTools:
     def read_metadata(self):
         self.metadata = {}
         start_id, end_id = -1, -1
-        for id, block in enumerate(self.gcode.gcode_blocks):
+        for id, block in self.gcode.blocks.enum():
         
-            if start_id == -1 and Keywords.get_keyword_line(id, self.gcode.gcode_blocks, Keywords.CONFIG_START): start_id = id
-            if end_id == -1 and Keywords.get_keyword_line(id, self.gcode.gcode_blocks, Keywords.CONFIG_END): end_id = id
+            if start_id == -1 and Keywords.get_keyword_line(id, self.gcode.blocks, Keywords.CONFIG_START): start_id = id
+            if end_id == -1 and Keywords.get_keyword_line(id, self.gcode.blocks, Keywords.CONFIG_END): end_id = id
                 
-        for gcode in self.gcode.gcode_blocks[start_id + 1 : end_id]:
+        for gcode in self.gcode.blocks.b[start_id + 1 : end_id]:
             line = gcode.command
             key = line[1:line.find('=')].strip()
             value = line[line.find('=') + 1:].strip()
@@ -73,45 +73,50 @@ class GcodeTools:
         return self.metadata
 
 
+# FIXME: mutable gcode.blocks
     def split(self):
-        gcode = self.gcode.gcode_blocks
-        object_gcode: list[GcodeBlock] = []
-        start_gcode = []
-        end_gcode = []
+        blocks = self.gcode.blocks
+        blocks_bare = Blocks()
+        object_gcode = Blocks()
+        start_gcode = Blocks()
+        end_gcode = Blocks()
         layers = []
         objects_layers = {}
         
         start_id, end_id = -1, -1
         
-        for id, block in enumerate(gcode):
-            if start_id == -1 and Keywords.get_keyword_line(id, gcode, Keywords.EXECUTABLE_START): start_id = id
-            if end_id == -1 and Keywords.get_keyword_line(id, gcode, Keywords.EXECUTABLE_END): end_id = id
+        for id, block in blocks.enum():
+            if start_id == -1 and Keywords.get_keyword_line(id, blocks, Keywords.EXECUTABLE_START): start_id = id
+            if end_id == -1 and Keywords.get_keyword_line(id, blocks, Keywords.EXECUTABLE_END): end_id = id
             
             if start_id > 0 and end_id > 0:
-                gcode = self.gcode.gcode_blocks[start_id : end_id + 1]
+                blocks_bare.b = self.gcode.blocks.b[start_id : end_id + 1]
                 break
         
         start_id, end_id = -1, -1
         
-        for id, block in enumerate(gcode):
+        for id, block in blocks_bare.enum():
             
-            if start_id == -1 and Keywords.get_keyword_line(id, gcode, Keywords.OBJECT_START): start_id = id
-            if end_id == -1 and Keywords.get_keyword_line(id, gcode, Keywords.OBJECT_END): end_id = id
+            if start_id == -1 and Keywords.get_keyword_line(id, blocks_bare, Keywords.OBJECT_START): start_id = id
+            if end_id == -1 and Keywords.get_keyword_line(id, blocks_bare, Keywords.OBJECT_END): end_id = id
             
             if start_id > 0 and end_id > 0:
-                object_gcode += gcode[start_id:end_id]
+                object_gcode.b += blocks_bare.b[start_id:end_id].copy()
+                object_gcode.append(';OBJECT_SPLIT', id)
+                start_id = -1
+                end_id = -1
         
         start_id, end_id = -1, -1
-        for id, block in enumerate(gcode):
+        for id, block in blocks_bare.enum():
             
-            if start_id == -1 and Keywords.get_keyword_line(id, gcode, Keywords.GCODE_START):
+            if start_id == -1 and Keywords.get_keyword_line(id, blocks_bare, Keywords.GCODE_START):
                 start_id = id
-                start_gcode = gcode[:start_id]
+                start_gcode.b = blocks_bare.b[:start_id]
                 print(f'found start gcode at line {id}')
                 
-            if end_id == -1 and Keywords.get_keyword_line(id, gcode, Keywords.GCODE_END):
+            if end_id == -1 and Keywords.get_keyword_line(id, blocks_bare, Keywords.GCODE_END):
                 end_id = id
-                end_gcode = gcode[end_id:]
+                end_gcode = blocks_bare.b[end_id:]
                 print(f'found end gcode at line {id}')
         
         layer = []
@@ -155,7 +160,7 @@ class GcodeTools:
                 return super().default(obj)
 
         with open(os.path.join(path, 'gcode.json'), 'w') as f:
-            f.write(json.dumps(self.gcode.gcode_blocks, indent=4, cls=CustomEncoder))
+            f.write(json.dumps(self.gcode.blocks.b, indent=4, cls=CustomEncoder))
             
         with open(os.path.join(path, 'objects_layers.json'), 'w') as f:
             f.write(json.dumps(self.objects_layers, indent=4, cls=CustomEncoder))
