@@ -10,33 +10,47 @@ from gcode_class import Gcode
 
 
 class Keywords:
+    """List of possible commands. Each command is treated as a prefix, so G1 will match any move command, etc.
     
-    CONFIG_START = [("; CONFIG_BLOCK_START", "")]
-    CONFIG_END = [("; CONFIG_BLOCK_END", "")]
+    Each element is a tuple of (
     
-    HEADER_START = [("; HEADER_BLOCK_START", "")]
-    HEADER_END = [("; HEADER_BLOCK_END", "")]
+        command,
     
-    EXECUTABLE_START = [("; EXECUTABLE_BLOCK_START", "")]
-    EXECUTABLE_END = [("; EXECUTABLE_BLOCK_END", "")]
+        command to be followed by within seek_limit,
     
-    LAYER_CHANGE_START = [(";BEFORE_LAYER_CHANGE", "")]
-    LAYER_CHANGE_END = [(";AFTER_LAYER_CHANGE", ";TYPE:")]
+        command that breaks seek_limit
     
-    OBJECT_START = [("EXCLUDE_OBJECT_START", ";TYPE:")]
-    OBJECT_END = [("EXCLUDE_OBJECT_END", "")]
+    )
+    """
     
-    GCODE_START = [(";AFTER_LAYER_CHANGE", ";TYPE:")]
-    GCODE_END = [("EXCLUDE_OBJECT_END", "; EXECUTABLE_BLOCK_END")]
+    CONFIG_START = [("; CONFIG_BLOCK_START", "", "")]
+    CONFIG_END = [("; CONFIG_BLOCK_END", "", "")]
+    
+    HEADER_START = [("; HEADER_BLOCK_START", "", "")]
+    HEADER_END = [("; HEADER_BLOCK_END", "", "")]
+    
+    EXECUTABLE_START = [("; EXECUTABLE_BLOCK_START", "", "")]
+    EXECUTABLE_END = [("; EXECUTABLE_BLOCK_END", "", "")]
+    
+    LAYER_CHANGE_START = [(";BEFORE_LAYER_CHANGE", "", "")]
+    LAYER_CHANGE_END = [(";AFTER_LAYER_CHANGE", ";TYPE:", "")]
+    
+    OBJECT_START = [("EXCLUDE_OBJECT_START", ";TYPE:", "")]
+    OBJECT_END = [("EXCLUDE_OBJECT_END", "", "")]
+    
+    GCODE_START = [(";AFTER_LAYER_CHANGE", ";TYPE:", "")]
+    GCODE_END = [("EXCLUDE_OBJECT_END", "; EXECUTABLE_BLOCK_END", "")]
     
     
-    def get_keyword_line(line_no: int, blocks: Blocks, keyword: list[tuple[str, str]], seek_limit = 20):
-        lines = blocks.b
+    def get_keyword_line(line_no: int, blocks: BlockList, keyword: list[tuple[str, str, str]], seek_limit = 20):
+
         for option in keyword:
-            if lines[line_no].command.startswith(option[0]):
+            if blocks[line_no].command.startswith(option[0]):
                 if option[1] == "": return True
                 
-                for nextline in lines[line_no: line_no + seek_limit]:
+                for nextline in blocks[line_no: line_no + seek_limit]:
+                    if option[2] != "" and nextline.command.startswith(option[2]):
+                        return False
                     if nextline.command.startswith(option[1]):
                         return True
                 
@@ -48,7 +62,6 @@ class GcodeTools:
     
     def __init__(self, gcode: Gcode):
         self.gcode = gcode
-        # self.gcode_blocks = self.gcode.blocks
         
         self.start_gcode = None
         self.end_gcode = None
@@ -56,16 +69,21 @@ class GcodeTools:
         
         self.precision = 0.02
 
+        self.start_gcode = BlockList()
+        self.end_gcode = BlockList()
+        self.layers = BlockList()
+        self.objects_layers = {}
+
 
     def read_metadata(self):
         self.metadata = {}
         start_id, end_id = -1, -1
-        for id, block in self.gcode.blocks.enum():
+        for id, block in enumerate(self.gcode.blocks):
         
             if start_id == -1 and Keywords.get_keyword_line(id, self.gcode.blocks, Keywords.CONFIG_START): start_id = id
             if end_id == -1 and Keywords.get_keyword_line(id, self.gcode.blocks, Keywords.CONFIG_END): end_id = id
                 
-        for gcode in self.gcode.blocks.b[start_id + 1 : end_id]:
+        for gcode in self.gcode.blocks[start_id + 1 : end_id]:
             line = gcode.command
             key = line[1:line.find('=')].strip()
             value = line[line.find('=') + 1:].strip()
@@ -73,77 +91,97 @@ class GcodeTools:
         return self.metadata
 
 
-# FIXME: mutable gcode.blocks
+    def _convert_objects_layers_to_json(self, objects_layers: dict[str, list[BlockList]]) -> dict[str, list[any]]:
+        """
+        Convert objects_layers dictionary to JSON-compatible format.
+
+        Args:
+            objects_layers (Dict[str, List[BlockList]]): Dictionary of object names to lists of BlockLists.
+
+        Returns:
+            Dict[str, List[Any]]: JSON-compatible representation of objects_layers.
+        """
+        return {
+            key: [block_list.to_json() for block_list in block_lists]
+            for key, block_lists in objects_layers.items()
+        }
+
+
     def split(self):
         blocks = self.gcode.blocks
-        blocks_bare = Blocks()
-        object_gcode = Blocks()
-        start_gcode = Blocks()
-        end_gcode = Blocks()
-        layers = []
-        objects_layers = {}
+        blocks_bare = BlockList()
+        object_gcode = BlockList()
+        start_gcode = BlockList()
+        end_gcode = BlockList()
+        layers = BlockList()
+        objects_layers: dict[BlockList] = {}
         
         start_id, end_id = -1, -1
         
-        for id, block in blocks.enum():
+        for id, block in enumerate(blocks):
             if start_id == -1 and Keywords.get_keyword_line(id, blocks, Keywords.EXECUTABLE_START): start_id = id
             if end_id == -1 and Keywords.get_keyword_line(id, blocks, Keywords.EXECUTABLE_END): end_id = id
             
             if start_id > 0 and end_id > 0:
-                blocks_bare.b = self.gcode.blocks.b[start_id : end_id + 1]
+                blocks_bare = self.gcode.blocks[start_id : end_id + 1]
                 break
         
         start_id, end_id = -1, -1
         
-        for id, block in blocks_bare.enum():
+        for id, block in enumerate(blocks_bare):
             
             if start_id == -1 and Keywords.get_keyword_line(id, blocks_bare, Keywords.OBJECT_START): start_id = id
             if end_id == -1 and Keywords.get_keyword_line(id, blocks_bare, Keywords.OBJECT_END): end_id = id
             
             if start_id > 0 and end_id > 0:
-                object_gcode.b += blocks_bare.b[start_id:end_id].copy()
-                object_gcode.append(';OBJECT_SPLIT', id)
+                object_gcode += blocks_bare[start_id:end_id].copy()
+                object_gcode.g_add(';OBJECT_SPLIT', id)
                 start_id = -1
                 end_id = -1
         
         start_id, end_id = -1, -1
-        for id, block in blocks_bare.enum():
+        for id, block in enumerate(blocks_bare):
             
             if start_id == -1 and Keywords.get_keyword_line(id, blocks_bare, Keywords.GCODE_START):
                 start_id = id
-                start_gcode.b = blocks_bare.b[:start_id]
+                start_gcode = blocks_bare[:start_id]
                 print(f'found start gcode at line {id}')
                 
             if end_id == -1 and Keywords.get_keyword_line(id, blocks_bare, Keywords.GCODE_END):
                 end_id = id
-                end_gcode = blocks_bare.b[end_id:]
+                end_gcode = blocks_bare[end_id:]
                 print(f'found end gcode at line {id}')
         
         layer = []
         objects_layer = {}
-        # FIXME: performance
-        # for block in object_gcode:
-            
-        #     if Keywords.get_keyword_line(id, gcode, Keywords.LAYER_CHANGE_START):
-        #         layers.append(layer)
-                
-        #         for id in objects_layer.keys():
-        #             if id not in objects_layers:
-        #                 objects_layers[id] = []
-        #             objects_layers[id].append(objects_layer[id])
-            
-        #     elif Keywords.get_keyword_line(id, gcode, Keywords.LAYER_CHANGE_END):
-        #         layer = []
-        #         objects_layer = {}
-        #     else:
-        #         layer.append(block)
-                
-        #         objects_key = block.meta['object'] or 'Travel'
-        #         if objects_key not in objects_layer:
-        #             objects_layer[objects_key] = []
-        #         objects_layer[objects_key].append(block)
         
-        # layers.append(layer)
+        for id, block in enumerate(object_gcode):
+            
+            if Keywords.get_keyword_line(id, object_gcode, Keywords.LAYER_CHANGE_START):
+                layers.append(layer)
+                
+                for id in objects_layer.keys():
+                    if id not in objects_layers:
+                        objects_layers[id] = BlockList()
+                    objects_layers[id].append(objects_layer[id])
+            
+            elif Keywords.get_keyword_line(id, object_gcode, Keywords.LAYER_CHANGE_END):
+                layer = []
+                objects_layer = {}
+            else:
+                layer.append(block)
+                
+                # TODO: Better meta
+                try:
+                    objects_key = block.meta['object'] or 'Travel'
+                except:
+                    objects_key = 'Travel'
+                
+                if objects_key not in objects_layer:
+                    objects_layer[objects_key] = BlockList()
+                objects_layer[objects_key].append(block)
+        
+        layers.append(layer)
         
         self.start_gcode = start_gcode
         self.end_gcode = end_gcode
@@ -160,7 +198,7 @@ class GcodeTools:
                 return super().default(obj)
 
         with open(os.path.join(path, 'gcode.json'), 'w') as f:
-            f.write(json.dumps(self.gcode.blocks.b, indent=4, cls=CustomEncoder))
+            f.write(json.dumps(self.gcode.blocks, indent=4, cls=CustomEncoder))
             
         with open(os.path.join(path, 'objects_layers.json'), 'w') as f:
             f.write(json.dumps(self.objects_layers, indent=4, cls=CustomEncoder))
@@ -170,6 +208,9 @@ class GcodeTools:
             
         with open(os.path.join(path, 'end_gcode.json'), 'w') as f:
             f.write(json.dumps(self.end_gcode, indent=4, cls=CustomEncoder))
+            
+        with open(os.path.join(path, 'layers.json'), 'w') as f:
+            f.write(json.dumps(self.layers, indent=4, cls=CustomEncoder))
             
         with open(os.path.join(path, 'metadata.json'), 'w') as f:
             f.write(json.dumps(self.metadata, indent=4))

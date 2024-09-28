@@ -9,13 +9,16 @@ DEBUG_GCODE_LINES = True
 
 
 class Gcode:
-    
-    def __init__(self):
+
+    def __init__(self, blocks: BlockList|None = None):
         
         self.gcode = ''
         self.coord_system = CoordSystem()
-        # self.gcode_blocks:list[GcodeBlock] = []
-        self.blocks = Blocks()
+        
+        if blocks is not None:
+            self.blocks = blocks
+        else:
+            self.blocks = BlockList()
 
 
     def from_str(self, gcode_str):
@@ -35,7 +38,7 @@ class Gcode:
         last_move = None
         i = 0
 
-        for block in tqdm(self.blocks.b, desc="Writing G-code", unit="line"):
+        for block in tqdm(self.blocks, desc="Writing G-code", unit="line"):
             i += 1
             command = block.command
             line_str = ''
@@ -49,7 +52,6 @@ class Gcode:
                 line_str += command + '\n'
             
             out_str += line_str
-            if i > 1000000: return out_str
         return out_str
 
 
@@ -87,8 +89,7 @@ class Gcode:
     def generate_moves(self):
         
         self.coord_system = CoordSystem()
-        # self.gcode_blocks:list[GcodeBlock] = []
-        self.blocks = Blocks()
+        self.blocks:list[GcodeBlock] = []
         
         meta = {'object': None, 'type': None, 'line_no': 0}
         
@@ -130,11 +131,8 @@ class Gcode:
                 pass
             
             else:
-                # command = line.strip()
-                # line_skipped = True
                 emit_command = True
             
-            # if DEBUG_GCODE_LINES and not line_skipped:
             command = line.strip()
             
             new_pos = self.coord_system.apply_move(move.copy())
@@ -142,6 +140,3 @@ class Gcode:
             gcode_block = GcodeBlock(move.copy(), command=command, emit_command=emit_command, meta=meta)
             
             self.blocks.append(gcode_block)
-        
-        # self.gcode_blocks.append(GcodeBlock(Move(), command=command, meta=meta))
-

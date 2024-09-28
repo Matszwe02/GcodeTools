@@ -294,7 +294,7 @@ class Move:
 
 
     def to_dict(self):
-        return {'Current' : self.position, "Previous" : self.coords.position}
+        return {'Current' : self.position.to_dict(), "Previous" : self.coords.position.to_dict()}
 
 
     def copy(self):
@@ -376,71 +376,99 @@ class GcodeBlock:
 
 
     def to_dict(self):
-        return_dict = {
+        return {
                 'command': self.command,
                 'move': self.move.__dict__,
                 'emit_command': self.emit_command,
                 'meta': self.meta
             }
-        return return_dict
 
 
 
-class Blocks:
-    
-    def __init__(self, b: list[GcodeBlock] = []):
-        self.b = b
-
-
-    def enum(self):
-        return enumerate(self.b)
-
-
-    def append(self, gcode: GcodeBlock|str, index: int = -1):
+class BlockList(list[GcodeBlock]):
+    def g_add(self, gcode: GcodeBlock|str, index: int = -1):
         """Appends gcode block to Gcode.\n\ngcode: GcodeBlock or gcode str.\n\ndefault index -1: append to the end"""
+        
+        idx = index if index < len(self) else -1
+        
         if type(gcode) == str:
-            if index > 0: move = self.b[index - 1].move
-            elif index == 0: move = self.b[0].move
-            else: move = self.b[-1].move
+            if len(self) == 0: move = Move()
+            else:
+                if idx > 0:
+                    move = self[idx - 1].move
+                elif idx == 0:
+                    move = self[0].move
+                else:
+                    move = self[-1].move
             
             gcode_obj = GcodeBlock(move.copy(), gcode)
         else:
             gcode_obj = gcode
-        if index == -1:
-            self.b.append(gcode_obj)
+        if idx == -1:
+            self.append(gcode_obj)
             return
-        self.b.insert(index, gcode_obj)
+        self.insert(index, gcode_obj)
 
 
-    def copy(self):
-        blocks = []
-        for i in self.b:
-            blocks.append(i.copy())
-        return Blocks(blocks)
+    # def to_dict(self):
+    #     return [block.to_dict() for block in self]
 
 
-    def index(self, i) -> GcodeBlock:
-        return self.__getitem__(i)
+# class Blocks:
+    
+#     def __init__(self, b: list[GcodeBlock] = []):
+#         self.b = b
 
-    def __getitem__(self, key: slice|int):
-        if isinstance(key, slice):
-            return Blocks(self.b[key])
-        return self.b[key]
 
-    def __setitem__(self, key, value):
-        if isinstance(key, slice):
-            self.b[key] = value
-        else:
-            self.b[key] = value
+#     def enum(self):
+#         return enumerate(self.b)
 
-    def __len__(self):
-        return len(self.b)
 
-    def __iadd__(self, other):
-        if isinstance(other, Blocks):
-            self.b.extend(other.b)
-        elif isinstance(other, list):
-            self.b.extend(other)
-        else:
-            raise TypeError(f"Unsupported operand type for +=: 'Blocks' and '{type(other).__name__}'")
-        return self
+#     def append(self, gcode: GcodeBlock|str, index: int = -1):
+#         """Appends gcode block to Gcode.\n\ngcode: GcodeBlock or gcode str.\n\ndefault index -1: append to the end"""
+#         if type(gcode) == str:
+#             if index > 0: move = self.b[index - 1].move
+#             elif index == 0: move = self.b[0].move
+#             else: move = self.b[-1].move
+            
+#             gcode_obj = GcodeBlock(move.copy(), gcode)
+#         else:
+#             gcode_obj = gcode
+#         if index == -1:
+#             self.b.append(gcode_obj)
+#             return
+#         self.b.insert(index, gcode_obj)
+
+
+#     def copy(self):
+#         blocks = []
+#         for i in self.b:
+#             blocks.append(i.copy())
+#         return Blocks(blocks)
+
+
+#     def index(self, i) -> GcodeBlock:
+#         return self.__getitem__(i)
+
+#     def __getitem__(self, key: slice|int):
+#         if isinstance(key, slice):
+#             return Blocks(self.b[key])
+#         return self.b[key]
+
+#     def __setitem__(self, key, value):
+#         if isinstance(key, slice):
+#             self.b[key] = value
+#         else:
+#             self.b[key] = value
+
+#     def __len__(self):
+#         return len(self.b)
+
+#     def __iadd__(self, other):
+#         if isinstance(other, Blocks):
+#             self.b.extend(other.b)
+#         elif isinstance(other, list):
+#             self.b.extend(other)
+#         else:
+#             raise TypeError(f"Unsupported operand type for +=: 'Blocks' and '{type(other).__name__}'")
+#         return self
