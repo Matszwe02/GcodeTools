@@ -125,7 +125,7 @@ class Gcode:
                 self.coord_system.set_offset(vec)
             
             elif command == Static.FAN_SPEED:
-                self.coord_system.fan = int(line_dict.get('S', self.coord_system.fan))
+                self.coord_system.set_fan(line_dict.get('S', None))
             
             elif command == Static.FAN_OFF:
                 self.coord_system.fan = 0

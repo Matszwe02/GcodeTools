@@ -173,6 +173,10 @@ class CoordSystem:
     def set_abs_e(self, abs_e=None):
         if abs_e is not None:
             self.abs_e = abs_e
+    
+    def set_fan(self, fan):
+        if fan is not None:
+            self.fan = int(fan)
 
 
     def apply_move(self, move):
