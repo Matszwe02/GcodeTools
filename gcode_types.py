@@ -5,6 +5,7 @@ import json
 
 class Config:
     """G-Code configuration"""
+    
     precision = 5
     """N decimal digits"""
     
@@ -13,6 +14,9 @@ class Config:
     
     step = 0.1
     """Step over which maths iterate"""
+    
+    trim_gcodes = ['M73', 'EXCLUDE_OBJECT_DEFINE', 'EXCLUDE_OBJECT_START', 'EXCLUDE_OBJECT_END']
+    """Commands to not include in output gcode."""
 
 
 
@@ -26,20 +30,25 @@ class Static:
 
     SET_POSITION = 'G92'
 
-    ARC_PLANE_XY = 'G17'
-    ARC_PLANE_XZ = 'G18'
-    ARC_PLANE_YZ = 'G19'
+    ARC_PLANES = {'G17': 17, 'G18' : 18, 'G19': 19, 'XY' : 17, 'XZ': 18, 'YZ': 19}
 
-    ARC_PLANES = {'G17': 17, 'G18' : 18, 'G19': 19}
+    FAN_SPEED = 'M106'
+    FAN_OFF = 'M107'
 
 
     ABSOLUTE_COORDS_DESC = 'G90; Absolute Coordinates'
     RELATIVE_COORDS_DESC = 'G91; Relative Coordinates'
     ABSOLUTE_EXTRUDER_DESC = 'M82; Absolute Extruder'
     RELATIVE_EXTRUDER_DESC = 'M83; Relative Extruder'
-    ARC_PLANE_XY_DESC = 'G17; Arc Plane XY'
-    ARC_PLANE_XZ_DESC = 'G18; Arc Plane XZ'
-    ARC_PLANE_YZ_DESC = 'G19; Arc Plane YZ'
+    FAN_SPEED_DESC = 'M106 S{0}; Set Fan Speed'
+    
+    ARC_PLANES_DESC = {17: 'G17; Arc Plane XY', 18: 'G18; Arc Plane XZ', 19: 'G19; Arc Plane YZ'}
+
+
+
+def float_nullable(input):
+    if input is not None: return float(input)
+    return input
 
 
 
@@ -58,12 +67,11 @@ class Vector:
         self.E = E
 
 
-    def from_params(self, params: dict[str, list[str]]):
-        for param in params[1]:
-            if param[0] == 'X': self.X = float(param[1:])
-            if param[0] == 'Y': self.Y = float(param[1:])
-            if param[0] == 'Z': self.Z = float(param[1:])
-            if param[0] == 'E': self.E = float(param[1:])
+    def from_params(self, params: dict[str, str]):
+        self.X = float_nullable(params.get('X', self.X))
+        self.Y = float_nullable(params.get('Y', self.Y))
+        self.Z = float_nullable(params.get('Z', self.Z))
+        self.E = float_nullable(params.get('E', self.E))
         return self
 
 
@@ -147,13 +155,14 @@ class Vector:
 
 class CoordSystem:
 
-    def __init__(self, abs_xyz=True, abs_e=True, speed=Config.speed, arc_plane=Static.ARC_PLANES[Static.ARC_PLANE_XY], position = Vector.zero(), offset = Vector.zero()):
+    def __init__(self, abs_xyz = True, abs_e = True, speed = Config.speed, arc_plane = Static.ARC_PLANES['XY'], position = Vector.zero(), offset = Vector.zero(), fan = 0):
         self.abs_xyz = abs_xyz
         self.abs_e = abs_e
         self.speed = speed
         self.arc_plane = arc_plane
         self.position = position
         self.offset = offset
+        self.fan = fan
 
 
     def set_abs_xyz(self, abs_xyz=None):
@@ -189,11 +198,11 @@ class CoordSystem:
 
 
     def to_dict(self):
-        return {'abs_xyz' : self.abs_xyz, "abs_e" : self.abs_e, "speed" : self.speed, "position": self.position, "offset": self.offset}
+        return {'abs_xyz' : self.abs_xyz, "abs_e" : self.abs_e, "speed" : self.speed, "position": self.position, "offset": self.offset, "fan": self.fan}
 
 
     def copy(self):
-        return CoordSystem(self.abs_xyz, self.abs_e, self.speed, self.arc_plane, self.position.copy(), self.offset.copy())
+        return CoordSystem(self.abs_xyz, self.abs_e, self.speed, self.arc_plane, self.position.copy(), self.offset.copy(), self.fan)
 
 
 
@@ -207,9 +216,8 @@ class Move:
         self.speed = speed
 
 
-    def from_params(self, params: dict[str, list[str]]):
-        for param in params[1]:
-            if param[0] == 'F': self.speed = float(param[1:])
+    def from_params(self, params: dict[str, str]):
+        self.speed = float_nullable(params.get('F', self.speed))
         self.position.from_params(params)
         return self
 
@@ -285,9 +293,13 @@ class Move:
                 cmd = (Static.ABSOLUTE_COORDS_DESC if self.coords.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n' + cmd
             if last_move.coords.abs_e != self.coords.abs_e:
                 cmd = (Static.ABSOLUTE_EXTRUDER_DESC if self.coords.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + cmd
+            if last_move.coords.fan != self.coords.fan:
+                cmd = Static.FAN_SPEED_DESC.format(self.coords.fan) + '\n' + cmd
+        
         else:
             cmd = (Static.ABSOLUTE_COORDS_DESC if self.coords.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n' + cmd
             cmd = (Static.ABSOLUTE_EXTRUDER_DESC if self.coords.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + cmd
+            cmd = Static.FAN_SPEED_DESC.format(self.coords.fan) + '\n' + cmd
         
         if len(out) < 4: return cmd
         return cmd + out

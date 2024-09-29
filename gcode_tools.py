@@ -91,21 +91,6 @@ class GcodeTools:
         return self.metadata
 
 
-    def _convert_objects_layers_to_json(self, objects_layers: dict[str, list[BlockList]]) -> dict[str, list[any]]:
-        """
-        Convert objects_layers dictionary to JSON-compatible format.
-
-        Args:
-            objects_layers (Dict[str, List[BlockList]]): Dictionary of object names to lists of BlockLists.
-
-        Returns:
-            Dict[str, List[Any]]: JSON-compatible representation of objects_layers.
-        """
-        return {
-            key: [block_list.to_json() for block_list in block_lists]
-            for key, block_lists in objects_layers.items()
-        }
-
 
     def split(self):
         blocks = self.gcode.blocks

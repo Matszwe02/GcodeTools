@@ -1,10 +1,6 @@
 from gcode_types import *
 from tqdm import tqdm
-
-
-TRIM_GCODES = ['M73', 'EXCLUDE_OBJECT_DEFINE', 'EXCLUDE_OBJECT_START', 'EXCLUDE_OBJECT_END']
-
-DEBUG_GCODE_LINES = True
+import re
 
 
 
@@ -60,15 +56,21 @@ class Gcode:
             f.write(self.write_str())
 
 
-    def line_to_dict(self, line: str) -> dict[str, list[str]]:
-        params = ['', []]
-        line_parts = line.split(';')[0].split(' ')  
-        if line_parts:
-            params[0] = line_parts[0]
+    def line_to_dict(self, line: str) -> dict[str, str]:
+        line_parts = line.split(';')[0].split()
+        if not line_parts:
+            return {'0': ''}
 
-            for param in line_parts[1:]:
-                if param: params[1].append(param)
-        
+        command = line_parts[0]
+        params = {'0': command}
+
+        for param in line_parts[1:]:
+            if '=' in param:
+                key, value = param.split('=')
+                params[key] = value
+            else:
+                params[param[0]] = param[1:]
+
         return params
 
 
@@ -100,34 +102,38 @@ class Gcode:
             # arc = None
             emit_command = False
             
-            line_obj = self.line_to_dict(line)
+            line_dict = self.line_to_dict(line)
+            command = line_dict['0']
             move = Move(self.coord_system)
             
-            if line[0] == ';':
-                meta = self.read_meta(line, meta)
+            if command in ['G1', 'G0']:
+                move = Move(self.coord_system.copy()).from_params(line_dict)
             
-            if line_obj[0] in ['G1', 'G0']:
-                move = Move(self.coord_system.copy()).from_params(line_obj)
+            elif command in ['G2', 'G3']:
+                move = Move(self.coord_system.copy()).from_params(line_dict)
+                # arc = Arc(plane=self.coord_system.arc_plane).from_params(line_dict, self.coord_system).copy()
+                # move = Position().from_params(line_dict)
             
-            elif line_obj[0] in ['G2', 'G3']:
-                move = Move(self.coord_system.copy()).from_params(line_obj)
-                # arc = Arc(plane=self.coord_system.arc_plane).from_params(line_obj, self.coord_system).copy()
-                # move = Position().from_params(line_obj)
-            
-            elif line_obj[0] in [Static.ABSOLUTE_COORDS, Static.RELATIVE_COORDS]:
-                self.coord_system.set_abs_xyz(line_obj[0] == Static.ABSOLUTE_COORDS)
+            elif command in [Static.ABSOLUTE_COORDS, Static.RELATIVE_COORDS]:
+                self.coord_system.set_abs_xyz(command == Static.ABSOLUTE_COORDS)
 
-            elif line_obj[0] in [Static.ABSOLUTE_EXTRUDER, Static.RELATIVE_EXTRUDER]:
-                self.coord_system.set_abs_e(line_obj[0] == Static.ABSOLUTE_EXTRUDER)
+            elif command in [Static.ABSOLUTE_EXTRUDER, Static.RELATIVE_EXTRUDER]:
+                self.coord_system.set_abs_e(command == Static.ABSOLUTE_EXTRUDER)
 
-            elif line_obj[0] == Static.SET_POSITION:
-                vec = Vector().from_params(line_obj)
+            elif command == Static.SET_POSITION:
+                vec = Vector().from_params(line_dict)
                 self.coord_system.set_offset(vec)
             
-            elif line_obj[0] in Static.ARC_PLANES.keys():
-                self.coord_system.arc_plane = Static.ARC_PLANES[line_obj[0]]
+            elif command == Static.FAN_SPEED:
+                self.coord_system.fan = int(line_dict.get('S', self.coord_system.fan))
             
-            elif line_obj[0] in TRIM_GCODES:
+            elif command == Static.FAN_OFF:
+                self.coord_system.fan = 0
+            
+            elif command in Static.ARC_PLANES.keys():
+                self.coord_system.arc_plane = Static.ARC_PLANES[command]
+            
+            elif command in Config.trim_gcodes:
                 pass
             
             else:
@@ -137,6 +143,6 @@ class Gcode:
             
             new_pos = self.coord_system.apply_move(move.copy())
             move.position.set(new_pos)
-            gcode_block = GcodeBlock(move.copy(), command=command, emit_command=emit_command, meta=meta)
+            gcode_block = GcodeBlock(move.copy(), command=command, emit_command=emit_command)
             
             self.blocks.append(gcode_block)
