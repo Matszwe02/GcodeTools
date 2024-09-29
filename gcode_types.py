@@ -201,6 +201,25 @@ class CoordSystem:
         self.offset.set((self.position - pos).valid(pos))
 
 
+    def to_str(self, last_coords = None):
+        out = ''
+        
+        if type(last_coords) == CoordSystem:
+            if last_coords.abs_xyz != self.abs_xyz:
+                out = (Static.ABSOLUTE_COORDS_DESC if self.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n' + out
+            if last_coords.abs_e != self.abs_e:
+                out = (Static.ABSOLUTE_EXTRUDER_DESC if self.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + out
+            if last_coords.fan != self.fan:
+                out = Static.FAN_SPEED_DESC.format(self.fan) + '\n' + out
+        
+        else:
+            out = (Static.ABSOLUTE_COORDS_DESC if self.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n' + out
+            out = (Static.ABSOLUTE_EXTRUDER_DESC if self.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + out
+            out = Static.FAN_SPEED_DESC.format(self.fan) + '\n' + out
+        
+        return out
+
+
     def to_dict(self):
         return {'abs_xyz' : self.abs_xyz, "abs_e" : self.abs_e, "speed" : self.speed, "position": self.position, "offset": self.offset, "fan": self.fan}
 
@@ -276,7 +295,6 @@ class Move:
         nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, Config.precision)}'
         
         out = 'G1'
-        cmd = ''
         
         offset = Vector.zero()
         if not self.coords.abs_xyz:
@@ -292,21 +310,7 @@ class Move:
         if self.speed is not None:
             out += nullable('F', self.speed, 0)
         
-        if type(last_move) == Move:
-            if last_move.coords.abs_xyz != self.coords.abs_xyz:
-                cmd = (Static.ABSOLUTE_COORDS_DESC if self.coords.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n' + cmd
-            if last_move.coords.abs_e != self.coords.abs_e:
-                cmd = (Static.ABSOLUTE_EXTRUDER_DESC if self.coords.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + cmd
-            if last_move.coords.fan != self.coords.fan:
-                cmd = Static.FAN_SPEED_DESC.format(self.coords.fan) + '\n' + cmd
-        
-        else:
-            cmd = (Static.ABSOLUTE_COORDS_DESC if self.coords.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n' + cmd
-            cmd = (Static.ABSOLUTE_EXTRUDER_DESC if self.coords.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + cmd
-            cmd = Static.FAN_SPEED_DESC.format(self.coords.fan) + '\n' + cmd
-        
-        if len(out) < 4: return cmd
-        return cmd + out
+        return self.coords.to_str(last_move.coords if type(last_move) == Move else None) + (out if len(out) > 3 else '')
 
 
     def to_dict(self):
@@ -321,56 +325,51 @@ class Move:
 
 
 # TODO: arc support
-# class Arc:
-#     def __init__(self, I=None, J=None, K=None, dir=0, plane=0, next_pos: Position = Position(), prev_pos: Position = Position()):
-#         """I, J, K optional; direction 2=CW, 3=CCW; plane 17=XY, 18=XZ, 19=YZ"""
-#         self.I = I
-#         self.J = J
-#         self.K = K
-#         self.dir = dir
-#         self.plane=plane
-#         self.next_pos = next_pos
-#         self.prev_pos = prev_pos
+# class Arc(Move):
+    # def __init__(self, dir, move: Move, I=None, J=None, K=None):
+    #     """direction 2=CW, 3=CCW"""
+    #     self.dir = dir
+    #     self.move = move
+    #     self.I = I
+    #     self.J = J
+    #     self.K = K
 
 
-#     def from_params(self, params: list[list[str]], coords: CoordSystem):
+    # def from_params(self, params: dict[str, str]):
+    #     self.I = float_nullable(params.get('I', self.I))
+    #     self.J = float_nullable(params.get('J', self.J))
+    #     self.K = float_nullable(params.get('K', self.K))
         
-#         for param in params[1]:
-#             if param[0] == 'I': self.I = float(param[1:])
-#             if param[0] == 'J': self.J = float(param[1:])
-#             if param[0] == 'K': self.K = float(param[1:])
+    #     if params['0'] == 'G2': self.dir=2
+    #     if params['0'] == 'G3': self.dir=3
         
-#         if params[0] == 'G2': self.dir=2
-#         if params[0] == 'G3': self.dir=3
-        
-#         self.next_pos = Position().from_params(params).copy()
-#         self.prev_pos = coords.position.copy()
-        
-#         return self
-
-#     def to_str(self):        
-#         append_nullable = lambda param, value: '' if value is None else f'{param}{round(value, 5)} '
-        
-#         command = "G2" if self.dir == 2 else "G3"
-        
-#         out = f"{command} "
-        
-#         out += append_nullable('I', self.I)
-#         out += append_nullable('J', self.J)
-#         out += append_nullable('K', self.K)
-        
-#         out += (self.next_pos - self.prev_pos).to_str()[3:]
-
-#         return out.removesuffix(" ")
+    #     super().from_params(params)
+    #     return self
 
 
-#     def to_dict(self):
-#         return {'I': self.I, 'J': self.J, 'K': self.K, 'dir': self.dir, 'plane': self.plane}
+    # def to_str(self):        
+    #     append_nullable = lambda param, value: '' if value is None else f'{param}{round(value, 5)} '
+        
+    #     command = "G2" if self.dir == 2 else "G3"
+        
+    #     out = f"{command} "
+        
+    #     out += append_nullable('I', self.I)
+    #     out += append_nullable('J', self.J)
+    #     out += append_nullable('K', self.K)
+        
+    #     out += (self.next_pos - self.prev_pos).to_str()[3:]
+
+    #     return out.removesuffix(" ")
 
 
-#     def copy(self):
-#         """Create a deep copy of this Arc instance."""
-#         return Arc(I=self.I, J=self.J, K=self.K, dir=self.dir, plane=self.plane, next_pos=self.next_pos.copy(), prev_pos=self.prev_pos.copy())
+    # def to_dict(self):
+    #     return {'I': self.I, 'J': self.J, 'K': self.K, 'dir': self.dir, 'plane': self.move.coords.arc_plane}
+
+
+    # def copy(self):
+    #     """Create a deep copy of this Arc instance."""
+    #     return Arc(I=self.I, J=self.J, K=self.K, dir=self.dir, move=self.move)
 
 
 
