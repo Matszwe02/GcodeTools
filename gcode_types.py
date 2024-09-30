@@ -182,12 +182,14 @@ class CoordSystem:
     def apply_move(self, move):
         if type(move) is not Move or not move.position: return Vector()
         if self.abs_xyz:
-            self.position.set(move.position.xyz() + self.offset.xyz())
+            self.position.set(move.position.xyz())
+            self.position.add(self.offset.xyz())
         else:
             self.position.add(move.position.xyz())
         
         if self.abs_e:
-            self.position.set(move.position.e() + self.offset.e())
+            self.position.set(move.position.e())
+            self.position.add(self.offset.e())
         else:
             self.position.add(move.position.e())
         
@@ -348,6 +350,46 @@ class Arc():
         
         self.move.from_params(params)
         return self
+
+
+    def subdivide(self, step=Config.step) -> list[Move]:
+        
+        center = Vector(self.I, self.J, self.K) + self.move.coords.position.xyz()
+        radius = math.sqrt((self.I or 0)**2 + (self.J or 0)**2)
+
+        start_angle = math.atan2(-(self.J or 0), -(self.I or 0))
+        end_angle = math.atan2(self.move.position.Y - center.Y, self.move.position.X - center.X)
+
+        if self.dir == 3:
+            if end_angle < start_angle:
+                end_angle += 2 * math.pi
+        else:
+            if end_angle > start_angle:
+                end_angle -= 2 * math.pi
+
+        total_angle = end_angle - start_angle
+
+        num_steps = max(1, math.ceil(abs(total_angle) * radius / step))
+
+        moves = []
+
+        for i in range(num_steps):
+            t = i / (num_steps - 1) if num_steps > 1 else 0
+            angle = start_angle + t * total_angle
+            x = center.X + radius * math.cos(angle)
+            y = center.Y + radius * math.sin(angle)
+
+            z = self.move.coords.position.Z + t * (self.move.position.Z - self.move.coords.position.Z)
+            e = (self.move.position.E - self.move.coords.position.E) / num_steps + self.move.coords.position.E
+
+            new_move = Move(
+                coords=self.move.coords.copy(),
+                position=Vector(x, y, z, e),
+                speed=self.move.speed
+            )
+            moves.append(new_move)
+
+        return moves
 
 
     def to_str(self, last_move = None):
