@@ -39,8 +39,12 @@ class Gcode:
             command = block.command
             line_str = ''
             
-            line_str += block.move.to_str(last_move)
-            last_move = block.move.copy()
+            if type(block.move) == Move:
+                line_str += block.move.to_str(last_move)
+                last_move = block.move.copy()
+            else:
+                line_str += block.move.to_str(last_move)
+                last_move = block.move.move.copy()
             
             if line_str != '': line_str += '\n'
             
@@ -91,7 +95,7 @@ class Gcode:
     def generate_moves(self):
         
         self.coord_system = CoordSystem()
-        self.blocks:list[GcodeBlock] = []
+        self.blocks:list[Block] = []
         
         meta = {'object': None, 'type': None, 'line_no': 0}
         
@@ -99,20 +103,18 @@ class Gcode:
         for id, line in enumerate(tqdm(gcode_lines, 'Generating moves', unit='line')):
             meta['line_no'] = id
             command = None
-            # arc = None
+            arc = None
             emit_command = False
             
             line_dict = self.line_to_dict(line)
             command = line_dict['0']
             move = Move(self.coord_system)
             
-            if command in ['G1', 'G0']:
+            if command in ['G0', 'G1', 'G2', 'G3']:
                 move = Move(self.coord_system.copy()).from_params(line_dict)
-            
-            elif command in ['G2', 'G3']:
-                move = Move(self.coord_system.copy()).from_params(line_dict)
-                # arc = Arc(plane=self.coord_system.arc_plane).from_params(line_dict, self.coord_system).copy()
-                # move = Position().from_params(line_dict)
+                
+                if command in ['G2', 'G3']:
+                    arc = Arc(dir = int(command[1]), move=move).from_params(line_dict)
             
             elif command in [Static.ABSOLUTE_COORDS, Static.RELATIVE_COORDS]:
                 self.coord_system.set_abs_xyz(command == Static.ABSOLUTE_COORDS)
@@ -133,9 +135,6 @@ class Gcode:
             elif command in Static.ARC_PLANES.keys():
                 self.coord_system.arc_plane = Static.ARC_PLANES[command]
             
-            elif command in Config.trim_gcodes:
-                pass
-            
             else:
                 emit_command = True
             
@@ -143,6 +142,10 @@ class Gcode:
             
             new_pos = self.coord_system.apply_move(move.copy())
             move.position.set(new_pos)
-            gcode_block = GcodeBlock(move.copy(), command=command, emit_command=emit_command)
+            
+            if arc is not None:
+                gcode_block = Block(arc.copy(), command=command, emit_command=emit_command)
+            else:
+                gcode_block = Block(move.copy(), command=command, emit_command=emit_command)
             
             self.blocks.append(gcode_block)

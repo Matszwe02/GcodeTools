@@ -14,9 +14,6 @@ class Config:
     
     step = 0.1
     """Step over which maths iterate"""
-    
-    trim_gcodes = ['M73', 'EXCLUDE_OBJECT_DEFINE', 'EXCLUDE_OBJECT_START', 'EXCLUDE_OBJECT_END']
-    """Commands to not include in output gcode."""
 
 
 
@@ -169,7 +166,6 @@ class CoordSystem:
         if abs_xyz is not None:
             self.abs_xyz = abs_xyz
 
-
     def set_abs_e(self, abs_e=None):
         if abs_e is not None:
             self.abs_e = abs_e
@@ -177,6 +173,10 @@ class CoordSystem:
     def set_fan(self, fan):
         if fan is not None:
             self.fan = int(fan)
+    
+    def set_arc_plane(self, plane=None):
+        if plane is not None:
+            self.arc_plane = int(plane)
 
 
     def apply_move(self, move):
@@ -211,11 +211,14 @@ class CoordSystem:
                 out = (Static.ABSOLUTE_EXTRUDER_DESC if self.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + out
             if last_coords.fan != self.fan:
                 out = Static.FAN_SPEED_DESC.format(self.fan) + '\n' + out
+            if last_coords.arc_plane != self.arc_plane:
+                out = Static.ARC_PLANES_DESC[self.arc_plane] + '\n' + out
         
         else:
             out = (Static.ABSOLUTE_COORDS_DESC if self.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n' + out
             out = (Static.ABSOLUTE_EXTRUDER_DESC if self.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + out
             out = Static.FAN_SPEED_DESC.format(self.fan) + '\n' + out
+            out = Static.ARC_PLANES_DESC[self.arc_plane] + '\n' + out
         
         return out
 
@@ -294,7 +297,7 @@ class Move:
     def to_str(self, last_move = None):
         nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, Config.precision)}'
         
-        out = 'G1'
+        out = ''
         
         offset = Vector.zero()
         if not self.coords.abs_xyz:
@@ -306,11 +309,12 @@ class Move:
         if self.position.Y != self.coords.position.Y: out += nullable('Y', self.position.Y, offset.Y)
         if self.position.Z != self.coords.position.Z: out += nullable('Z', self.position.Z, offset.Z)
         if self.position.E != self.coords.position.E: out += nullable('E', self.position.E, offset.E)
+        if self.speed is not None: out += nullable('F', self.speed, 0)
         
-        if self.speed is not None:
-            out += nullable('F', self.speed, 0)
+        if out != '': out = 'G1' + out
+        coord_str = self.coords.to_str(last_move.coords if type(last_move) == Move else None)
         
-        return self.coords.to_str(last_move.coords if type(last_move) == Move else None) + (out if len(out) > 3 else '')
+        return coord_str + out
 
 
     def to_dict(self):
@@ -323,71 +327,77 @@ class Move:
 
 
 
-
-# TODO: arc support
-# class Arc(Move):
-    # def __init__(self, dir, move: Move, I=None, J=None, K=None):
-    #     """direction 2=CW, 3=CCW"""
-    #     self.dir = dir
-    #     self.move = move
-    #     self.I = I
-    #     self.J = J
-    #     self.K = K
+class Arc():
+    def __init__(self, dir: int, move: Move, I: float|None = None, J: float|None = None, K: float|None = None):
+        """direction 2=CW, 3=CCW"""
+        self.dir = dir
+        self.move = move
+        self.I = I
+        self.J = J
+        self.K = K
 
 
-    # def from_params(self, params: dict[str, str]):
-    #     self.I = float_nullable(params.get('I', self.I))
-    #     self.J = float_nullable(params.get('J', self.J))
-    #     self.K = float_nullable(params.get('K', self.K))
+    def from_params(self, params: dict[str, str]):
+        self.I = float_nullable(params.get('I', self.I))
+        self.J = float_nullable(params.get('J', self.J))
+        self.K = float_nullable(params.get('K', self.K))
+        if params.get('R', None) is not None: raise NotImplementedError('"R" arc moves are not supported!')
         
-    #     if params['0'] == 'G2': self.dir=2
-    #     if params['0'] == 'G3': self.dir=3
+        if params['0'] == 'G2': self.dir=2
+        if params['0'] == 'G3': self.dir=3
         
-    #     super().from_params(params)
-    #     return self
+        self.move.from_params(params)
+        return self
 
 
-    # def to_str(self):        
-    #     append_nullable = lambda param, value: '' if value is None else f'{param}{round(value, 5)} '
+    def to_str(self, last_move = None):
+        nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, Config.precision)}'
         
-    #     command = "G2" if self.dir == 2 else "G3"
+        out = ''
         
-    #     out = f"{command} "
+        offset = Vector.zero()
+        if not self.move.coords.abs_xyz:
+            offset.set(self.move.coords.position.xyz())
+        if not self.move.coords.abs_e:
+            offset.set(self.move.coords.position.e())
         
-    #     out += append_nullable('I', self.I)
-    #     out += append_nullable('J', self.J)
-    #     out += append_nullable('K', self.K)
+        if self.move.position.X != self.move.coords.position.X: out += nullable('X', self.move.position.X, offset.X)
+        if self.move.position.Y != self.move.coords.position.Y: out += nullable('Y', self.move.position.Y, offset.Y)
+        if self.move.position.Z != self.move.coords.position.Z: out += nullable('Z', self.move.position.Z, offset.Z)
+        if self.move.position.E != self.move.coords.position.E: out += nullable('E', self.move.position.E, offset.E)
+        out += nullable('I', self.I, 0)
+        out += nullable('J', self.J, 0)
+        out += nullable('K', self.K, 0)
+        if self.move.speed is not None: out += nullable('F', self.move.speed, 0)
         
-    #     out += (self.next_pos - self.prev_pos).to_str()[3:]
-
-    #     return out.removesuffix(" ")
-
-
-    # def to_dict(self):
-    #     return {'I': self.I, 'J': self.J, 'K': self.K, 'dir': self.dir, 'plane': self.move.coords.arc_plane}
+        if out != '': out = f'G{self.dir}' + out
+        coord_str = self.move.coords.to_str(last_move.coords if type(last_move) == Move else None)
+        
+        return coord_str + out
 
 
-    # def copy(self):
-    #     """Create a deep copy of this Arc instance."""
-    #     return Arc(I=self.I, J=self.J, K=self.K, dir=self.dir, move=self.move)
+    def to_dict(self):
+        return {'I': self.I, 'J': self.J, 'K': self.K, 'dir': self.dir, 'move': self.move.to_dict()}
+
+
+    def copy(self):
+        """Create a deep copy of this Arc instance."""
+        return Arc(I=self.I, J=self.J, K=self.K, dir=self.dir, move=self.move.copy())
 
 
 
-class GcodeBlock:
+class Block:
     
-    def __init__(self, move: Move, command: str | None = None, emit_command = True, meta: dict = {}):
+    def __init__(self, move: Move|Arc, command: str | None = None, emit_command = True, meta: dict = {}):
         
         self.move = move.copy()
-        self.arc = None
-        # if arc is not None:
-        #     self.arc = arc.copy()
         self.command = command
         self.emit_command = emit_command
         self.meta: dict = json.loads(json.dumps(meta))
 
 
     def copy(self):
-        return GcodeBlock(move = self.move.copy(), command=self.command, emit_command=self.emit_command, meta=self.meta.copy())
+        return Block(move = self.move.copy(), command=self.command, emit_command=self.emit_command, meta=self.meta.copy())
 
 
     def to_dict(self):
@@ -400,9 +410,9 @@ class GcodeBlock:
 
 
 
-class BlockList(list[GcodeBlock]):
-    def g_add(self, gcode: GcodeBlock|str, index: int = -1):
-        """Appends gcode block to Gcode.\n\ngcode: GcodeBlock or gcode str.\n\ndefault index -1: append to the end"""
+class BlockList(list[Block]):
+    def g_add(self, gcode: Block|str, index: int = -1):
+        """Appends gcode block to Gcode.\n\ngcode: Block or gcode str.\n\ndefault index -1: append to the end"""
         
         idx = index if index < len(self) else -1
         
@@ -416,7 +426,7 @@ class BlockList(list[GcodeBlock]):
                 else:
                     move = self[-1].move
             
-            gcode_obj = GcodeBlock(move.copy(), gcode)
+            gcode_obj = Block(move.copy(), gcode)
         else:
             gcode_obj = gcode
         if idx == -1:
@@ -428,62 +438,3 @@ class BlockList(list[GcodeBlock]):
     # def to_dict(self):
     #     return [block.to_dict() for block in self]
 
-
-# class Blocks:
-    
-#     def __init__(self, b: list[GcodeBlock] = []):
-#         self.b = b
-
-
-#     def enum(self):
-#         return enumerate(self.b)
-
-
-#     def append(self, gcode: GcodeBlock|str, index: int = -1):
-#         """Appends gcode block to Gcode.\n\ngcode: GcodeBlock or gcode str.\n\ndefault index -1: append to the end"""
-#         if type(gcode) == str:
-#             if index > 0: move = self.b[index - 1].move
-#             elif index == 0: move = self.b[0].move
-#             else: move = self.b[-1].move
-            
-#             gcode_obj = GcodeBlock(move.copy(), gcode)
-#         else:
-#             gcode_obj = gcode
-#         if index == -1:
-#             self.b.append(gcode_obj)
-#             return
-#         self.b.insert(index, gcode_obj)
-
-
-#     def copy(self):
-#         blocks = []
-#         for i in self.b:
-#             blocks.append(i.copy())
-#         return Blocks(blocks)
-
-
-#     def index(self, i) -> GcodeBlock:
-#         return self.__getitem__(i)
-
-#     def __getitem__(self, key: slice|int):
-#         if isinstance(key, slice):
-#             return Blocks(self.b[key])
-#         return self.b[key]
-
-#     def __setitem__(self, key, value):
-#         if isinstance(key, slice):
-#             self.b[key] = value
-#         else:
-#             self.b[key] = value
-
-#     def __len__(self):
-#         return len(self.b)
-
-#     def __iadd__(self, other):
-#         if isinstance(other, Blocks):
-#             self.b.extend(other.b)
-#         elif isinstance(other, list):
-#             self.b.extend(other)
-#         else:
-#             raise TypeError(f"Unsupported operand type for +=: 'Blocks' and '{type(other).__name__}'")
-#         return self
