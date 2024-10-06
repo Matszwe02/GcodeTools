@@ -72,42 +72,56 @@ class Vector:
         return self
 
 
-    def nullable_op(self, a: float | None, b: float | None, on_none = None, operation = lambda x, y: x + y):
-        if a is None and b is None: return on_none
-        if a is None: return b
-        if b is None: return a
-        return operation(a, b)
-
-
-    def operation(self, other, operation):
+    def vector_op(self, other, operation = lambda x, y: x + y, on_a_none: any = 'b', on_b_none: any = 'a', on_none = None):
+        """
+        operation: lambda
+        
+        on_a_none, on_b_none: any to skip None checking ; 'a', 'b', None, float to return
+        
+        on_none: number|None
+        """
+        
+        def nullable_op(a: float | None, b: float | None):
+            if a is None and b is None: return on_none
+            if a is None and on_a_none is not any:
+                if on_a_none == 'a': return a
+                if on_a_none == 'b': return b
+                return on_a_none
+            if b is None and on_b_none is not any:
+                if on_b_none == 'a': return a
+                if on_b_none == 'b': return b
+                return on_b_none
+            
+            return operation(a, b)
+        
         if type(other) is not Vector: raise TypeError(f'Invalid operation between Vector and {type(other)}')
-        X = operation(self.X, other.X)
-        Y = operation(self.Y, other.Y)
-        Z = operation(self.Z, other.Z)
-        E = operation(self.E, other.E)
+        X = nullable_op(self.X, other.X)
+        Y = nullable_op(self.Y, other.Y)
+        Z = nullable_op(self.Z, other.Z)
+        E = nullable_op(self.E, other.E)
         return Vector(X, Y, Z, E)
 
 
     def __add__(self, other):
-        add = lambda a, b: self.nullable_op(a, b, None, lambda x, y: x + y)
-        return self.operation(other, add)
+        add = lambda x, y: x + y
+        return self.vector_op(other, add)
 
 
     def __sub__(self, other):
-        subtr = lambda a, b: self.nullable_op(a, b, None, lambda x, y: x - y)
-        return self.operation(other, subtr)
+        subtr = lambda x, y: x - y
+        return self.vector_op(other, subtr)
 
 
     def __mul__(self, other):
         if not isinstance(other, Vector): other = Vector(other, other, other, other)
-        scale = lambda a,b: a if a is None or b is None else a * b
-        return self.operation(other, scale)
+        scale = lambda a,b: a * b
+        return self.vector_op(other, scale, on_a_none='a', on_b_none='a')
 
 
     def valid(self, other):
         """Return Vector with non-null dimensions from other Vector"""
-        valid = lambda a, b: a if b is not None else None
-        return self.operation(other, valid)
+        valid = lambda a, b: a
+        return self.vector_op(other, valid, on_a_none=None, on_b_none=None)
 
 
     def xyz(self):
@@ -172,7 +186,7 @@ class CoordSystem:
     
     def set_fan(self, fan):
         if fan is not None:
-            self.fan = int(fan)
+            self.fan = int(float(fan))
     
     def set_arc_plane(self, plane=None):
         if plane is not None:
@@ -251,8 +265,8 @@ class Move:
 
 
     def distance(self):
-        distance = lambda a, b: self.position.nullable_op(a, b, 0, lambda x, y: x - y)
-        return self.position.operation(self.coords.position, distance)
+        distance = lambda x, y: x - y
+        return self.position.vector_op(self.coords.position, distance, on_a_none=0, on_b_none=0, on_none=0)
 
 
     def float_distance(self, distance: Vector):
