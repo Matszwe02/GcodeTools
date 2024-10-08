@@ -15,10 +15,21 @@ class Gcode:
             return Gcode.from_str(f.read())
 
 
-    def write_str(gcode: BlockList):
+    def write_str(gcode: BlockList, verbose = False):
+        """
+        Write G-Code as a string
+        
+        gcode: BlockList
+        
+        verbose: include Block's metadata for each line.
+        Includes object name, line type, layer number, etc.
+        Warning: takes up much more time and space
+        """
         out_str = ''
         last_move = None
         i = 0
+        
+        if verbose: print('Warning: Verbose output is enabled, performance is compromised!')
 
         for block in tqdm(gcode, desc="Writing G-code", unit="line"):
             i += 1
@@ -32,7 +43,11 @@ class Gcode:
                 line_str += block.move.to_str(last_move)
                 last_move = block.move.move.copy()
             
-            if line_str != '': line_str += '\n'
+            if line_str != '':
+                if verbose and block.meta is not None:
+                    params_str = json.dumps(block.meta).replace("{", "").replace("}", "").replace(" ", "").replace('"', "")
+                    line_str += f'; {params_str}'
+                line_str += '\n'
             
             if block.emit_command:
                 line_str += command + '\n'
@@ -41,9 +56,18 @@ class Gcode:
         return out_str
 
 
-    def write_file(gcode: BlockList, filename: str):
+    def write_file(gcode: BlockList, filename: str, verbose = False):
+        """
+        Write G-Code as a string
+        
+        gcode: BlockList
+        
+        filename: str of output path
+        
+        verbose: include Block's metadata for each line. Warning: takes up much more time and space
+        """
         with open(filename, 'w') as f:
-            f.write(Gcode.write_str(gcode))
+            f.write(Gcode.write_str(gcode, verbose = verbose))
     
     
     def log_json(object, filename: str):
@@ -76,31 +100,14 @@ class Gcode:
         return params
 
 
-    def read_meta(line: str, meta: dict):
-        if line.startswith('; printing object'):
-            meta['object'] = line.removeprefix('; printing object').strip().replace(' ', '_')
-        if line.startswith('; stop printing'):
-            meta['object'] = None
-        if line.startswith(';TYPE:'):
-            meta['type'] = line.removeprefix(';TYPE:').strip().replace(' ', '_')
-        if line == ';WIPE_START':
-            meta['type'] = 'Wipe'
-        if line == ';WIPE_END':
-            meta['type'] = None
-        return meta
-
-
     def generate_moves(gcode_str: str):
 
         coord_system = CoordSystem()
         blocks:list[Block] = []
         
-        meta = {'object': None, 'type': None, 'line_no': 0}
         
         gcode_lines = list(filter(str.strip, gcode_str.split('\n')))
-        for id, line in enumerate(tqdm(gcode_lines, 'Generating moves', unit='line')):
-            meta['line_no'] = id
-            meta = Gcode.read_meta(line, meta)
+        for line in tqdm(gcode_lines, 'Generating moves', unit='line'):
             command = None
             arc = None
             emit_command = False
@@ -143,9 +150,9 @@ class Gcode:
             move.position.set(new_pos)
             
             if arc is not None:
-                gcode_block = Block(arc.copy(), command=command, emit_command=emit_command, meta=meta)
+                gcode_block = Block(arc.copy(), command=line, emit_command=emit_command)
             else:
-                gcode_block = Block(move.copy(), command=command, emit_command=emit_command, meta=meta)
+                gcode_block = Block(move.copy(), command=line, emit_command=emit_command)
             
             blocks.append(gcode_block)
         
