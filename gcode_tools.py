@@ -39,6 +39,9 @@ class Keywords:
     GCODE_START = [(";TYPE:", "", ""), (";Generated with Cura_SteamEngine", "", "")]
     GCODE_END = [("EXCLUDE_OBJECT_END", "; EXECUTABLE_BLOCK_END", ""), (";TIME_ELAPSED:", ";End of Gcode", ";TIME_ELAPSED:")]
     
+    OBJECT_START = [("; printing object", "", "EXCLUDE_OBJECT_START"), ("EXCLUDE_OBJECT_START", "", ""), (";MESH:", "", "")]
+    OBJECT_END = [("; stop printing object", "", "EXCLUDE_OBJECT_END"), ("EXCLUDE_OBJECT_END", "", ""), (";MESH:NONMESH", "", "")]
+    
     
     def get_keyword_line(line_no: int, blocks: BlockList, keyword: list[tuple[str, str, str]], seek_limit = 20):
 
@@ -103,18 +106,20 @@ class MoveTypes:
             if test in string: return type_assign[test]
         return None
     
-    def get_object(line: str):
+    def get_object(id: int, gcode: BlockList):
+        line = gcode[id].command or ''
         string = line.lower()
         
-        if string.startswith('; stop printing object'):
-            return MoveTypes.NO_OBJECT
-        if string == ';mesh:nonmesh':
-            return MoveTypes.NO_OBJECT
+        is_end = Keywords.get_keyword_line(id, gcode, Keywords.OBJECT_END)
+        if is_end: return MoveTypes.NO_OBJECT
         
-        if string.startswith('; printing object'):
-            return line[17:].strip().replace(' ', '_')
-        if string.startswith(';mesh:'):
-            return line[6:].strip().replace(' ', '_')
+        is_start = Keywords.get_keyword_line(id, gcode, Keywords.OBJECT_START)
+        
+        if is_start:
+            line = gcode[id].command
+            name = line.removeprefix('; printing object').removeprefix(';MESH:').removeprefix('EXCLUDE_OBJECT_END NAME=')
+            return name.strip().replace(' ', '_')
+
         return None
         
 
@@ -152,7 +157,7 @@ class GcodeTools:
             move_type = MoveTypes.get_type(line)
             if move_type is not None: meta['type'] = move_type
             
-            move_object = MoveTypes.get_object(line)
+            move_object = MoveTypes.get_object(id, gcode)
             if move_object == MoveTypes.NO_OBJECT: meta["object"] = None
             elif move_object is not None: meta['object'] = move_object
             
@@ -179,11 +184,11 @@ class GcodeTools:
         """
         returns (start_gcode: BlockList, end_gcode: BlockList, layers: list[BlockList], objects_layers: dict[list[BlockList]])
         """
-        blocks_bare = BlockList()
-        object_gcode = BlockList()
-        start_gcode = BlockList()
-        end_gcode = BlockList()
-        layers = BlockList()
+        blocks_bare = gcode.new()
+        object_gcode = gcode.new()
+        start_gcode = gcode.new()
+        end_gcode = gcode.new()
+        layers = gcode.new()
         objects_layers: dict[BlockList] = {}
         
         start_id, end_id = -1, -1
@@ -195,20 +200,6 @@ class GcodeTools:
             if start_id > 0 and end_id > 0:
                 blocks_bare = gcode[start_id : end_id + 1]
                 break
-        
-        start_id, end_id = -1, -1
-        
-        # for id, block in enumerate(blocks_bare):
-            
-            # if start_id == -1 and Keywords.get_keyword_line(id, blocks_bare, Keywords.OBJECT_START): start_id = id
-            # if end_id == -1 and Keywords.get_keyword_line(id, blocks_bare, Keywords.OBJECT_END): end_id = id
-            
-            # if start_id > 0 and end_id > 0:
-            # if block.meta.get('object', None) is not None:
-            #     object_gcode += blocks_bare[start_id:end_id].copy()
-            #     object_gcode.g_add(';OBJECT_SPLIT', id)
-            #     start_id = -1
-            #     end_id = -1
         
         start_id, end_id = -1, -1
         for id, block in enumerate(blocks_bare):
@@ -227,7 +218,6 @@ class GcodeTools:
         objects_layer = {}
         
         # TODO: Combined enumeration
-        # TODO: better object handling
         
         for id, block in enumerate(blocks_bare):
             

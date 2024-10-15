@@ -6,14 +6,15 @@ import json
 class Config:
     """G-Code configuration"""
     
-    precision = 5
-    """N decimal digits"""
-    
-    speed = 600
-    """Default speed in mm/min"""
-    
-    step = 0.1
-    """Step over which maths iterate"""
+    def __init__(self):
+        self.precision = 5
+        """N decimal digits"""
+        
+        self.speed = 1200
+        """Default speed in mm/min"""
+        
+        self.step = 0.1
+        """Step over which maths iterate"""
 
 
 
@@ -166,7 +167,11 @@ class Vector:
 
 class CoordSystem:
 
-    def __init__(self, abs_xyz = True, abs_e = True, speed = Config.speed, arc_plane = Static.ARC_PLANES['XY'], position = Vector.zero(), offset = Vector.zero(), fan = 0):
+    def __init__(self, abs_xyz = True, abs_e = True, speed = None, arc_plane = Static.ARC_PLANES['XY'], position = Vector.zero(), offset = Vector.zero(), fan = 0):
+        if speed is None:
+            print('Warning: speed parameter is unset! Defaultnig to 1200 mm/min')
+            speed = 1200
+        
         self.abs_xyz = abs_xyz
         self.abs_e = abs_e
         self.speed = speed
@@ -250,12 +255,14 @@ class CoordSystem:
 
 class Move:
 
-    def __init__(self, coords: CoordSystem, position = Vector(), speed: float|None = None):
+    def __init__(self, coords: CoordSystem, config: Config, position = Vector(), speed: float|None = None):
         self.position = position.copy()
         """The end vector of Move"""
         self.coords = coords.copy()
         """Coords hold position, which is the beginning vector of Move"""
         self.speed = speed
+        
+        self.config = config
 
 
     def from_params(self, params: dict[str, str]):
@@ -273,7 +280,8 @@ class Move:
         return math.sqrt(distance.X^2 + distance.Y^2 + distance.Z^2)
 
 
-    def subdivide(self, step = Config.step) -> list[Vector]:
+    def subdivide(self, step = None) -> list[Vector]:
+        if step is None: step = self.config.step
         dist_pos = self.distance()
         dist = self.float_distance(dist_pos)
         pos_list = []
@@ -296,7 +304,7 @@ class Move:
         """Returns flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement"""
         dist_vec = self.distance()
         distance = self.float_distance(dist_vec)
-        if distance < Config.step: return None
+        if distance < self.config.step: return None
         return dist_vec.e() / distance
 
 
@@ -304,14 +312,14 @@ class Move:
         """Sets flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement, otherwise returns E mm"""
         dist_vec = self.distance()
         distance = self.float_distance(dist_vec)
-        if distance < Config.step: return None
+        if distance < self.config.step: return None
         flow = distance * flowrate
         self.position.E = self.coords.position.E + flow
         return flow
 
 
     def to_str(self, last_move = None):
-        nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, Config.precision)}'
+        nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, self.config.precision)}'
         
         out = ''
         
@@ -339,7 +347,7 @@ class Move:
 
     def copy(self):
         """Create a deep copy"""
-        return Move(self.coords.copy(), self.position.copy(), self.speed)
+        return Move(self.coords.copy(), self.config, self.position.copy(), self.speed)
 
 
 
@@ -366,7 +374,8 @@ class Arc():
         return self
 
 
-    def subdivide(self, step=Config.step) -> list[Move]:
+    def subdivide(self, step=None) -> list[Move]:
+        if step is None: step = self.move.config.step
         
         center = Vector(self.I, self.J, self.K) + self.move.coords.position.xyz()
         radius = math.sqrt((self.I or 0)**2 + (self.J or 0)**2)
@@ -407,7 +416,7 @@ class Arc():
 
 
     def to_str(self, last_move = None):
-        nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, Config.precision)}'
+        nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, self.move.config.precision)}'
         
         out = ''
         
@@ -467,6 +476,24 @@ class Block:
 
 
 class BlockList(list[Block]):
+    
+    def __init__(self):
+        self.config = Config()
+        """
+        Configuration of the G-Code computation
+        """
+        super().__init__()
+
+
+    def new(self):
+        """
+        Create an empty G-code list with self's config
+        """
+        new = BlockList()
+        new.config = self.config
+        return new
+
+
     def g_add(self, gcode: Block|str, index: int = -1):
         """Appends gcode block to Gcode.\n\ngcode: Block or gcode str.\n\ndefault index -1: append to the end"""
         

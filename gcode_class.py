@@ -6,6 +6,13 @@ import re
 
 class Gcode:
 
+    def empty():
+        """
+        Returns empty G-Code object
+        """
+        return BlockList()
+
+
     def from_str(gcode_str):
         return Gcode.generate_moves(gcode_str)
     
@@ -100,11 +107,11 @@ class Gcode:
         return params
 
 
-    def generate_moves(gcode_str: str):
+    def generate_moves(gcode_str: str, config = Config()):
 
-        coord_system = CoordSystem()
-        blocks:list[Block] = []
-        
+        blocks = BlockList()
+        blocks.config = config
+        coord_system = CoordSystem(speed = blocks.config.speed)
         
         gcode_lines = list(filter(str.strip, gcode_str.split('\n')))
         for line in tqdm(gcode_lines, 'Generating moves', unit='line'):
@@ -112,12 +119,12 @@ class Gcode:
             arc = None
             emit_command = False
             
-            line_dict = Gcode.line_to_dict(line)
+            line_dict: dict = Gcode.line_to_dict(line)
             command = line_dict['0']
-            move = Move(coord_system)
+            move = Move(coord_system, blocks.config)
             
             if command in ['G0', 'G1', 'G2', 'G3']:
-                move = Move(coord_system.copy()).from_params(line_dict)
+                move = Move(coord_system.copy(), blocks.config).from_params(line_dict)
                 
                 if command in ['G2', 'G3']:
                     arc = Arc(dir = int(command[1]), move=move).from_params(line_dict)
