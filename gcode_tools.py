@@ -37,7 +37,7 @@ class Keywords:
     LAYER_CHANGE_END = [(";TYPE:", "", ""), (";TYPE:", "", "")]
     
     GCODE_START = [(";TYPE:", "", ""), (";Generated with Cura_SteamEngine", "", "")]
-    GCODE_END = [("EXCLUDE_OBJECT_END", "; EXECUTABLE_BLOCK_END", ""), (";TIME_ELAPSED:", ";End of Gcode", ";TIME_ELAPSED:")]
+    GCODE_END = [("EXCLUDE_OBJECT_END", "; EXECUTABLE_BLOCK_END", ""), (";TIME_ELAPSED:", ";End of Gcode", ";TIME_ELAPSED:"), (";TYPE:Custom", "; filament used", "")]
     
     OBJECT_START = [("; printing object", "", "EXCLUDE_OBJECT_START"), ("EXCLUDE_OBJECT_START", "", ""), (";MESH:", "", ""), ("M486 S", "", "")]
     OBJECT_END = [("; stop printing object", "", "EXCLUDE_OBJECT_END"), ("EXCLUDE_OBJECT_END", "", ""), (";MESH:NONMESH", "", ""), ("M486 S-1", "", "")]
@@ -111,14 +111,14 @@ class MoveTypes:
         string = line.lower()
         
         is_end = Keywords.get_keyword_line(id, gcode, Keywords.OBJECT_END)
-        if is_end: return MoveTypes.NO_OBJECT
+        if is_end:
+            return MoveTypes.NO_OBJECT
         
         is_start = Keywords.get_keyword_line(id, gcode, Keywords.OBJECT_START)
-        
         if is_start:
             line = gcode[id].command
             name = line.removeprefix('; printing object').removeprefix(';MESH:').removeprefix('EXCLUDE_OBJECT_START NAME=').removeprefix('M486 S')
-            return name.strip().replace(' ', '_').replace("'", '')
+            return name.strip().replace(' ', '_').replace("'", '').replace('"', '').replace(':', '_')
 
         return None
         
@@ -180,74 +180,28 @@ class GcodeTools:
         return new_gcode
 
 
-    def split(gcode: BlockList):
+    def split(gcode: BlockList) -> tuple[BlockList, BlockList, BlockList, dict[BlockList]]:
         """
-        returns (start_gcode: BlockList, end_gcode: BlockList, layers: list[BlockList], objects_layers: dict[list[BlockList]])
+        returns (start_gcode: BlockList, end_gcode: BlockList, object_gcode: BlockList, objects: dict[BlockList])
         """
-        blocks_bare = gcode.new()
         object_gcode = gcode.new()
         start_gcode = gcode.new()
         end_gcode = gcode.new()
-        layers = gcode.new()
-        objects_layers: dict[BlockList] = {}
+        objects: dict[BlockList] = {}
         
-        start_id, end_id = -1, -1
-        
-        for id, block in enumerate(gcode):
-            if start_id == -1 and Keywords.get_keyword_line(id, gcode, Keywords.EXECUTABLE_START): start_id = id
-            if end_id == -1 and Keywords.get_keyword_line(id, gcode, Keywords.EXECUTABLE_END): end_id = id
+        for block in gcode:
             
-            if start_id > 0 and end_id > 0:
-                blocks_bare = gcode[start_id : end_id + 1]
-                break
-        
-        start_id, end_id = -1, -1
-        for id, block in enumerate(blocks_bare):
-            
-            if start_id == -1 and Keywords.get_keyword_line(id, blocks_bare, Keywords.GCODE_START):
-                start_id = id
-                start_gcode = blocks_bare[:start_id]
-                print(f'found start gcode at line {id}')
-                
-            if end_id == -1 and Keywords.get_keyword_line(id, blocks_bare, Keywords.GCODE_END):
-                end_id = id
-                end_gcode = blocks_bare[end_id:]
-                print(f'found end gcode at line {id}')
-        
-        layer: BlockList = []
-        objects_layer = {}
-        
-        # TODO: Combined enumeration
-        
-        for id, block in enumerate(blocks_bare):
-            
-            if Keywords.get_keyword_line(id, blocks_bare, Keywords.LAYER_CHANGE_START):
-                layers.append(layer)
-                
-                for layer_block in layer:
-                    obj_name = layer_block.meta.get('object', None)
-                    if obj_name is not None:
-                        for id in objects_layer.keys():
-                            if obj_name not in objects_layers and obj_name is not None:
-                                objects_layers[obj_name] = BlockList()
-                            objects_layers[obj_name] = layer.copy()
-                        # objects_layers[id].append(objects_layer[id])
-            
-            elif Keywords.get_keyword_line(id, blocks_bare, Keywords.LAYER_CHANGE_END):
-                layer = []
-                objects_layer = {}
+            if block.meta['type'] == MoveTypes.PRINT_START:
+                start_gcode.append(block)
+            elif block.meta['type'] == MoveTypes.PRINT_END:
+                end_gcode.append(block)
             else:
-                layer.append(block)
-                
-                try:
-                    objects_key = block.meta['object'] or 'Travel'
-                except:
-                    objects_key = 'Travel'
-                
-                if objects_key not in objects_layer:
-                    objects_layer[objects_key] = BlockList()
-                objects_layer[objects_key].append(block)
+                object_gcode.append(block)
+            
+            object = block.meta['object']
+            if object not in objects.keys():
+                objects[object] = gcode.new()
+            
+            objects[object].append(block)
         
-        layers.append(layer)
-        
-        return (start_gcode, end_gcode, layers, objects_layers)
+        return (start_gcode, end_gcode, object_gcode, objects)

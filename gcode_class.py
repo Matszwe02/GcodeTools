@@ -35,8 +35,6 @@ class Gcode:
         out_str = ''
         last_move = None
         i = 0
-        
-        if verbose: print('Warning: Verbose output is enabled, performance is compromised!')
 
         for block in tqdm(gcode, desc="Writing G-code", unit="line"):
             i += 1
@@ -73,8 +71,9 @@ class Gcode:
         
         verbose: include Block's metadata for each line. Warning: takes up much more time and space
         """
+        gcode_str = Gcode.write_str(gcode, verbose = verbose)
         with open(filename, 'w') as f:
-            f.write(Gcode.write_str(gcode, verbose = verbose))
+            f.write(gcode_str)
     
     
     def log_json(object, filename: str):
