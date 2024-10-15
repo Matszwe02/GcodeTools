@@ -39,8 +39,8 @@ class Keywords:
     GCODE_START = [(";TYPE:", "", ""), (";Generated with Cura_SteamEngine", "", "")]
     GCODE_END = [("EXCLUDE_OBJECT_END", "; EXECUTABLE_BLOCK_END", ""), (";TIME_ELAPSED:", ";End of Gcode", ";TIME_ELAPSED:")]
     
-    OBJECT_START = [("; printing object", "", "EXCLUDE_OBJECT_START"), ("EXCLUDE_OBJECT_START", "", ""), (";MESH:", "", "")]
-    OBJECT_END = [("; stop printing object", "", "EXCLUDE_OBJECT_END"), ("EXCLUDE_OBJECT_END", "", ""), (";MESH:NONMESH", "", "")]
+    OBJECT_START = [("; printing object", "", "EXCLUDE_OBJECT_START"), ("EXCLUDE_OBJECT_START", "", ""), (";MESH:", "", ""), ("M486 S", "", "")]
+    OBJECT_END = [("; stop printing object", "", "EXCLUDE_OBJECT_END"), ("EXCLUDE_OBJECT_END", "", ""), (";MESH:NONMESH", "", ""), ("M486 S-1", "", "")]
     
     
     def get_keyword_line(line_no: int, blocks: BlockList, keyword: list[tuple[str, str, str]], seek_limit = 20):
@@ -117,8 +117,8 @@ class MoveTypes:
         
         if is_start:
             line = gcode[id].command
-            name = line.removeprefix('; printing object').removeprefix(';MESH:').removeprefix('EXCLUDE_OBJECT_END NAME=')
-            return name.strip().replace(' ', '_')
+            name = line.removeprefix('; printing object').removeprefix(';MESH:').removeprefix('EXCLUDE_OBJECT_START NAME=').removeprefix('M486 S')
+            return name.strip().replace(' ', '_').replace("'", '')
 
         return None
         
