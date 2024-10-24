@@ -11,51 +11,87 @@ from gcode_class import Gcode
 
 
 class Keywords:
-    """List of possible commands. Each command is treated as a prefix, so G1 will match any move command, etc.
-    
-    Each element is a tuple of (
-    
-        command,
-    
-        command to be followed by within seek_limit,
-    
-        command that breaks seek_limit
-    
-    )
+    """
+    Each keyword is a list of possible commands. Each command is treated as a prefix, so G1 will match any move command, etc.
     """
     
-    CONFIG_START = [("; CONFIG_BLOCK_START", "", "")]
-    CONFIG_END = [("; CONFIG_BLOCK_END", "", "")]
+    class KW_History:
+        def __init__(self):
+            self.line = 0
+            self.keywords: list[Keywords.KW] = []
+        
+        def append_keyword(self, keyword, offset, line):
+            self.keywords.append((keyword, offset, line))
+        
+        def check_keyword(self, keyword, line):
+            for kw in self.keywords:
+                if kw[0] == keyword and kw[1] + kw[2] == line:
+                    return kw
+            return None
     
-    HEADER_START = [("; HEADER_BLOCK_START", "", "")]
-    HEADER_END = [("; HEADER_BLOCK_END", "", "")]
-    
-    EXECUTABLE_START = [("; EXECUTABLE_BLOCK_START", "", ""), (";TYPE:", "", ""), (";Generated with Cura_SteamEngine", "", "")]
-    EXECUTABLE_END = [("; EXECUTABLE_BLOCK_END", "", "")]
-    
-    LAYER_CHANGE_START = [(";LAYER_CHANGE", "", ""), (";LAYER:", ";TYPE:", "")]
-    LAYER_CHANGE_END = [(";TYPE:", "", ""), (";TYPE:", "", "")]
-    
-    GCODE_START = [(";TYPE:", "", ""), (";Generated with Cura_SteamEngine", "", "")]
-    GCODE_END = [("EXCLUDE_OBJECT_END", "; EXECUTABLE_BLOCK_END", ""), (";TIME_ELAPSED:", ";End of Gcode", ";TIME_ELAPSED:"), (";TYPE:Custom", "; filament used", "")]
-    
-    OBJECT_START = [("; printing object", "", "EXCLUDE_OBJECT_START"), ("EXCLUDE_OBJECT_START", "", ""), (";MESH:", "", ""), ("M486 S", "", "")]
-    OBJECT_END = [("; stop printing object", "", "EXCLUDE_OBJECT_END"), ("EXCLUDE_OBJECT_END", "", ""), (";MESH:NONMESH", "", ""), ("M486 S-1", "", "")]
+    class KW:
+        def __init__(self, command: str, allow_command = None, block_command = None, offset = 0):
+            self.command = command
+            self.allow_command = allow_command
+            self.block_command = block_command
+            self.offset = offset
     
     
-    def get_keyword_line(line_no: int, blocks: BlockList, keyword: list[tuple[str, str, str]], seek_limit = 20):
+    CONFIG_START = [KW("; CONFIG_BLOCK_START")]
+    CONFIG_END = [KW("; CONFIG_BLOCK_END")]
+    
+    HEADER_START = [KW("; HEADER_BLOCK_START")]
+    HEADER_END = [KW("; HEADER_BLOCK_END")]
+    
+    EXECUTABLE_START = [KW("; EXECUTABLE_BLOCK_START"), KW(";TYPE:"), KW(";Generated with Cura_SteamEngine")]
+    EXECUTABLE_END = [KW("; EXECUTABLE_BLOCK_END")]
+    
+    LAYER_CHANGE_START = [KW(";LAYER_CHANGE"), KW(";LAYER:", ";TYPE:")]
+    LAYER_CHANGE_END = [KW(";TYPE:"), KW(";TYPE:")]
+    
+    GCODE_START = [KW(";TYPE:"), KW(";Generated with Cura_SteamEngine")]
+    GCODE_END = [KW("EXCLUDE_OBJECT_END", "; EXECUTABLE_BLOCK_END"), KW(";TIME_ELAPSED:", ";End of Gcode", ";TIME_ELAPSED:"), KW(";TYPE:Custom", "; filament used")]
+    
+    OBJECT_START = [KW("; printing object", None, "EXCLUDE_OBJECT_START NAME="), KW("EXCLUDE_OBJECT_START NAME="), KW(";MESH:"), KW("M486 S")]
+    OBJECT_END = [KW("; stop printing object", None, "EXCLUDE_OBJECT_END"), KW("EXCLUDE_OBJECT_END"), KW(";MESH:NONMESH"), KW("M486 S-1")]
+    
+    
+    
+    def get_keyword_expr(line_no: int, blocks: BlockList, keyword: list[KW], history: None|KW_History = None, seek_limit = 20):
 
+        if history is not None:
+            checked = history.check_keyword(keyword, line_no)
+            if checked is not None: return checked.command
+        
         for option in keyword:
-            if blocks[line_no].command.startswith(option[0]):
-                if option[1] == "": return True
+            if blocks[line_no].command.startswith(option.command):
+                if option.allow_command == None:
+                    if type(history) is not None and option.offset != 0:
+                        history.append_keyword(keyword, option.offset, line_no)
+                    else:
+                        return option.command
                 
-                for nextline in blocks[line_no + 1 : line_no + seek_limit]:
-                    if option[2] != "" and nextline.command.startswith(option[2]):
-                        return False
-                    if nextline.command.startswith(option[1]):
-                        return True
+                for id, nextline in enumerate(blocks[line_no + 1 : line_no + seek_limit]):
+                    if option.block_command is not None and nextline.command.startswith(option.block_command):
+                        return None
+                    if nextline.command.startswith(option.allow_command):
+                        if type(history) is not None and option.offset != 0:
+                            
+                            if type(option.offset) is int:
+                                history.append_keyword(keyword, option.offset, line_no)
+                            else:
+                                history.append_keyword(keyword, id, line_no)
+                            return None
+                        
+                        else:
+                            return option.command
                 
-        return False
+        return None
+
+
+    def get_keyword_line(line_no: int, blocks: BlockList, keyword: list[KW], history: None|KW_History = None, seek_limit = 20) -> bool:
+        expr = Keywords.get_keyword_expr(line_no, blocks, keyword, history, seek_limit)
+        return expr is not None
 
 
 
@@ -107,18 +143,21 @@ class MoveTypes:
         return None
     
     def get_object(id: int, gcode: BlockList):
+        
+        def sanitize(name: str):
+            return ''.join(c if c.isalnum() else '_' for c in name).strip('_')
+        
         line = gcode[id].command or ''
-        string = line.lower()
         
         is_end = Keywords.get_keyword_line(id, gcode, Keywords.OBJECT_END)
         if is_end:
             return MoveTypes.NO_OBJECT
         
-        is_start = Keywords.get_keyword_line(id, gcode, Keywords.OBJECT_START)
-        if is_start:
+        is_start = Keywords.get_keyword_expr(id, gcode, Keywords.OBJECT_START)
+        if is_start is not None:
             line = gcode[id].command
-            name = line.removeprefix('; printing object').removeprefix(';MESH:').removeprefix('EXCLUDE_OBJECT_START NAME=').removeprefix('M486 S')
-            return name.strip().replace(' ', '_').replace("'", '').replace('"', '').replace(':', '_')
+            name = line.removeprefix(is_start)
+            return sanitize(name)
 
         return None
         
