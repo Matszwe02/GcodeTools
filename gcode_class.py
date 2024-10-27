@@ -32,21 +32,26 @@ class Gcode:
         Includes object name, line type, layer number, etc.
         Warning: takes up much more time and space
         """
-        out_str = ''
         last_move = None
+        coords = CoordSystem()
+        coords.abs_e = False
+        out_str = coords.to_str()
         i = 0
+        
 
         for block in tqdm(gcode, desc="Writing G-code", unit="line"):
             i += 1
             command = block.command
             line_str = ''
             
+            
+            
             if type(block.move) == Move:
                 line_str += block.move.to_str(last_move)
                 last_move = block.move.copy()
-            else:
-                line_str += block.move.to_str(last_move)
-                last_move = block.move.move.copy()
+            # else:
+            #     line_str += block.move.to_str(last_move)
+            #     last_move = block.move.move.copy()
             
             if line_str != '':
                 if verbose and block.meta is not None:
@@ -111,6 +116,7 @@ class Gcode:
         blocks = BlockList()
         blocks.config = config
         coord_system = CoordSystem(speed = blocks.config.speed)
+        move = Move(blocks.config, coord_system.position)
         
         gcode_lines = list(filter(str.strip, gcode_str.split('\n')))
         for line in tqdm(gcode_lines, 'Generating moves', unit='line'):
@@ -120,13 +126,19 @@ class Gcode:
             
             line_dict: dict = Gcode.line_to_dict(line)
             command = line_dict['0']
-            move = Move(coord_system, blocks.config)
             
             if command in ['G0', 'G1', 'G2', 'G3']:
-                move = Move(coord_system.copy(), blocks.config).from_params(line_dict)
+                # move = Move(coord_system.position.copy(), blocks.config).from_params(line_dict)
                 
-                if command in ['G2', 'G3']:
-                    arc = Arc(dir = int(command[1]), move=move).from_params(line_dict)
+                # move.prev_position = coord_system.position.copy()
+                # move.position = coord_system.apply_move(line_dict)
+                move.position = coord_system.apply_move(line_dict)
+            
+                # new_pos = coord_system.apply_move(move.copy())
+                # move.position.set(new_pos)
+                
+                # if command in ['G2', 'G3']:
+                #     arc = Arc(dir = int(command[1]), move=move).from_params(line_dict)
             
             elif command in [Static.ABSOLUTE_COORDS, Static.RELATIVE_COORDS]:
                 coord_system.set_abs_xyz(command == Static.ABSOLUTE_COORDS)
@@ -151,9 +163,6 @@ class Gcode:
                 emit_command = True
             
             command = line.strip()
-            
-            new_pos = coord_system.apply_move(move.copy())
-            move.position.set(new_pos)
             
             if arc is not None:
                 gcode_block = Block(arc.copy(), command=line, emit_command=emit_command)
