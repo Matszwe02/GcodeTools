@@ -14,23 +14,12 @@ class Keywords:
     """
     Each keyword is a list of possible commands. Each command is treated as a prefix, so G1 will match any move command, etc.
     """
-    
-    class KW_History:
-        def __init__(self):
-            self.line = 0
-            self.keywords: list[Keywords.KW] = []
-        
-        def append_keyword(self, keyword, offset, line):
-            self.keywords.append((keyword, offset, line))
-        
-        def check_keyword(self, keyword, line):
-            for kw in self.keywords:
-                if kw[0] == keyword and kw[1] + kw[2] == line:
-                    return kw
-            return None
-    
+
     class KW:
         def __init__(self, command: str, allow_command = None, block_command = None, offset = 0):
+            """
+            Offset = -1: offset at allow_command
+            """
             self.command = command
             self.allow_command = allow_command
             self.block_command = block_command
@@ -52,45 +41,41 @@ class Keywords:
     GCODE_START = [KW(";TYPE:"), KW(";Generated with Cura_SteamEngine")]
     GCODE_END = [KW("EXCLUDE_OBJECT_END", "; EXECUTABLE_BLOCK_END"), KW(";TIME_ELAPSED:", ";End of Gcode", ";TIME_ELAPSED:"), KW(";TYPE:Custom", "; filament used")]
     
-    OBJECT_START = [KW("; printing object", None, "EXCLUDE_OBJECT_START NAME="), KW("EXCLUDE_OBJECT_START NAME="), KW(";MESH:"), KW("M486 S")]
+    OBJECT_START = [KW("; printing object", None, "EXCLUDE_OBJECT_START NAME="), KW("EXCLUDE_OBJECT_START NAME=", ";WIDTH:", None, -1), KW(";MESH:"), KW("M486 S")]
     OBJECT_END = [KW("; stop printing object", None, "EXCLUDE_OBJECT_END"), KW("EXCLUDE_OBJECT_END"), KW(";MESH:NONMESH"), KW("M486 S-1")]
+    # FIXME: Edge case scenarios, split travel moves perfectly
     
     
-    
-    def get_keyword_expr(line_no: int, blocks: BlockList, keyword: list[KW], history: None|KW_History = None, seek_limit = 20):
-
-        if history is not None:
-            checked = history.check_keyword(keyword, line_no)
-            if checked is not None: return checked.command
+    def get_keyword_arg(line_no: int, blocks: BlockList, keyword: list[KW], seek_limit = 20):
         
-        for option in keyword:
-            if blocks[line_no].command.startswith(option.command):
-                if option.allow_command == None:
-                    if type(history) is not None and option.offset != 0:
-                        history.append_keyword(keyword, option.offset, line_no)
-                    else:
-                        return option.command
-                
-                for id, nextline in enumerate(blocks[line_no + 1 : line_no + seek_limit]):
-                    if option.block_command is not None and nextline.command.startswith(option.block_command):
-                        return None
-                    if nextline.command.startswith(option.allow_command):
-                        if type(history) is not None and option.offset != 0:
-                            
-                            if type(option.offset) is int:
-                                history.append_keyword(keyword, option.offset, line_no)
-                            else:
-                                history.append_keyword(keyword, id, line_no)
+        pass
+    
+        for offset in range(seek_limit):
+            line = line_no - offset
+            
+            for option in keyword:
+                if option.offset != offset and option.offset != -1:
+                    continue
+                if blocks[line].command.startswith(option.command):
+                    
+                    if option.allow_command is None and option.block_command is None:
+                            return blocks[line].command.removeprefix(option.command)
+                    
+                    for id, nextline in enumerate(blocks[line + 1 : line + seek_limit]):
+                        if option.block_command is not None and nextline.command.startswith(option.block_command):
                             return None
-                        
-                        else:
-                            return option.command
+                        if option.allow_command is not None and nextline.command.startswith(option.allow_command):
+                            if option.offset == offset or (option.offset == -1 and offset == id):
+                                return blocks[line].command.removeprefix(option.command)
+                            
+                    if option.allow_command is None:
+                            return blocks[line].command.removeprefix(option.command)
                 
         return None
 
 
-    def get_keyword_line(line_no: int, blocks: BlockList, keyword: list[KW], history: None|KW_History = None, seek_limit = 20) -> bool:
-        expr = Keywords.get_keyword_expr(line_no, blocks, keyword, history, seek_limit)
+    def get_keyword_line(line_no: int, blocks: BlockList, keyword: list[KW], seek_limit = 20) -> bool:
+        expr = Keywords.get_keyword_arg(line_no, blocks, keyword, seek_limit)
         return expr is not None
 
 
@@ -153,10 +138,8 @@ class MoveTypes:
         if is_end:
             return MoveTypes.NO_OBJECT
         
-        is_start = Keywords.get_keyword_expr(id, gcode, Keywords.OBJECT_START)
-        if is_start is not None:
-            line = gcode[id].command
-            name = line.removeprefix(is_start)
+        name = Keywords.get_keyword_arg(id, gcode, Keywords.OBJECT_START)
+        if name is not None:
             return sanitize(name)
 
         return None
@@ -244,3 +227,18 @@ class GcodeTools:
             objects[object].append(block)
         
         return (start_gcode, end_gcode, object_gcode, objects)
+
+
+    def Translate(gcode: BlockList, vector = Vector.zero()):
+        """
+        Translates positions
+        """
+        
+        new_gcode = gcode.new()
+        # new_gcode = gcode
+        for line in gcode:
+            if line.move is not None:
+                line.move.position.add(vector)
+            new_gcode.append(line)
+        
+        return new_gcode
