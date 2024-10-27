@@ -135,16 +135,15 @@ class Vector:
 
     def add(self, other):
         """Adds Vector's dimensions to other's that are not None"""
-        if type(other) is not Vector: raise TypeError('Can only add Vector to Vector')
-        if other.X is not None: self.X += other.X
-        if other.Y is not None: self.Y += other.Y
-        if other.Z is not None: self.Z += other.Z
-        if other.E is not None: self.E += other.E
+        if type(other) is not Vector: raise TypeError(f'You can only add Vector, not {type(other)}')
+        add_op = lambda a, b: a + b
+        new_vec = self.vector_op(other, add_op, None, 'a')
+        self.set(new_vec)
 
 
     def set(self, other):
         """Sets Vector's dimensions to other's that are not None"""
-        if type(other) is not Vector: raise TypeError('Can only set Vector to Vector')
+        if type(other) is not Vector: raise TypeError(f'You can only set Vector, not {type(other)}')
         if other.X is not None: self.X = other.X
         if other.Y is not None: self.Y = other.Y
         if other.Z is not None: self.Z = other.Z
