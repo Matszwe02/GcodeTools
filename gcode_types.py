@@ -135,7 +135,7 @@ class Vector:
 
     def add(self, other):
         """Adds Vector's dimensions to other's that are not None"""
-        if type(other) is not Vector: raise TypeError(f'You can only add Vector, not {type(other)}')
+        if type(other) is not Vector: raise TypeError(f'You can only add Vector to Vector, not {type(other)}')
         add_op = lambda a, b: a + b
         new_vec = self.vector_op(other, add_op, None, 'a')
         self.set(new_vec)
@@ -143,7 +143,7 @@ class Vector:
 
     def set(self, other):
         """Sets Vector's dimensions to other's that are not None"""
-        if type(other) is not Vector: raise TypeError(f'You can only set Vector, not {type(other)}')
+        if type(other) is not Vector: raise TypeError(f'You can only set Vector to Vector, not {type(other)}')
         if other.X is not None: self.X = other.X
         if other.Y is not None: self.Y = other.Y
         if other.Z is not None: self.Z = other.Z
@@ -165,7 +165,6 @@ class Vector:
 
 
 class CoordSystem:
-
     def __init__(self, abs_xyz = True, abs_e = True, speed = None, arc_plane = Static.ARC_PLANES['XY'], position = Vector.zero(), offset = Vector.zero(), fan = 0):
         if speed is None:
             print('Warning: speed parameter is unset! Defaultnig to 1200 mm/min')
@@ -197,24 +196,23 @@ class CoordSystem:
             self.arc_plane = int(plane)
 
 
-    def apply_move(self, move):
-        if type(move) is not Move or not move.position: return Vector()
+    def apply_move(self, params: dict[str, str]):
+        self.speed = float_nullable(params.get('F', self.speed))
+        pos = Vector().from_params(params)
+        
         if self.abs_xyz:
-            self.position.set(move.position.xyz())
-            self.position.add(self.offset.xyz())
+            self.position.set(pos.xyz())
+            self.position.add(self.offset.xyz().valid(pos))
         else:
-            self.position.add(move.position.xyz())
+            self.position.add(pos.xyz())
         
         if self.abs_e:
-            self.position.set(move.position.e())
-            self.position.add(self.offset.e())
+            self.position.set(pos.e() - self.position.e())
+            self.position.add(self.offset.e().valid(pos))
         else:
-            self.position.add(move.position.e())
+            self.position.set(pos.e())
         
-        if move.speed is not None:
-            self.speed = move.speed
-        
-        return self.position
+        return self.position.copy()
 
 
     def set_offset(self, pos: Vector):
@@ -254,32 +252,25 @@ class CoordSystem:
 
 class Move:
 
-    def __init__(self, coords: CoordSystem, config: Config, position = Vector(), speed: float|None = None):
+    def __init__(self, config: Config, position = Vector(), speed: float|None = None):
         self.position = position.copy()
         """The end vector of Move"""
-        self.coords = coords.copy()
-        """Coords hold position, which is the beginning vector of Move"""
         self.speed = speed
-        
         self.config = config
 
 
-    def from_params(self, params: dict[str, str]):
-        self.speed = float_nullable(params.get('F', self.speed))
-        self.position.from_params(params)
-        return self
-
-
-    def distance(self):
+    def distance(self, prev):
+        if not isinstance(prev, Move): prev = Move(self.config)
         distance = lambda x, y: x - y
-        return self.position.vector_op(self.coords.position, distance, on_a_none=0, on_b_none=0, on_none=0)
+        return self.position.vector_op(prev.position, distance, on_a_none=0, on_b_none=0, on_none=0)
 
 
     def float_distance(self, distance: Vector):
         return math.sqrt(distance.X^2 + distance.Y^2 + distance.Z^2)
 
 
-    def subdivide(self, step = None) -> list[Vector]:
+    def subdivide(self, prev, step = None) -> list[Vector]:
+        if not isinstance(prev, Move): prev = Move(self.config)
         if step is None: step = self.config.step
         dist_pos = self.distance()
         dist = self.float_distance(dist_pos)
@@ -288,15 +279,8 @@ class Move:
         stop = round(dist / step)
         for i in range(stop):
             i_normal = i / stop
-            pos_list.append(self.coords.position * (1 - i_normal) + self.position * i_normal)
+            pos_list.append(prev.position * (1 - i_normal) + self.position * i_normal)
         return pos_list
-
-
-    def set_coord_system(self, abs_xyz: float|None = None, abs_e: float|None = None):
-        if abs_xyz is not None:
-            self.coords.set_abs_xyz(abs_xyz)
-        if abs_e is not None:
-            self.coords.set_abs_e(abs_e)
 
 
     def get_flowrate(self):
@@ -307,50 +291,51 @@ class Move:
         return dist_vec.e() / distance
 
 
-    def set_flowrate(self, flowrate: float):
+    def set_flowrate(self, prev, flowrate: float):
+        if not isinstance(prev, Move): prev = Move(self.config)
         """Sets flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement, otherwise returns E mm"""
         dist_vec = self.distance()
         distance = self.float_distance(dist_vec)
         if distance < self.config.step: return None
         flow = distance * flowrate
-        self.position.E = self.coords.position.E + flow
+        self.position.E = prev.position.E + flow
         return flow
 
 
-    def to_str(self, last_move = None):
+    def to_str(self, prev):
+        if not isinstance(prev, Move): prev = Move(self.config)
         nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, self.config.precision)}'
         
         out = ''
         
-        offset = Vector.zero()
-        if not self.coords.abs_xyz:
-            offset.set(self.coords.position.xyz())
-        if not self.coords.abs_e:
-            offset.set(self.coords.position.e())
+        # offset = Vector.zero()
+        # if not coords.abs_xyz:
+        #     offset.set(prev.position.xyz())
+        # if not coords.abs_e:
+        #     offset.set(prev.position.e())
         
-        if self.position.X != self.coords.position.X: out += nullable('X', self.position.X, offset.X)
-        if self.position.Y != self.coords.position.Y: out += nullable('Y', self.position.Y, offset.Y)
-        if self.position.Z != self.coords.position.Z: out += nullable('Z', self.position.Z, offset.Z)
-        if self.position.E != self.coords.position.E: out += nullable('E', self.position.E, offset.E)
+        if self.position.X != prev.position.X: out += nullable('X', self.position.X, 0)
+        if self.position.Y != prev.position.Y: out += nullable('Y', self.position.Y, 0)
+        if self.position.Z != prev.position.Z: out += nullable('Z', self.position.Z, 0)
+        if self.position.E != 0: out += nullable('E', self.position.E, 0)
         if self.speed is not None: out += nullable('F', self.speed, 0)
         
         if out != '': out = 'G1' + out
-        coord_str = self.coords.to_str(last_move.coords if type(last_move) == Move else None)
         
-        return coord_str + out
+        return out
 
 
     def to_dict(self):
-        return {'Current' : self.position.to_dict(), "Previous" : self.coords.position.to_dict()}
+        return {'Pos' : self.position.to_dict()}
 
 
     def copy(self):
         """Create a deep copy"""
-        return Move(self.coords.copy(), self.config, self.position.copy(), self.speed)
+        return Move(self.config, self.position.copy(), self.speed)
 
 
 
-class Arc():
+class Arc:
     def __init__(self, dir: int, move: Move, I: float|None = None, J: float|None = None, K: float|None = None):
         """direction 2=CW, 3=CCW"""
         self.dir = dir
@@ -359,94 +344,97 @@ class Arc():
         self.J = J
         self.K = K
 
-
-    def from_params(self, params: dict[str, str]):
-        self.I = float_nullable(params.get('I', self.I))
-        self.J = float_nullable(params.get('J', self.J))
-        self.K = float_nullable(params.get('K', self.K))
-        if params.get('R', None) is not None: raise NotImplementedError('"R" arc moves are not supported!')
-        
-        if params['0'] == 'G2': self.dir=2
-        if params['0'] == 'G3': self.dir=3
-        
-        self.move.from_params(params)
-        return self
-
-
-    def subdivide(self, step=None) -> list[Move]:
-        if step is None: step = self.move.config.step
-        
-        center = Vector(self.I, self.J, self.K) + self.move.coords.position.xyz()
-        radius = math.sqrt((self.I or 0)**2 + (self.J or 0)**2)
-
-        start_angle = math.atan2(-(self.J or 0), -(self.I or 0))
-        end_angle = math.atan2(self.move.position.Y - center.Y, self.move.position.X - center.X)
-
-        if self.dir == 3:
-            if end_angle < start_angle:
-                end_angle += 2 * math.pi
-        else:
-            if end_angle > start_angle:
-                end_angle -= 2 * math.pi
-
-        total_angle = end_angle - start_angle
-
-        num_steps = max(1, math.ceil(abs(total_angle) * radius / step))
-
-        moves = []
-
-        for i in range(num_steps):
-            t = i / (num_steps - 1) if num_steps > 1 else 0
-            angle = start_angle + t * total_angle
-            x = center.X + radius * math.cos(angle)
-            y = center.Y + radius * math.sin(angle)
-
-            z = self.move.coords.position.Z + t * (self.move.position.Z - self.move.coords.position.Z)
-            e = (self.move.position.E - self.move.coords.position.E) / num_steps + self.move.coords.position.E
-
-            new_move = Move(
-                coords=self.move.coords.copy(),
-                position=Vector(x, y, z, e),
-                speed=self.move.speed
-            )
-            moves.append(new_move)
-
-        return moves
-
-
     def to_str(self, last_move = None):
-        nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, self.move.config.precision)}'
+        raise NotImplementedError("Arc moves are disabled in this version and replaced with straight moves")
+    
+
+#     def from_params(self, params: dict[str, str]):
+#         self.I = float_nullable(params.get('I', self.I))
+#         self.J = float_nullable(params.get('J', self.J))
+#         self.K = float_nullable(params.get('K', self.K))
+#         if params.get('R', None) is not None: raise NotImplementedError('"R" arc moves are not supported!')
         
-        out = ''
+#         if params['0'] == 'G2': self.dir=2
+#         if params['0'] == 'G3': self.dir=3
         
-        offset = Vector.zero()
-        if not self.move.coords.abs_xyz:
-            offset.set(self.move.coords.position.xyz())
-        if not self.move.coords.abs_e:
-            offset.set(self.move.coords.position.e())
-        
-        if self.move.position.X != self.move.coords.position.X: out += nullable('X', self.move.position.X, offset.X)
-        if self.move.position.Y != self.move.coords.position.Y: out += nullable('Y', self.move.position.Y, offset.Y)
-        if self.move.position.Z != self.move.coords.position.Z: out += nullable('Z', self.move.position.Z, offset.Z)
-        if self.move.position.E != self.move.coords.position.E: out += nullable('E', self.move.position.E, offset.E)
-        out += nullable('I', self.I, 0)
-        out += nullable('J', self.J, 0)
-        out += nullable('K', self.K, 0)
-        if self.move.speed is not None: out += nullable('F', self.move.speed, 0)
-        
-        if out != '': out = f'G{self.dir}' + out
-        coord_str = self.move.coords.to_str(last_move.coords if type(last_move) == Move else None)
-        
-        return coord_str + out
+#         self.move.from_params(params)
+#         return self
 
 
-    def to_dict(self):
-        return {'I': self.I, 'J': self.J, 'K': self.K, 'dir': self.dir, 'move': self.move.to_dict()}
+#     def subdivide(self, step=None) -> list[Move]:
+#         if step is None: step = self.move.config.step
+        
+#         center = Vector(self.I, self.J, self.K) + self.move.coords.position.xyz()
+#         radius = math.sqrt((self.I or 0)**2 + (self.J or 0)**2)
+
+#         start_angle = math.atan2(-(self.J or 0), -(self.I or 0))
+#         end_angle = math.atan2(self.move.position.Y - center.Y, self.move.position.X - center.X)
+
+#         if self.dir == 3:
+#             if end_angle < start_angle:
+#                 end_angle += 2 * math.pi
+#         else:
+#             if end_angle > start_angle:
+#                 end_angle -= 2 * math.pi
+
+#         total_angle = end_angle - start_angle
+
+#         num_steps = max(1, math.ceil(abs(total_angle) * radius / step))
+
+#         moves = []
+
+#         for i in range(num_steps):
+#             t = i / (num_steps - 1) if num_steps > 1 else 0
+#             angle = start_angle + t * total_angle
+#             x = center.X + radius * math.cos(angle)
+#             y = center.Y + radius * math.sin(angle)
+
+#             z = self.move.coords.position.Z + t * (self.move.position.Z - self.move.coords.position.Z)
+#             e = (self.move.position.E - self.move.coords.position.E) / num_steps + self.move.coords.position.E
+
+#             new_move = Move(
+#                 coords=self.move.coords.copy(),
+#                 position=Vector(x, y, z, e),
+#                 speed=self.move.speed
+#             )
+#             moves.append(new_move)
+
+#         return moves
 
 
-    def copy(self):
-        """Create a deep copy of this Arc instance."""
-        return Arc(I=self.I, J=self.J, K=self.K, dir=self.dir, move=self.move.copy())
+#     def to_str(self, last_move = None):
+#         nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, self.move.config.precision)}'
+        
+#         out = ''
+        
+#         offset = Vector.zero()
+#         if not self.move.coords.abs_xyz:
+#             offset.set(self.move.coords.position.xyz())
+#         if not self.move.coords.abs_e:
+#             offset.set(self.move.coords.position.e())
+        
+#         if self.move.position.X != self.move.coords.position.X: out += nullable('X', self.move.position.X, offset.X)
+#         if self.move.position.Y != self.move.coords.position.Y: out += nullable('Y', self.move.position.Y, offset.Y)
+#         if self.move.position.Z != self.move.coords.position.Z: out += nullable('Z', self.move.position.Z, offset.Z)
+#         if self.move.position.E != self.move.coords.position.E: out += nullable('E', self.move.position.E, offset.E)
+#         out += nullable('I', self.I, 0)
+#         out += nullable('J', self.J, 0)
+#         out += nullable('K', self.K, 0)
+#         if self.move.speed is not None: out += nullable('F', self.move.speed, 0)
+        
+#         if out != '': out = f'G{self.dir}' + out
+#         coord_str = self.move.coords.to_str(last_move.coords if type(last_move) == Move else None)
+        
+#         return coord_str + out
+
+
+#     def to_dict(self):
+#         return {'I': self.I, 'J': self.J, 'K': self.K, 'dir': self.dir, 'move': self.move.to_dict()}
+
+
+#     def copy(self):
+#         """Create a deep copy of this Arc instance."""
+#         return Arc(I=self.I, J=self.J, K=self.K, dir=self.dir, move=self.move.copy())
 
 
 
