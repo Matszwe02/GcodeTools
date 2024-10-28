@@ -259,6 +259,26 @@ class Move:
         self.config = config
 
 
+    def translate(self, vec):
+        self.position.add(vec)
+        return self
+
+
+    def rotate(self, deg: int):        
+        angle_rad = math.radians(deg)
+        
+        x = self.position.X * math.cos(angle_rad) - self.position.Y * math.sin(angle_rad)
+        y = self.position.X * math.sin(angle_rad) + self.position.Y * math.cos(angle_rad)
+        
+        self.position.set(Vector(x, y))
+        return self 
+
+
+    def scale(self, scale: int|Vector):
+        self.position *= scale
+        return self
+
+
     def distance(self, prev):
         if not isinstance(prev, Move): prev = Move(self.config)
         distance = lambda x, y: x - y

@@ -44,6 +44,7 @@ class Keywords:
     OBJECT_START = [KW("; printing object", None, "EXCLUDE_OBJECT_START NAME="), KW("EXCLUDE_OBJECT_START NAME=", ";WIDTH:", None, -1), KW(";MESH:"), KW("M486 S")]
     OBJECT_END = [KW("; stop printing object", None, "EXCLUDE_OBJECT_END"), KW("EXCLUDE_OBJECT_END"), KW(";MESH:NONMESH"), KW("M486 S-1")]
     # FIXME: Edge case scenarios, split travel moves perfectly
+    # TODO: travel trimming, recalculation, preserve last travel vector at object
     
     
     def get_keyword_arg(line_no: int, blocks: BlockList, keyword: list[KW], seek_limit = 20):
@@ -228,17 +229,3 @@ class GcodeTools:
         
         return (start_gcode, end_gcode, object_gcode, objects)
 
-
-    def Translate(gcode: BlockList, vector = Vector.zero()):
-        """
-        Translates positions
-        """
-        
-        new_gcode = gcode.new()
-        # new_gcode = gcode
-        for line in gcode:
-            if line.move is not None:
-                line.move.position.add(vector)
-            new_gcode.append(line)
-        
-        return new_gcode
