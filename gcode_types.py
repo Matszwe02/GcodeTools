@@ -3,6 +3,12 @@ import json
 
 
 
+def float_nullable(input):
+    if input is not None: return float(input)
+    return input
+
+
+
 class Config:
     """G-Code configuration"""
     
@@ -41,12 +47,6 @@ class Static:
     FAN_SPEED_DESC = 'M106 S{0}; Set Fan Speed'
     
     ARC_PLANES_DESC = {17: 'G17; Arc Plane XY', 18: 'G18; Arc Plane XZ', 19: 'G19; Arc Plane YZ'}
-
-
-
-def float_nullable(input):
-    if input is not None: return float(input)
-    return input
 
 
 
@@ -163,6 +163,11 @@ class Vector:
         return any(coord is not None for coord in [self.X, self.Y, self.Z, self.E])
 
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Vector): return False
+        return all(coord == coord2 for coord, coord2 in zip([self.X, self.Y, self.Z, self.E], [other.X, other.Y, other.Z, other.E]))
+
+
 
 class CoordSystem:
     def __init__(self, abs_xyz = True, abs_e = True, speed = None, arc_plane = Static.ARC_PLANES['XY'], position = Vector.zero(), offset = Vector.zero(), fan = 0):
@@ -252,7 +257,7 @@ class CoordSystem:
 
 class Move:
 
-    def __init__(self, config: Config, position = Vector(), speed: float|None = None):
+    def __init__(self, config = Config(), position = Vector(), speed: float|None = None):
         self.position = position.copy()
         """The end vector of Move"""
         self.speed = speed
@@ -328,12 +333,6 @@ class Move:
         
         out = ''
         
-        # offset = Vector.zero()
-        # if not coords.abs_xyz:
-        #     offset.set(prev.position.xyz())
-        # if not coords.abs_e:
-        #     offset.set(prev.position.e())
-        
         if self.position.X != prev.position.X: out += nullable('X', self.position.X, 0)
         if self.position.Y != prev.position.Y: out += nullable('Y', self.position.Y, 0)
         if self.position.Z != prev.position.Z: out += nullable('Z', self.position.Z, 0)
@@ -354,107 +353,107 @@ class Move:
         return Move(self.config, self.position.copy(), self.speed)
 
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Move): return False
+        if self.position != other.position: return False
+        if self.speed != other.speed: return False
+        return True
+
+
 
 class Arc:
-    def __init__(self, dir: int, move: Move, I: float|None = None, J: float|None = None, K: float|None = None):
-        """direction 2=CW, 3=CCW"""
-        self.dir = dir
-        self.move = move
-        self.I = I
-        self.J = J
-        self.K = K
-
-    def to_str(self, last_move = None):
-        raise NotImplementedError("Arc moves are disabled in this version and replaced with straight moves")
     
+    def __init__(self, move = Move(), dir = 0, ijk = Vector()):
+        """direction 2=CW, 3=CCW"""
+        self.move = move
+        self.dir = dir
+        self.I = ijk.X
+        self.J = ijk.Y
+        self.K = ijk.Z
 
-#     def from_params(self, params: dict[str, str]):
-#         self.I = float_nullable(params.get('I', self.I))
-#         self.J = float_nullable(params.get('J', self.J))
-#         self.K = float_nullable(params.get('K', self.K))
-#         if params.get('R', None) is not None: raise NotImplementedError('"R" arc moves are not supported!')
+
+    def from_params(self, params: dict[str, str]):
+        self.I = float_nullable(params.get('I', self.I))
+        self.J = float_nullable(params.get('J', self.J))
+        self.K = float_nullable(params.get('K', self.K))
+        if params.get('R', None) is not None: raise NotImplementedError('"R" arc moves are not supported!')
         
-#         if params['0'] == 'G2': self.dir=2
-#         if params['0'] == 'G3': self.dir=3
+        if params['0'] == 'G2': self.dir=2
+        if params['0'] == 'G3': self.dir=3
         
-#         self.move.from_params(params)
-#         return self
+        return self
 
 
-#     def subdivide(self, step=None) -> list[Move]:
-#         if step is None: step = self.move.config.step
+    def subdivide(self, prev: Move, step=None) -> list[Move]:
+        if step is None: step = self.move.config.step
         
-#         center = Vector(self.I, self.J, self.K) + self.move.coords.position.xyz()
-#         radius = math.sqrt((self.I or 0)**2 + (self.J or 0)**2)
+        center = Vector(self.I, self.J, self.K) + prev.position.xyz()
+        radius = math.sqrt((self.I or 0)**2 + (self.J or 0)**2)
 
-#         start_angle = math.atan2(-(self.J or 0), -(self.I or 0))
-#         end_angle = math.atan2(self.move.position.Y - center.Y, self.move.position.X - center.X)
+        start_angle = math.atan2(-(self.J or 0), -(self.I or 0))
+        end_angle = math.atan2(self.move.position.Y - center.Y, self.move.position.X - center.X)
 
-#         if self.dir == 3:
-#             if end_angle < start_angle:
-#                 end_angle += 2 * math.pi
-#         else:
-#             if end_angle > start_angle:
-#                 end_angle -= 2 * math.pi
+        if self.dir == 3:
+            if end_angle < start_angle:
+                end_angle += 2 * math.pi
+        else:
+            if end_angle > start_angle:
+                end_angle -= 2 * math.pi
 
-#         total_angle = end_angle - start_angle
+        total_angle = end_angle - start_angle
 
-#         num_steps = max(1, math.ceil(abs(total_angle) * radius / step))
+        num_steps = max(1, math.ceil(abs(total_angle) * radius / step))
 
-#         moves = []
+        moves = []
 
-#         for i in range(num_steps):
-#             t = i / (num_steps - 1) if num_steps > 1 else 0
-#             angle = start_angle + t * total_angle
-#             x = center.X + radius * math.cos(angle)
-#             y = center.Y + radius * math.sin(angle)
+        for i in range(num_steps):
+            t = i / (num_steps - 1) if num_steps > 1 else 0
+            angle = start_angle + t * total_angle
+            x = center.X + radius * math.cos(angle)
+            y = center.Y + radius * math.sin(angle)
 
-#             z = self.move.coords.position.Z + t * (self.move.position.Z - self.move.coords.position.Z)
-#             e = (self.move.position.E - self.move.coords.position.E) / num_steps + self.move.coords.position.E
+            z = prev.position.Z + t * (self.move.position.Z - prev.position.Z)
+            e = (self.move.position.E - prev.position.E) / num_steps + prev.position.E
 
-#             new_move = Move(
-#                 coords=self.move.coords.copy(),
-#                 position=Vector(x, y, z, e),
-#                 speed=self.move.speed
-#             )
-#             moves.append(new_move)
+            new_move = Move(
+                coords=prev.copy(),
+                position=Vector(x, y, z, e),
+                speed=self.move.speed
+            )
+            moves.append(new_move)
 
-#         return moves
+        return moves
 
 
-#     def to_str(self, last_move = None):
-#         nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, self.move.config.precision)}'
+    def to_str(self, prev):
+        if not isinstance(prev, Move): prev = Move(self.move.config)
+        nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, self.move.config.precision)}'
         
-#         out = ''
+        out = self.move.to_str(prev).removeprefix('G1')
         
-#         offset = Vector.zero()
-#         if not self.move.coords.abs_xyz:
-#             offset.set(self.move.coords.position.xyz())
-#         if not self.move.coords.abs_e:
-#             offset.set(self.move.coords.position.e())
+        out += nullable('I', self.I, 0)
+        out += nullable('J', self.J, 0)
+        out += nullable('K', self.K, 0)
         
-#         if self.move.position.X != self.move.coords.position.X: out += nullable('X', self.move.position.X, offset.X)
-#         if self.move.position.Y != self.move.coords.position.Y: out += nullable('Y', self.move.position.Y, offset.Y)
-#         if self.move.position.Z != self.move.coords.position.Z: out += nullable('Z', self.move.position.Z, offset.Z)
-#         if self.move.position.E != self.move.coords.position.E: out += nullable('E', self.move.position.E, offset.E)
-#         out += nullable('I', self.I, 0)
-#         out += nullable('J', self.J, 0)
-#         out += nullable('K', self.K, 0)
-#         if self.move.speed is not None: out += nullable('F', self.move.speed, 0)
+        if out != '': out = f'G{self.dir}' + out
         
-#         if out != '': out = f'G{self.dir}' + out
-#         coord_str = self.move.coords.to_str(last_move.coords if type(last_move) == Move else None)
-        
-#         return coord_str + out
+        return out
 
 
-#     def to_dict(self):
-#         return {'I': self.I, 'J': self.J, 'K': self.K, 'dir': self.dir, 'move': self.move.to_dict()}
+    def to_dict(self):
+        return {'I': self.I, 'J': self.J, 'K': self.K, 'dir': self.dir, 'move': self.move.to_dict()}
 
 
-#     def copy(self):
-#         """Create a deep copy of this Arc instance."""
-#         return Arc(I=self.I, J=self.J, K=self.K, dir=self.dir, move=self.move.copy())
+    def copy(self):
+        """Create a deep copy of this Arc instance."""
+        return Arc(self.move.copy(), self.dir, Vector(self.I, self.J, self.K))
+
+
+    def __eq__(self, other: object) -> bool:
+        """
+        Comparison disabled for Arc, to not trim repeated Arc moves
+        """
+        return False
 
 
 

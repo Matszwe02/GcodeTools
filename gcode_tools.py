@@ -229,3 +229,18 @@ class GcodeTools:
         
         return (start_gcode, end_gcode, object_gcode, objects)
 
+
+    def trim(gcode: BlockList):
+        """
+        Trims G-code from every command that's not handled by GcodeTools.
+        
+        Warning: some commands that aren't handled, may be important for the G-code!
+        """
+        
+        gcode_new = gcode.new()
+        pos = gcode[0]
+        for item in gcode:
+            if item.move != pos:
+                pos = item.move
+                gcode_new.append(item)
+        return gcode_new

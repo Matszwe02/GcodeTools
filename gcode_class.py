@@ -46,12 +46,12 @@ class Gcode:
             
             
             
-            if type(block.move) == Move:
+            if isinstance(block.move, Move):
                 line_str += block.move.to_str(last_move)
                 last_move = block.move.copy()
-            # else:
-            #     line_str += block.move.to_str(last_move)
-            #     last_move = block.move.move.copy()
+            elif isinstance(block.move, Arc):
+                line_str += block.move.to_str(last_move)
+                last_move = block.move.move.copy()
             
             if line_str != '':
                 if verbose and block.meta is not None:
@@ -128,17 +128,10 @@ class Gcode:
             command = line_dict['0']
             
             if command in ['G0', 'G1', 'G2', 'G3']:
-                # move = Move(coord_system.position.copy(), blocks.config).from_params(line_dict)
-                
-                # move.prev_position = coord_system.position.copy()
-                # move.position = coord_system.apply_move(line_dict)
                 move.position = coord_system.apply_move(line_dict)
-            
-                # new_pos = coord_system.apply_move(move.copy())
-                # move.position.set(new_pos)
                 
-                # if command in ['G2', 'G3']:
-                #     arc = Arc(dir = int(command[1]), move=move).from_params(line_dict)
+                if command in ['G2', 'G3']:
+                    arc = Arc(move, int(command[1])).from_params(line_dict)
             
             elif command in [Static.ABSOLUTE_COORDS, Static.RELATIVE_COORDS]:
                 coord_system.set_abs_xyz(command == Static.ABSOLUTE_COORDS)
