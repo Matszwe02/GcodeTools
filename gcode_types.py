@@ -264,6 +264,11 @@ class Move:
         self.config = config
 
 
+    def from_params(self, params: dict[str, str]):
+        self.speed = float_nullable(params.get('F', self.speed))
+        return self
+
+
     def translate(self, vec):
         self.position.add(vec)
         return self
@@ -329,15 +334,15 @@ class Move:
 
     def to_str(self, prev):
         if not isinstance(prev, Move): prev = Move(self.config)
-        nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, self.config.precision)}'
+        nullable = lambda param, a: '' if a is None else f' {param}{round(a, self.config.precision)}'
         
         out = ''
         
-        if self.position.X != prev.position.X: out += nullable('X', self.position.X, 0)
-        if self.position.Y != prev.position.Y: out += nullable('Y', self.position.Y, 0)
-        if self.position.Z != prev.position.Z: out += nullable('Z', self.position.Z, 0)
-        if self.position.E != 0: out += nullable('E', self.position.E, 0)
-        if self.speed is not None: out += nullable('F', self.speed, 0)
+        if self.position.X != prev.position.X: out += nullable('X', self.position.X)
+        if self.position.Y != prev.position.Y: out += nullable('Y', self.position.Y)
+        if self.position.Z != prev.position.Z: out += nullable('Z', self.position.Z)
+        if self.position.E != 0: out += nullable('E', self.position.E)
+        if self.speed != prev.speed: out += nullable('F', self.speed)
         
         if out != '': out = 'G1' + out
         

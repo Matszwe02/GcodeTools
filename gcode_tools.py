@@ -97,6 +97,7 @@ class MoveTypes:
     
     BRIDGE = 'bridge'
     
+    # TODO: wipe meta
     WIPE = 'wipe'
     END_WIPE = 'no_wipe'
     
@@ -105,6 +106,8 @@ class MoveTypes:
     
     def get_type(line: str):
         string = line.lower()
+        if not string.startswith(';type:'): return None
+        
         type_assign = {
             'skirt': MoveTypes.SKIRT,
             'external': MoveTypes.EXTERNAL_PERIMETER,
@@ -120,8 +123,8 @@ class MoveTypes:
             'fill': MoveTypes.SPARSE_INFILL,
             'skin': MoveTypes.SOLID_INFILL,
             'bottom': MoveTypes.SOLID_INFILL,
-            'wipe_end': MoveTypes.END_WIPE,
-            'wipe': MoveTypes.WIPE
+            # 'wipe_end': MoveTypes.END_WIPE,
+            # 'wipe': MoveTypes.WIPE,
             }
         
         for test in type_assign.keys():
@@ -132,8 +135,6 @@ class MoveTypes:
         
         def sanitize(name: str):
             return ''.join(c if c.isalnum() else '_' for c in name).strip('_')
-        
-        line = gcode[id].command or ''
         
         is_end = Keywords.get_keyword_line(id, gcode, Keywords.OBJECT_END)
         if is_end:
@@ -238,9 +239,19 @@ class GcodeTools:
         """
         
         gcode_new = gcode.new()
-        pos = gcode[0]
+        pos = gcode[0].move
         for item in gcode:
             if item.move != pos:
                 pos = item.move
-                gcode_new.append(item)
+                it = item.copy()
+                it.emit_command = False
+                it.command = ''
+                gcode_new.append(it)
         return gcode_new
+    
+    
+    # TODO: regenerate_travels: trim travel moves, join with travel gcode (fixed for now)
+    # - ensure clean travel trimming
+    # - ensure same absolute extrusion after trimming
+    def regenerate_travels(gcode: BlockList):
+        raise NotImplementedError()

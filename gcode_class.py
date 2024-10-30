@@ -55,8 +55,8 @@ class Gcode:
             
             if line_str != '':
                 if verbose and block.meta is not None:
-                    params_str = json.dumps(block.meta).replace("{", "").replace("}", "").replace(" ", "").replace('"', "")
-                    line_str += f'; {params_str}'
+                    params_str = json.dumps(block.meta).replace("{", "").replace("}", "").replace(" ", "").replace('"', "").replace(',', '\n; ')
+                    line_str += f'\n; {params_str}'
                 line_str += '\n'
             
             if block.emit_command:
@@ -129,6 +129,7 @@ class Gcode:
             
             if command in ['G0', 'G1', 'G2', 'G3']:
                 move.position = coord_system.apply_move(line_dict)
+                move.from_params(line_dict)
                 
                 if command in ['G2', 'G3']:
                     arc = Arc(move, int(command[1])).from_params(line_dict)
