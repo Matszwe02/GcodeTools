@@ -128,11 +128,11 @@ class Gcode:
             command = line_dict['0']
             
             if command in ['G0', 'G1', 'G2', 'G3']:
+                if command in ['G2', 'G3']:
+                    arc = Arc(move.copy(), int(command[1])).from_params(line_dict)
+                    
                 move.position = coord_system.apply_move(line_dict)
                 move.from_params(line_dict)
-                
-                if command in ['G2', 'G3']:
-                    arc = Arc(move, int(command[1])).from_params(line_dict)
             
             elif command in [Static.ABSOLUTE_COORDS, Static.RELATIVE_COORDS]:
                 coord_system.set_abs_xyz(command == Static.ABSOLUTE_COORDS)
@@ -159,10 +159,13 @@ class Gcode:
             command = line.strip()
             
             if arc is not None:
-                gcode_block = Block(arc.copy(), command=line, emit_command=emit_command)
+                for section in arc.subdivide(move, 1):
+                    gcode_block = Block(section.copy(), command=line, emit_command=emit_command)
+                    blocks.append(gcode_block)
+                    command = None
+                    
             else:
                 gcode_block = Block(move.copy(), command=line, emit_command=emit_command)
-            
-            blocks.append(gcode_block)
+                blocks.append(gcode_block)
         
         return blocks

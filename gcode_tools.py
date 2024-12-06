@@ -148,7 +148,7 @@ class MoveTypes:
         
 
 
-class GcodeTools:    
+class GcodeTools:
 
     def read_config(gcode: BlockList):
         metadata = {}
@@ -250,6 +250,26 @@ class GcodeTools:
         return gcode_new
     
     
+    
+    def get_bounding_cube(gcode: BlockList) -> tuple[Vector, Vector]:
+        """
+        Get bounding cube of gcode. Returns a tuple of (low_corner, high_corner)
+        """
+        
+        low_corner = Vector(None, None, None)
+        high_corner = Vector(None, None, None)
+        
+        lower_bound = lambda a,b: a if a < b else b
+        upper_bound = lambda a,b: a if a > b else b
+        
+        for item in gcode:
+            high_corner = high_corner.vector_op(item.move.position, upper_bound)
+            low_corner = low_corner.vector_op(item.move.position, lower_bound)
+            
+        return (low_corner, high_corner)
+
+
+
     # TODO: regenerate_travels: trim travel moves, join with travel gcode (fixed for now)
     # - ensure clean travel trimming
     # - ensure same absolute extrusion after trimming

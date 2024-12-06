@@ -75,6 +75,8 @@ class Vector:
 
     def vector_op(self, other, operation = lambda x, y: x + y, on_a_none: any = 'b', on_b_none: any = 'a', on_none = None):
         """
+        Returns a new Vector object, does not affect self or other
+        
         operation: lambda
         
         on_a_none, on_b_none: any to skip None checking ; 'a', 'b', None, float to return
@@ -406,8 +408,9 @@ class Arc:
                 end_angle -= 2 * math.pi
 
         total_angle = end_angle - start_angle
+        total_angle_normal = abs(total_angle / (2 * math.pi))
 
-        num_steps = max(1, math.ceil(abs(total_angle) * radius / step))
+        num_steps = math.ceil(min(max(8, (abs(total_angle) * radius / step)), 360 * total_angle_normal))
 
         moves = []
 
@@ -420,51 +423,16 @@ class Arc:
             z = prev.position.Z + t * (self.move.position.Z - prev.position.Z)
             e = (self.move.position.E - prev.position.E) / num_steps + prev.position.E
 
-            new_move = Move(
-                coords=prev.copy(),
-                position=Vector(x, y, z, e),
-                speed=self.move.speed
-            )
+            new_move = Move(self.move.config, Vector(x, y, z, e), self.move.speed)
             moves.append(new_move)
 
         return moves
 
 
-    def to_str(self, prev):
-        if not isinstance(prev, Move): prev = Move(self.move.config)
-        nullable = lambda param, a, b: '' if a is None or b is None else f' {param}{round(a - b, self.move.config.precision)}'
-        
-        out = self.move.to_str(prev).removeprefix('G1')
-        
-        out += nullable('I', self.I, 0)
-        out += nullable('J', self.J, 0)
-        out += nullable('K', self.K, 0)
-        
-        if out != '': out = f'G{self.dir}' + out
-        
-        return out
-
-
-    def to_dict(self):
-        return {'I': self.I, 'J': self.J, 'K': self.K, 'dir': self.dir, 'move': self.move.to_dict()}
-
-
-    def copy(self):
-        """Create a deep copy of this Arc instance."""
-        return Arc(self.move.copy(), self.dir, Vector(self.I, self.J, self.K))
-
-
-    def __eq__(self, other: object) -> bool:
-        """
-        Comparison disabled for Arc, to not trim repeated Arc moves
-        """
-        return False
-
-
 
 class Block:
     
-    def __init__(self, move: Move|Arc, command: str | None = None, emit_command = True, meta: dict = {}):
+    def __init__(self, move: Move, command: str | None = None, emit_command = True, meta: dict = {}):
         
         self.move = move.copy()
         self.command = command
