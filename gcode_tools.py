@@ -270,8 +270,25 @@ class GcodeTools:
 
 
 
-    # TODO: regenerate_travels: trim travel moves, join with travel gcode (fixed for now)
+    # TODO: regenerate_travels:
     # - ensure clean travel trimming
     # - ensure same absolute extrusion after trimming
+    # FIXME: correct travel begin/end
     def regenerate_travels(gcode: BlockList):
-        raise NotImplementedError()
+        
+        out_gcode = gcode.new()
+        past_item = None
+        for item in gcode:
+            if item.meta["object"] == None:
+                if past_item is None:
+                    out_gcode.g_add('G10', meta=item.meta)
+                    past_item = item
+            else:
+                if past_item is not None:
+                    out_gcode.append(past_item.copy())
+                    out_gcode.g_add('G11', meta=item.meta)
+                past_item = None
+                
+                out_gcode.append(item.copy())
+        return out_gcode
+

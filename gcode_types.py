@@ -473,7 +473,7 @@ class BlockList(list[Block]):
         return new
 
 
-    def g_add(self, gcode: Block|str, index: int = -1):
+    def g_add(self, gcode: Block|str, index: int = -1, meta: list|None=None):
         """Appends gcode block to Gcode.\n\ngcode: Block or gcode str.\n\ndefault index -1: append to the end"""
         
         idx = index if index < len(self) else -1
@@ -488,7 +488,7 @@ class BlockList(list[Block]):
                 else:
                     move = self[-1].move
             
-            gcode_obj = Block(move.copy(), gcode)
+            gcode_obj = Block(move.copy(), gcode, meta=meta)
         else:
             gcode_obj = gcode
         if idx == -1:
