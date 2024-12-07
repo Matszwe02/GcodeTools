@@ -399,9 +399,9 @@ class Arc:
         if step is None: step = self.move.config.step
         
         center = self.ijk + self.move.position.xyz()
-        radius = math.sqrt((self.I or 0)**2 + (self.J or 0)**2)
+        radius = math.sqrt((self.ijk.X or 0)**2 + (self.ijk.Y or 0)**2)
 
-        start_angle = math.atan2(-(self.J or 0), -(self.I or 0))
+        start_angle = math.atan2(-(self.ijk.Y or 0), -(self.ijk.X or 0))
         end_angle = math.atan2(next.position.Y - center.Y, next.position.X - center.X)
 
         if self.dir == 3:
