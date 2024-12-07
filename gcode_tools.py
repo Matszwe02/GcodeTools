@@ -12,13 +12,13 @@ from gcode_class import Gcode
 
 class Keywords:
     """
-    Each keyword is a list of possible commands. Each command is treated as a prefix, so G1 will match any move command, etc.
+    Each `keyword` is a list of possible commands. Each `command` is treated as a prefix, so G1 will match any move command, etc.
     """
 
     class KW:
         def __init__(self, command: str, allow_command = None, block_command = None, offset = 0):
             """
-            Offset = -1: offset at allow_command
+            `Offset` = -1: offset at `allow_command`
             """
             self.command = command
             self.allow_command = allow_command
@@ -206,7 +206,7 @@ class GcodeTools:
 
     def split(gcode: BlockList) -> tuple[BlockList, BlockList, BlockList, dict[BlockList]]:
         """
-        returns (start_gcode: BlockList, end_gcode: BlockList, object_gcode: BlockList, objects: dict[BlockList])
+        returns (`start_gcode`: BlockList, `end_gcode`: BlockList, `object_gcode`: BlockList, `objects`: dict[BlockList])
         """
         object_gcode = gcode.new()
         start_gcode = gcode.new()
@@ -282,7 +282,7 @@ class GcodeTools:
             if item.meta["object"] == None:
                 if past_item is None:
                     out_gcode.g_add('G10', meta=item.meta)
-                    past_item = item
+                past_item = item
             else:
                 if past_item is not None:
                     out_gcode.append(past_item.copy())

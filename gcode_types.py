@@ -75,13 +75,13 @@ class Vector:
 
     def vector_op(self, other, operation = lambda x, y: x + y, on_a_none: any = 'b', on_b_none: any = 'a', on_none = None):
         """
-        Returns a new Vector object, does not affect self or other
+        Returns a new `Vector` object, does not affect `self` or `other`
         
-        operation: lambda
+        `operation`: lambda
         
-        on_a_none, on_b_none: any to skip None checking ; 'a', 'b', None, float to return
+        `on_a_none`, `on_b_none`: `any` to skip None checking ; `'a'`, `'b'`, `None`, `float` to return
         
-        on_none: number|None
+        `on_none`: number|None
         """
         
         def nullable_op(a: float | None, b: float | None):
@@ -122,7 +122,7 @@ class Vector:
 
 
     def valid(self, other):
-        """Return Vector with non-null dimensions from other Vector"""
+        """Return `Vector` with non-null dimensions from `other` vector"""
         valid = lambda a, b: a
         return self.vector_op(other, valid, on_a_none=None, on_b_none=None)
 
@@ -136,7 +136,7 @@ class Vector:
 
 
     def add(self, other):
-        """Adds Vector's dimensions to other's that are not None"""
+        """Adds `Vector`'s dimensions to `other`'s that are not None"""
         if type(other) is not Vector: raise TypeError(f'You can only add Vector to Vector, not {type(other)}')
         add_op = lambda a, b: a + b
         new_vec = self.vector_op(other, add_op, None, 'a')
@@ -144,7 +144,7 @@ class Vector:
 
 
     def set(self, other):
-        """Sets Vector's dimensions to other's that are not None"""
+        """Sets `Vector`'s dimensions to `other`'s that are not None"""
         if type(other) is not Vector: raise TypeError(f'You can only set Vector to Vector, not {type(other)}')
         if other.X is not None: self.X = other.X
         if other.Y is not None: self.Y = other.Y
@@ -371,7 +371,13 @@ class Move:
 class Arc:
     
     def __init__(self, move = Move(), dir = 0, ijk = Vector()):
-        """direction 2=CW, 3=CCW"""
+        """
+        `direction` 2=CW, 3=CCW
+        
+        `move` is the start position of the arc. End position is to be supplied in `subdivide`.
+        
+        It is not possible to perform any operations on arc moves, only subdivision is possible.
+        """
         self.move = move
         self.dir = dir
         self.ijk = ijk.copy()
@@ -472,7 +478,7 @@ class BlockList(list[Block]):
 
 
     def g_add(self, gcode: Block|str, index: int = -1, meta: list|None=None):
-        """Appends gcode block to Gcode.\n\ngcode: Block or gcode str.\n\ndefault index -1: append to the end"""
+        """Appends gcode block to Gcode.\n\n`gcode`: Block or gcode str.\n\ndefault `index` -1: append to the end"""
         
         idx = index if index < len(self) else -1
         

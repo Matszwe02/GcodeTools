@@ -6,13 +6,6 @@ import re
 
 class Gcode:
 
-    def empty():
-        """
-        Returns empty G-Code object
-        """
-        return BlockList()
-
-
     def from_str(gcode_str):
         return Gcode.generate_moves(gcode_str)
     
@@ -26,9 +19,9 @@ class Gcode:
         """
         Write G-Code as a string
         
-        gcode: BlockList
+        `gcode`: BlockList
         
-        verbose: include Block's metadata for each line.
+        `verbose`: include Block's metadata for each line.
         Includes object name, line type, layer number, etc.
         Warning: takes up much more time and space
         """
@@ -70,11 +63,11 @@ class Gcode:
         """
         Write G-Code as a string
         
-        gcode: BlockList
+        `gcode`: BlockList
         
-        filename: str of output path
+        `filename`: str of output path
         
-        verbose: include Block's metadata for each line. Warning: takes up much more time and space
+        `verbose`: include Block's metadata for each line. Warning: takes up much more time and space
         """
         gcode_str = Gcode.write_str(gcode, verbose = verbose)
         with open(filename, 'w') as f:
