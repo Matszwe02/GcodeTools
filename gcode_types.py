@@ -374,15 +374,13 @@ class Arc:
         """direction 2=CW, 3=CCW"""
         self.move = move
         self.dir = dir
-        self.I = ijk.X
-        self.J = ijk.Y
-        self.K = ijk.Z
+        self.ijk = ijk.copy()
 
 
     def from_params(self, params: dict[str, str]):
-        self.I = float_nullable(params.get('I', self.I))
-        self.J = float_nullable(params.get('J', self.J))
-        self.K = float_nullable(params.get('K', self.K))
+        self.ijk.X = float_nullable(params.get('I', self.ijk.X))
+        self.ijk.Y = float_nullable(params.get('J', self.ijk.Y))
+        self.ijk.Z = float_nullable(params.get('K', self.ijk.Z))
         if params.get('R', None) is not None: raise NotImplementedError('"R" arc moves are not supported!')
         
         if params['0'] == 'G2': self.dir=2
@@ -391,14 +389,14 @@ class Arc:
         return self
 
 
-    def subdivide(self, prev: Move, step=None) -> list[Move]:
+    def subdivide(self, next: Move, step=None) -> list[Move]:
         if step is None: step = self.move.config.step
         
-        center = Vector(self.I, self.J, self.K) + prev.position.xyz()
+        center = self.ijk + self.move.position.xyz()
         radius = math.sqrt((self.I or 0)**2 + (self.J or 0)**2)
 
         start_angle = math.atan2(-(self.J or 0), -(self.I or 0))
-        end_angle = math.atan2(self.move.position.Y - center.Y, self.move.position.X - center.X)
+        end_angle = math.atan2(next.position.Y - center.Y, next.position.X - center.X)
 
         if self.dir == 3:
             if end_angle < start_angle:
@@ -420,8 +418,8 @@ class Arc:
             x = center.X + radius * math.cos(angle)
             y = center.Y + radius * math.sin(angle)
 
-            z = prev.position.Z + t * (self.move.position.Z - prev.position.Z)
-            e = (self.move.position.E - prev.position.E) / num_steps + prev.position.E
+            z = self.move.position.Z + t * (next.position.Z - self.move.position.Z)
+            e = (next.position.E - self.move.position.E) / num_steps + self.move.position.E
 
             new_move = Move(self.move.config, Vector(x, y, z, e), self.move.speed)
             moves.append(new_move)
