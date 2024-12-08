@@ -6,7 +6,7 @@ import time
 import math
 from tqdm import tqdm
 from gcode_types import *
-from gcode_class import Gcode
+from gcode_class import *
 
 
 
@@ -47,7 +47,7 @@ class Keywords:
     # TODO: travel trimming, recalculation, preserve last travel vector at object
     
     
-    def get_keyword_arg(line_no: int, blocks: BlockList, keyword: list[KW], seek_limit = 20):
+    def get_keyword_arg(line_no: int, gcode: Gcode, keyword: list[KW], seek_limit = 20):
         
         pass
     
@@ -57,26 +57,26 @@ class Keywords:
             for option in keyword:
                 if option.offset != offset and option.offset != -1:
                     continue
-                if blocks[line].command.startswith(option.command):
+                if gcode[line].command.startswith(option.command):
                     
                     if option.allow_command is None and option.block_command is None:
-                            return blocks[line].command.removeprefix(option.command)
+                            return gcode[line].command.removeprefix(option.command)
                     
-                    for id, nextline in enumerate(blocks[line + 1 : line + seek_limit]):
+                    for id, nextline in enumerate(gcode[line + 1 : line + seek_limit]):
                         if option.block_command is not None and nextline.command.startswith(option.block_command):
                             return None
                         if option.allow_command is not None and nextline.command.startswith(option.allow_command):
                             if option.offset == offset or (option.offset == -1 and offset == id):
-                                return blocks[line].command.removeprefix(option.command)
+                                return gcode[line].command.removeprefix(option.command)
                             
                     if option.allow_command is None:
-                            return blocks[line].command.removeprefix(option.command)
+                            return gcode[line].command.removeprefix(option.command)
                 
         return None
 
 
-    def get_keyword_line(line_no: int, blocks: BlockList, keyword: list[KW], seek_limit = 20) -> bool:
-        expr = Keywords.get_keyword_arg(line_no, blocks, keyword, seek_limit)
+    def get_keyword_line(line_no: int, gcode: Gcode, keyword: list[KW], seek_limit = 20) -> bool:
+        expr = Keywords.get_keyword_arg(line_no, gcode, keyword, seek_limit)
         return expr is not None
 
 
@@ -131,7 +131,7 @@ class MoveTypes:
             if test in string: return type_assign[test]
         return None
     
-    def get_object(id: int, gcode: BlockList):
+    def get_object(id: int, gcode: Gcode):
         
         def sanitize(name: str):
             return ''.join(c if c.isalnum() else '_' for c in name).strip('_')
@@ -150,7 +150,7 @@ class MoveTypes:
 
 class GcodeTools:
 
-    def read_config(gcode: BlockList):
+    def read_config(gcode: Gcode):
         metadata = {}
         start_id, end_id = -1, -1
         for id, block in enumerate(gcode):
@@ -169,8 +169,8 @@ class GcodeTools:
         return metadata
 
 
-    def fill_meta(gcode: BlockList):
-        new_gcode = BlockList()
+    def fill_meta(gcode: Gcode):
+        new_gcode = Gcode()
         meta = {'object': None, 'type': None, 'layer': 0.0, 'line': 0}
         was_start = False
         for id, block in tqdm(enumerate(gcode), desc="Analising G-code", unit="line", total=len(gcode)):
@@ -204,14 +204,14 @@ class GcodeTools:
         return new_gcode
 
 
-    def split(gcode: BlockList) -> tuple[BlockList, BlockList, BlockList, dict[BlockList]]:
+    def split(gcode: Gcode) -> tuple[Gcode, Gcode, Gcode, dict[Gcode]]:
         """
-        returns (`start_gcode`: BlockList, `end_gcode`: BlockList, `object_gcode`: BlockList, `objects`: dict[BlockList])
+        returns (`start_gcode`: Gcode, `end_gcode`: Gcode, `object_gcode`: Gcode, `objects`: dict[Gcode])
         """
         object_gcode = gcode.new()
         start_gcode = gcode.new()
         end_gcode = gcode.new()
-        objects: dict[BlockList] = {}
+        objects: dict[Gcode] = {}
         
         for block in gcode:
             
@@ -231,7 +231,7 @@ class GcodeTools:
         return (start_gcode, end_gcode, object_gcode, objects)
 
 
-    def trim(gcode: BlockList):
+    def trim(gcode: Gcode):
         """
         Trims G-code from every command that's not handled by GcodeTools.
         
@@ -251,7 +251,7 @@ class GcodeTools:
     
     
     
-    def get_bounding_cube(gcode: BlockList) -> tuple[Vector, Vector]:
+    def get_bounding_cube(gcode: Gcode) -> tuple[Vector, Vector]:
         """
         Get bounding cube of gcode. Returns a tuple of (low_corner, high_corner)
         """
@@ -274,7 +274,7 @@ class GcodeTools:
     # - ensure clean travel trimming
     # - ensure same absolute extrusion after trimming
     # FIXME: correct travel begin/end
-    def regenerate_travels(gcode: BlockList):
+    def regenerate_travels(gcode: Gcode):
         
         out_gcode = gcode.new()
         past_item = None

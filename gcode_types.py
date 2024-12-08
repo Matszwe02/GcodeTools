@@ -468,7 +468,7 @@ class Block:
 
 
 
-class BlockList(list[Block]):
+class Gcode(list[Block]):
     
     def __init__(self):
         self.config = Config()
@@ -482,7 +482,7 @@ class BlockList(list[Block]):
         """
         Create an empty G-code list with self's config
         """
-        new = BlockList()
+        new = Gcode()
         new.config = self.config
         return new
 
@@ -509,8 +509,4 @@ class BlockList(list[Block]):
             self.append(gcode_obj)
             return
         self.insert(index, gcode_obj)
-
-
-    # def to_dict(self):
-    #     return [block.to_dict() for block in self]
 

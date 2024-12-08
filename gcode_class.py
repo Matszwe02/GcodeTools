@@ -4,22 +4,22 @@ import re
 
 
 
-class Gcode:
+class GcodeLoader:
 
     def from_str(gcode_str):
-        return Gcode.generate_moves(gcode_str)
+        return GcodeLoader.generate_moves(gcode_str)
     
     
     def from_file(filename: str):
         with open(filename, 'r') as f:
-            return Gcode.from_str(f.read())
+            return GcodeLoader.from_str(f.read())
 
 
-    def write_str(gcode: BlockList, verbose = False):
+    def write_str(gcode: Gcode, verbose = False):
         """
         Write G-Code as a string
         
-        `gcode`: BlockList
+        `gcode`: Gcode
         
         `verbose`: include Block's metadata for each line.
         Includes object name, line type, layer number, etc.
@@ -55,17 +55,17 @@ class Gcode:
         return out_str
 
 
-    def write_file(gcode: BlockList, filename: str, verbose = False):
+    def write_file(gcode: Gcode, filename: str, verbose = False):
         """
         Write G-Code as a string
         
-        `gcode`: BlockList
+        `gcode`: Gcode
         
         `filename`: str of output path
         
         `verbose`: include Block's metadata for each line. Warning: takes up much more time and space
         """
-        gcode_str = Gcode.write_str(gcode, verbose = verbose)
+        gcode_str = GcodeLoader.write_str(gcode, verbose = verbose)
         with open(filename, 'w') as f:
             f.write(gcode_str)
     
@@ -102,7 +102,7 @@ class Gcode:
 
     def generate_moves(gcode_str: str, config = Config()):
 
-        blocks = BlockList()
+        blocks = Gcode()
         blocks.config = config
         coord_system = CoordSystem(speed = blocks.config.speed)
         move = Move(blocks.config, coord_system.position)
@@ -113,7 +113,7 @@ class Gcode:
             arc = None
             emit_command = False
             
-            line_dict: dict = Gcode.line_to_dict(line)
+            line_dict: dict = GcodeLoader.line_to_dict(line)
             command = line_dict['0']
             
             if command in ['G0', 'G1', 'G2', 'G3']:
