@@ -292,20 +292,24 @@ class Move:
 
 
     def distance(self, prev):
-        if not isinstance(prev, Move): prev = Move(self.config)
+        if not isinstance(prev, Move) and not isinstance(prev, Vector): prev = Move(self.config)
+        if isinstance(prev, Move): prev = prev.position
         distance = lambda x, y: x - y
-        return self.position.vector_op(prev.position, distance, on_a_none=0, on_b_none=0, on_none=0)
+        return self.position.vector_op(prev, distance, on_a_none=0, on_b_none=0, on_none=0)
 
 
-    def float_distance(self, distance: Vector):
-        return math.sqrt(distance.X^2 + distance.Y^2 + distance.Z^2)
+    def float_distance(self, distance: Vector=None, prev=None):
+        if isinstance(distance, Vector):
+            return math.sqrt(math.pow(distance.X or 0, 2) + math.pow(distance.Y or 0, 2) + math.pow(distance.Z or 0, 2))
+        if isinstance(prev, Vector) or isinstance(prev, Move):
+            return self.float_distance(distance = self.distance(prev))
+        raise AttributeError
 
 
     def subdivide(self, prev, step = None) -> list[Vector]:
         if not isinstance(prev, Move): prev = Move(self.config)
         if step is None: step = self.config.step
-        dist_pos = self.distance()
-        dist = self.float_distance(dist_pos)
+        dist = self.float_distance(prev = prev)
         pos_list = []
         if dist <= step: return [self]
         stop = round(dist / step)
@@ -315,23 +319,29 @@ class Move:
         return pos_list
 
 
-    def get_flowrate(self):
+    def get_flowrate(self, prev):
         """Returns flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement"""
-        dist_vec = self.distance()
-        distance = self.float_distance(dist_vec)
+        if not isinstance(prev, Move): return None
+        distance = self.float_distance(prev = prev)
         if distance < self.config.step: return None
-        return dist_vec.e() / distance
+        return (self.position.E - prev.position.E) / distance
 
 
     def set_flowrate(self, prev, flowrate: float):
-        if not isinstance(prev, Move): prev = Move(self.config)
         """Sets flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement, otherwise returns E mm"""
-        dist_vec = self.distance()
-        distance = self.float_distance(dist_vec)
+        if not isinstance(prev, Move): prev = Move(self.config)
+        distance = self.float_distance(prev = prev)
         if distance < self.config.step: return None
         flow = distance * flowrate
         self.position.E = prev.position.E + flow
         return flow
+
+
+    def duration(self, prev):
+        if not isinstance(prev, Move): return 0.0
+        dist = self.float_distance(prev = prev)
+        if dist == 0: dist = abs(self.position.E) or 0
+        return dist * 60 / self.config.speed
 
 
     def to_str(self, prev):

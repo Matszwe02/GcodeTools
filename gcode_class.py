@@ -37,18 +37,12 @@ class Gcode:
             command = block.command
             line_str = ''
             
-            
-            
-            if isinstance(block.move, Move):
-                line_str += block.move.to_str(last_move)
-                last_move = block.move.copy()
-            elif isinstance(block.move, Arc):
-                line_str += block.move.to_str(last_move)
-                last_move = block.move.move.copy()
+            line_str += block.move.to_str(last_move)
             
             if line_str != '':
                 if verbose and block.meta is not None:
                     params_str = json.dumps(block.meta).replace("{", "").replace("}", "").replace(" ", "").replace('"', "").replace(',', '\n; ')
+                    line_str += f'\n; duration:{block.move.duration(last_move):.2f}'
                     line_str += f'\n; {params_str}'
                 line_str += '\n'
             
@@ -56,6 +50,8 @@ class Gcode:
                 line_str += command + '\n'
             
             out_str += line_str
+            last_move = block.move.copy()
+            
         return out_str
 
 
