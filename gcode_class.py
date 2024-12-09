@@ -25,7 +25,7 @@ class GcodeLoader:
         Includes object name, line type, layer number, etc.
         Warning: takes up much more time and space
         """
-        last_move = None
+        last_block = Block(Move())
         coords = CoordSystem()
         coords.abs_e = False
         out_str = coords.to_str()
@@ -34,23 +34,27 @@ class GcodeLoader:
 
         for block in tqdm(gcode, desc="Writing G-code", unit="line"):
             i += 1
+            
             command = block.command
             line_str = ''
             
-            line_str += block.move.to_str(last_move)
+            line_str += block.block_data.to_str(last_block.block_data)
+            line_str += block.move.to_str(last_block.move)
             
             if line_str != '':
                 if verbose and block.meta is not None:
-                    params_str = json.dumps(block.meta).replace("{", "").replace("}", "").replace(" ", "").replace('"', "").replace(',', '\n; ')
-                    line_str += f'\n; duration:{block.move.duration(last_move):.2f}'
-                    line_str += f'\n; {params_str}'
+                    params_str = json.dumps(block.meta).replace("{", "").replace("}", "").replace(" ", "").replace('"', "").replace(',', ' ')
+                    data_str = json.dumps(block.block_data.to_dict()).replace("{", "").replace("}", "").replace(" ", "").replace('"', "").replace(',', ' ')
+                    line_str += f'\n; duration:{block.move.duration(last_block.move):.3f}s'
+                    line_str += f', {params_str}'
+                    line_str += f', {data_str}'
                 line_str += '\n'
             
             if block.emit_command:
                 line_str += command + '\n'
             
             out_str += line_str
-            last_move = block.move.copy()
+            last_block = block.copy()
             
         return out_str
 
@@ -93,19 +97,26 @@ class GcodeLoader:
         for param in line_parts[1:]:
             if '=' in param:
                 key, value = param.split('=')
-                params[key] = value
+                try:
+                    params[key] = int(value)
+                except Exception:
+                    params[key] = value
             else:
-                params[param[0]] = param[1:]
+                try:
+                    params[param[0]] = int(param[1:])
+                except Exception:
+                    params[param[0]] = param[1:]
 
         return params
 
 
     def generate_moves(gcode_str: str, config = Config()):
 
-        blocks = Gcode()
-        blocks.config = config
-        coord_system = CoordSystem(speed = blocks.config.speed)
-        move = Move(blocks.config, coord_system.position)
+        gcode = Gcode()
+        gcode.config = config
+        coord_system = CoordSystem(speed = gcode.config.speed)
+        move = Move(gcode.config, coord_system.position)
+        data = BlockData.zero()
         
         gcode_lines = list(filter(str.strip, gcode_str.split('\n')))
         for line in tqdm(gcode_lines, 'Generating moves', unit='line'):
@@ -113,8 +124,10 @@ class GcodeLoader:
             arc = None
             emit_command = False
             
+            data.clear_wait()
+            
             line_dict: dict = GcodeLoader.line_to_dict(line)
-            command = line_dict['0']
+            command: str = line_dict['0']
             
             if command in ['G0', 'G1', 'G2', 'G3']:
                 if command in ['G2', 'G3']:
@@ -134,10 +147,19 @@ class GcodeLoader:
                 coord_system.set_offset(vec)
             
             elif command == Static.FAN_SPEED:
-                coord_system.set_fan(line_dict.get('S', None))
+                data.set_fan(line_dict.get('S', None))
             
             elif command == Static.FAN_OFF:
-                coord_system.fan = 0
+                data.set_fan(0)
+            
+            elif command == Static.E_TEMP or command == Static.E_TEMP_WAIT:
+                data.set_e_temp(line_dict.get('S', None), (command == Static.E_TEMP_WAIT))
+            
+            elif command == Static.BED_TEMP or command == Static.BED_TEMP_WAIT:
+                data.set_bed_temp(line_dict.get('S', None), (command == Static.BED_TEMP_WAIT))
+            
+            elif command.startswith(Static.TOOL_CHANGE) and command[1:].isdigit():
+                data.set_tool(int(command[1:]))
             
             elif command in Static.ARC_PLANES.keys():
                 coord_system.arc_plane = Static.ARC_PLANES[command]
@@ -148,13 +170,11 @@ class GcodeLoader:
             command = line.strip()
             
             if arc is not None:
-                for section in arc.subdivide(move, 1):
-                    gcode_block = Block(section.copy(), command=line, emit_command=emit_command)
-                    blocks.append(gcode_block)
-                    command = None
-                    
+                for section in arc.subdivide(move, 1): # TODO: improve default step size
+                    block = Block(section, line, emit_command, data.copy(), {})
+                    gcode.append(block)
+            
             else:
-                gcode_block = Block(move.copy(), command=line, emit_command=emit_command)
-                blocks.append(gcode_block)
-        
-        return blocks
+                block = Block(move, line, emit_command, data.copy(), {})
+                gcode.append(block)
+        return gcode

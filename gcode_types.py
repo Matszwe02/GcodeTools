@@ -38,13 +38,22 @@ class Static:
 
     FAN_SPEED = 'M106'
     FAN_OFF = 'M107'
-
+    E_TEMP = 'M104'
+    BED_TEMP = 'M140'
+    E_TEMP_WAIT = 'M104'
+    BED_TEMP_WAIT = 'M140'
+    TOOL_CHANGE = 'T'
 
     ABSOLUTE_COORDS_DESC = 'G90; Absolute Coordinates'
     RELATIVE_COORDS_DESC = 'G91; Relative Coordinates'
     ABSOLUTE_EXTRUDER_DESC = 'M82; Absolute Extruder'
     RELATIVE_EXTRUDER_DESC = 'M83; Relative Extruder'
+    E_TEMP_DESC = 'M104 S{0}; Set Extruder Temperature'
+    BED_TEMP_DESC = 'M140 S{0}; Set Bed Temperature'
+    E_TEMP_WAIT_DESC = 'M109 S{0}; Set Extruder Temperature and Wait'
+    BED_TEMP_WAIT_DESC = 'M190 S{0}; Set Bed Temperature and Wait'
     FAN_SPEED_DESC = 'M106 S{0}; Set Fan Speed'
+    TOOL_CHANGE_DESC = 'T{0}; Change Tool'
     
     ARC_PLANES_DESC = {17: 'G17; Arc Plane XY', 18: 'G18; Arc Plane XZ', 19: 'G19; Arc Plane YZ'}
 
@@ -172,7 +181,7 @@ class Vector:
 
 
 class CoordSystem:
-    def __init__(self, abs_xyz = True, abs_e = True, speed = None, arc_plane = Static.ARC_PLANES['XY'], position = Vector.zero(), offset = Vector.zero(), fan = 0):
+    def __init__(self, abs_xyz = True, abs_e = True, speed = None, arc_plane = Static.ARC_PLANES['XY'], position = Vector.zero(), offset = Vector.zero()):
         if speed is None:
             print('Warning: speed parameter is unset! Defaultnig to 1200 mm/min')
             speed = 1200
@@ -183,7 +192,6 @@ class CoordSystem:
         self.arc_plane = arc_plane
         self.position = position
         self.offset = offset
-        self.fan = fan
 
 
     def set_abs_xyz(self, abs_xyz=None):
@@ -193,10 +201,6 @@ class CoordSystem:
     def set_abs_e(self, abs_e=None):
         if abs_e is not None:
             self.abs_e = abs_e
-    
-    def set_fan(self, fan):
-        if fan is not None:
-            self.fan = int(float(fan))
     
     def set_arc_plane(self, plane=None):
         if plane is not None:
@@ -234,26 +238,23 @@ class CoordSystem:
                 out = (Static.ABSOLUTE_COORDS_DESC if self.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n' + out
             if last_coords.abs_e != self.abs_e:
                 out = (Static.ABSOLUTE_EXTRUDER_DESC if self.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + out
-            if last_coords.fan != self.fan:
-                out = Static.FAN_SPEED_DESC.format(self.fan) + '\n' + out
             if last_coords.arc_plane != self.arc_plane:
                 out = Static.ARC_PLANES_DESC[self.arc_plane] + '\n' + out
         
         else:
             out = (Static.ABSOLUTE_COORDS_DESC if self.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n' + out
             out = (Static.ABSOLUTE_EXTRUDER_DESC if self.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + out
-            out = Static.FAN_SPEED_DESC.format(self.fan) + '\n' + out
             out = Static.ARC_PLANES_DESC[self.arc_plane] + '\n' + out
         
         return out
 
 
     def to_dict(self):
-        return {'abs_xyz' : self.abs_xyz, "abs_e" : self.abs_e, "speed" : self.speed, "position": self.position, "offset": self.offset, "fan": self.fan}
+        return {'abs_xyz' : self.abs_xyz, "abs_e" : self.abs_e, "speed" : self.speed, "position": self.position, "offset": self.offset}
 
 
     def copy(self):
-        return CoordSystem(self.abs_xyz, self.abs_e, self.speed, self.arc_plane, self.position.copy(), self.offset.copy(), self.fan)
+        return CoordSystem(self.abs_xyz, self.abs_e, self.speed, self.arc_plane, self.position.copy(), self.offset.copy())
 
 
 
@@ -444,18 +445,95 @@ class Arc:
 
 
 
+class BlockData:
+    
+    def zero():
+        return BlockData(0, False, 0, False, 0, 0)
+
+
+    def __init__(self, e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None):
+        
+        self.e_temp = e_temp
+        self.e_wait = e_wait
+        self.bed_temp = bed_temp
+        self.bed_wait = bed_wait
+        self.fan = fan
+        self.T = T
+    
+    
+    def set_fan(self, fan: int):
+        """
+        Set fan with index to desired speed.
+        
+        `fan` - speed in range 0..255
+        
+        `index` - fan number, default 0
+        """
+        
+        if type(fan) == int and fan in range(256):
+            self.fan = fan
+
+
+    def set_e_temp(self, temp: int, wait=False):
+        if temp is not None:
+            self.e_temp = temp
+        self.e_wait = wait
+
+
+    def set_bed_temp(self, temp: int, wait=False):
+        if temp is not None:
+            self.bed_temp = temp
+        self.bed_wait = wait
+
+
+    def clear_wait(self):
+        self.e_wait = False
+        self.bed_wait = False
+
+
+    def set_tool(self, tool: int):
+        if tool is not None and tool in range(10):
+            self.T = tool
+
+
+    def to_str(self, prev):
+        if not isinstance(prev, BlockData):
+            prev = BlockData()
+        
+        out = ''
+        if self.e_temp != prev.e_temp and self.e_temp is not None:
+            out += f'{Static.E_TEMP_DESC.format(self.e_temp)}\n'
+        if self.bed_temp != prev.bed_temp and self.bed_temp is not None:
+            out += f'{Static.BED_TEMP_DESC.format(self.bed_temp)}\n'
+        if self.fan != prev.fan and self.fan is not None:
+            out += f'{Static.FAN_SPEED_DESC.format(self.fan)}\n'
+        
+        return out
+
+
+    def to_dict(self):
+        return {
+                'e_temp': self.e_temp,
+                'bed_temp': self.bed_temp,
+                'fan': self.fan,
+                'T': self.T
+            }
+
+
+    def copy(self):
+        return BlockData(self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T)
+
+
+
 class Block:
     
-    def __init__(self, move: Move, command: str | None = None, emit_command = True, meta: dict = {}):
+    def __init__(self, move: Move, command: str | None = None, emit_command = True, block_data = BlockData(), meta: dict = {}):
         
         self.move = move.copy()
         self.command = command
         self.emit_command = emit_command
+        self.block_data = block_data.copy()
         self.meta: dict = json.loads(json.dumps(meta))
-
-
-    def copy(self):
-        return Block(move = self.move.copy(), command=self.command, emit_command=self.emit_command, meta=self.meta.copy())
 
 
     def to_dict(self):
@@ -463,8 +541,13 @@ class Block:
                 'command': self.command,
                 'move': self.move.__dict__,
                 'emit_command': self.emit_command,
+                'data': self.block_data,
                 'meta': self.meta
             }
+
+
+    def copy(self):
+        return Block(self.move, self.command, self.emit_command, self.block_data, self.meta)
 
 
 
@@ -487,22 +570,29 @@ class Gcode(list[Block]):
         return new
 
 
-    def g_add(self, gcode: Block|str, index: int = -1, meta: list|None=None):
+    def g_add(self, gcode: Block|str, index: int = -1, data:BlockData|None=None, meta: dict|None=None):
         """Appends gcode block to Gcode.\n\n`gcode`: Block or gcode str.\n\ndefault `index` -1: append to the end"""
         
         idx = index if index < len(self) else -1
         
         if type(gcode) == str:
-            if len(self) == 0: move = Move()
+            if len(self) == 0:
+                move = Move()
+                if data is None: data = BlockData()
+                if meta is None: meta = {}
             else:
+                last_index = -1
                 if idx > 0:
-                    move = self[idx - 1].move
+                    last_index = idx-1
                 elif idx == 0:
-                    move = self[0].move
-                else:
-                    move = self[-1].move
+                    last_index = 0
+                
+                move = self[last_index].move
+                if data is None: data = self[last_index].block_data
+                if meta is None: meta = self[last_index].meta
             
-            gcode_obj = Block(move.copy(), gcode, meta=meta)
+            gcode_obj = Block(move, gcode, True, data, meta)
+            
         else:
             gcode_obj = gcode
         if idx == -1:

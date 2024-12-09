@@ -198,7 +198,7 @@ class GcodeTools:
                 meta['type'] = MoveTypes.PRINT_END
             
             new_block = block.copy()
-            new_block.meta = meta.copy()
+            new_block.meta = json.loads(json.dumps(meta))
             new_gcode.append(new_block)
             
         return new_gcode
@@ -281,12 +281,12 @@ class GcodeTools:
         for item in gcode:
             if item.meta["object"] == None:
                 if past_item is None:
-                    out_gcode.g_add('G10', meta=item.meta)
+                    out_gcode.g_add('G10; retract')
                 past_item = item
             else:
                 if past_item is not None:
                     out_gcode.append(past_item.copy())
-                    out_gcode.g_add('G11', meta=item.meta)
+                    out_gcode.g_add('G11; unretract')
                 past_item = None
                 
                 out_gcode.append(item.copy())
