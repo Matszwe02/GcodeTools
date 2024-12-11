@@ -6,7 +6,7 @@ import time
 import math
 from tqdm import tqdm
 from gcode_types import *
-from gcode_class import *
+from gcode_loader import *
 
 
 meta_initial = {'object': None, 'type': None, 'layer': 0.0}
