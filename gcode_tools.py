@@ -9,6 +9,7 @@ from gcode_types import *
 from gcode_class import *
 
 
+meta_initial = {'object': None, 'type': None, 'layer': 0.0}
 
 class Keywords:
     """
@@ -171,12 +172,11 @@ class GcodeTools:
 
     def fill_meta(gcode: Gcode):
         new_gcode = Gcode()
-        meta = {'object': None, 'type': None, 'layer': 0.0, 'line': 0}
+        meta = meta_initial
         was_start = False
         for id, block in tqdm(enumerate(gcode), desc="Analising G-code", unit="line", total=len(gcode)):
             
             line = block.command
-            meta['line'] = id
             
             move_type = MoveTypes.get_type(line)
             if move_type is not None: meta['type'] = move_type
@@ -281,12 +281,12 @@ class GcodeTools:
         for item in gcode:
             if item.meta["object"] == None:
                 if past_item is None:
-                    out_gcode.g_add('G10; retract')
+                    out_gcode.g_add('G10; retract', meta_initial = meta_initial)
                 past_item = item
             else:
                 if past_item is not None:
                     out_gcode.append(past_item.copy())
-                    out_gcode.g_add('G11; unretract')
+                    out_gcode.g_add('G11; unretract', meta_initial = meta_initial)
                 past_item = None
                 
                 out_gcode.append(item.copy())

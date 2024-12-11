@@ -26,35 +26,16 @@ class GcodeLoader:
         Warning: takes up much more time and space
         """
         last_block = Block(Move())
-        coords = CoordSystem()
-        coords.abs_e = False
+        coords = CoordSystem(abs_e=False)
         out_str = coords.to_str()
-        i = 0
         
 
         for block in tqdm(gcode, desc="Writing G-code", unit="line"):
-            i += 1
             
-            command = block.command
-            line_str = ''
-            
-            line_str += block.block_data.to_str(last_block.block_data)
-            line_str += block.move.to_str(last_block.move)
-            
-            if line_str != '':
-                if verbose and block.meta is not None:
-                    params_str = json.dumps(block.meta).replace("{", "").replace("}", "").replace(" ", "").replace('"', "").replace(',', ' ')
-                    data_str = json.dumps(block.block_data.to_dict()).replace("{", "").replace("}", "").replace(" ", "").replace('"', "").replace(',', ' ')
-                    line_str += f'\n; duration:{block.move.duration(last_block.move):.3f}s'
-                    line_str += f', {params_str}'
-                    line_str += f', {data_str}'
-                line_str += '\n'
-            
-            if block.emit_command:
-                line_str += command + '\n'
+            line_str = block.to_str(last_block, verbose)
             
             out_str += line_str
-            last_block = block.copy()
+            last_block = block
             
         return out_str
 

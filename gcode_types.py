@@ -8,6 +8,12 @@ def float_nullable(input):
     return input
 
 
+def remove_chars(string: str, chars: str)->str:
+    outstr = string
+    for char in chars:
+        outstr = outstr.replace(char, '')
+    return outstr
+
 
 class Config:
     """G-Code configuration"""
@@ -235,16 +241,16 @@ class CoordSystem:
         
         if type(last_coords) == CoordSystem:
             if last_coords.abs_xyz != self.abs_xyz:
-                out = (Static.ABSOLUTE_COORDS_DESC if self.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n' + out
+                out += (Static.ABSOLUTE_COORDS_DESC if self.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n'
             if last_coords.abs_e != self.abs_e:
-                out = (Static.ABSOLUTE_EXTRUDER_DESC if self.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + out
+                out += (Static.ABSOLUTE_EXTRUDER_DESC if self.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n'
             if last_coords.arc_plane != self.arc_plane:
-                out = Static.ARC_PLANES_DESC[self.arc_plane] + '\n' + out
+                out += Static.ARC_PLANES_DESC[self.arc_plane] + '\n'
         
         else:
-            out = (Static.ABSOLUTE_COORDS_DESC if self.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n' + out
-            out = (Static.ABSOLUTE_EXTRUDER_DESC if self.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n' + out
-            out = Static.ARC_PLANES_DESC[self.arc_plane] + '\n' + out
+            out += (Static.ABSOLUTE_COORDS_DESC if self.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n'
+            out += (Static.ABSOLUTE_EXTRUDER_DESC if self.abs_e else Static.RELATIVE_EXTRUDER_DESC) + '\n'
+            out += Static.ARC_PLANES_DESC[self.arc_plane] + '\n'
         
         return out
 
@@ -341,7 +347,7 @@ class Move:
     def duration(self, prev):
         if not isinstance(prev, Move): return 0.0
         dist = self.float_distance(prev = prev)
-        if dist == 0: dist = abs(self.position.E) or 0
+        if dist == 0: dist = abs(self.position.E or 0)
         return dist * 60 / self.config.speed
 
 
@@ -357,7 +363,7 @@ class Move:
         if self.position.E != 0: out += nullable('E', self.position.E)
         if self.speed != prev.speed: out += nullable('F', self.speed)
         
-        if out != '': out = 'G1' + out
+        if out != '': out = 'G1' + out + '\n'
         
         return out
 
@@ -546,6 +552,28 @@ class Block:
             }
 
 
+    def to_str(self, prev, verbose=False):
+        
+        if not isinstance(prev, Block): prev = Block(Move())
+        
+        line_str = ''
+        
+        line_str += self.block_data.to_str(prev.block_data)
+        line_str += self.move.to_str(prev.move)
+        
+        if self.emit_command:
+            line_str += self.command + '\n'
+        
+        if line_str != '':
+            if verbose:
+                line_str += '; ' + remove_chars(json.dumps(self.block_data.to_dict()), '{} \"').replace(",", " ")
+                if self.meta is not None:
+                    line_str += ', ' + remove_chars(json.dumps(self.meta), '{} "').replace(",", " ")
+                line_str += f' duration:{self.move.duration(prev.move):.3f}s\n'
+        
+        return line_str
+
+
     def copy(self):
         return Block(self.move, self.command, self.emit_command, self.block_data, self.meta)
 
@@ -570,7 +598,7 @@ class Gcode(list[Block]):
         return new
 
 
-    def g_add(self, gcode: Block|str, index: int = -1, data:BlockData|None=None, meta: dict|None=None):
+    def g_add(self, gcode: Block|str, index: int = -1, data:BlockData|None=None, meta: dict|None=None, meta_initial: dict|None=None):
         """Appends gcode block to Gcode.\n\n`gcode`: Block or gcode str.\n\ndefault `index` -1: append to the end"""
         
         idx = index if index < len(self) else -1
@@ -579,7 +607,6 @@ class Gcode(list[Block]):
             if len(self) == 0:
                 move = Move()
                 if data is None: data = BlockData()
-                if meta is None: meta = {}
             else:
                 last_index = -1
                 if idx > 0:
@@ -591,6 +618,7 @@ class Gcode(list[Block]):
                 if data is None: data = self[last_index].block_data
                 if meta is None: meta = self[last_index].meta
             
+            if meta is None: meta = meta_initial
             gcode_obj = Block(move, gcode, True, data, meta)
             
         else:
