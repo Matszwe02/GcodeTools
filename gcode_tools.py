@@ -272,13 +272,13 @@ class GcodeTools:
 
     # TODO: regenerate_travels:
     # - ensure clean travel trimming
-    # - ensure same absolute extrusion after trimming
     # FIXME: correct travel begin/end
-    def regenerate_travels(gcode: Gcode):
+    def regenerate_travels(gcode: Gcode, move_speed = 0):
         
         out_gcode = gcode.new()
         past_item = None
         is_first = True
+        e_add = 0
         for item in gcode:
             if is_first:
                 out_gcode.append(item.copy())
@@ -289,11 +289,18 @@ class GcodeTools:
             if item.meta.get("object") == None:
                 if past_item is None:
                     out_gcode.g_add('G10; retract')
-                past_item = item
+                past_item = item.copy()
+                e_add += past_item.move.position.E
+                past_item.move.position.E = 0
             else:
                 if past_item is not None:
+                    if move_speed > 0:
+                        past_item.move.speed = move_speed
+                    out_gcode.append(past_item.copy())
+                    past_item.move.position.E = e_add
                     out_gcode.append(past_item.copy())
                     out_gcode.g_add('G11; unretract')
+                    e_add = 0
                 past_item = None
                 
                 out_gcode.append(item.copy())

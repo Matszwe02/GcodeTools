@@ -187,7 +187,7 @@ class Vector:
 
 
 class CoordSystem:
-    def __init__(self, abs_xyz = True, abs_e = True, speed = None, arc_plane = Static.ARC_PLANES['XY'], position = Vector.zero(), offset = Vector.zero()):
+    def __init__(self, abs_xyz = True, abs_e = True, speed = None, arc_plane = Static.ARC_PLANES['XY'], position = Vector.zero(), offset = Vector.zero(), abs_position_e = 0.0):
         if speed is None:
             print('Warning: speed parameter is unset! Defaultnig to 1200 mm/min')
             speed = 1200
@@ -198,6 +198,7 @@ class CoordSystem:
         self.arc_plane = arc_plane
         self.position = position
         self.offset = offset
+        self.abs_position_e = abs_position_e
 
 
     def set_abs_xyz(self, abs_xyz=None):
@@ -224,8 +225,9 @@ class CoordSystem:
             self.position.add(pos.xyz())
         
         if self.abs_e:
-            self.position.set(pos.e() - self.position.e())
-            self.position.add(self.offset.e().valid(pos))
+            if pos.E is not None:
+                self.position.E = (pos.E - self.abs_position_e)
+                self.abs_position_e = pos.E
         else:
             self.position.set(pos.e())
         
@@ -234,6 +236,8 @@ class CoordSystem:
 
     def set_offset(self, pos: Vector):
         self.offset.set((self.position - pos).valid(pos))
+        if self.abs_e:
+            self.abs_position_e += (self.offset.E or 0)
 
 
     def to_str(self, last_coords = None):
@@ -260,7 +264,7 @@ class CoordSystem:
 
 
     def copy(self):
-        return CoordSystem(self.abs_xyz, self.abs_e, self.speed, self.arc_plane, self.position.copy(), self.offset.copy())
+        return CoordSystem(self.abs_xyz, self.abs_e, self.speed, self.arc_plane, self.position.copy(), self.offset.copy(), self.abs_position_e)
 
 
 
@@ -513,6 +517,8 @@ class BlockData:
             out += f'{Static.BED_TEMP_DESC.format(self.bed_temp)}\n'
         if self.fan != prev.fan and self.fan is not None:
             out += f'{Static.FAN_SPEED_DESC.format(self.fan)}\n'
+        if self.T != prev.T and self.T is not None:
+            out += f'{Static.TOOL_CHANGE_DESC.format(self.T)}\n'
         
         return out
 
