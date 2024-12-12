@@ -278,7 +278,14 @@ class GcodeTools:
         
         out_gcode = gcode.new()
         past_item = None
+        is_first = True
         for item in gcode:
+            if is_first:
+                out_gcode.append(item.copy())
+                if item.meta.get("object") != None:
+                    is_first = False
+                continue
+            
             if item.meta.get("object") == None:
                 if past_item is None:
                     out_gcode.g_add('G10; retract')
@@ -290,5 +297,7 @@ class GcodeTools:
                 past_item = None
                 
                 out_gcode.append(item.copy())
+        if is_first:
+            print('Cannot regenerate travels: no objects present in metadata')
         return out_gcode
 
