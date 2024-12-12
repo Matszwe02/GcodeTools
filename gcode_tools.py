@@ -215,14 +215,14 @@ class GcodeTools:
         
         for block in gcode:
             
-            if block.meta['type'] == MoveTypes.PRINT_START:
+            if block.meta.get('type') == MoveTypes.PRINT_START:
                 start_gcode.append(block)
-            elif block.meta['type'] == MoveTypes.PRINT_END:
+            elif block.meta.get('type') == MoveTypes.PRINT_END:
                 end_gcode.append(block)
             else:
                 object_gcode.append(block)
             
-            object = block.meta['object']
+            object = block.meta.get('object')
             if object not in objects.keys():
                 objects[object] = gcode.new()
             
@@ -279,14 +279,14 @@ class GcodeTools:
         out_gcode = gcode.new()
         past_item = None
         for item in gcode:
-            if item.meta["object"] == None:
+            if item.meta.get("object") == None:
                 if past_item is None:
-                    out_gcode.g_add('G10; retract', meta_initial = meta_initial)
+                    out_gcode.g_add('G10; retract')
                 past_item = item
             else:
                 if past_item is not None:
                     out_gcode.append(past_item.copy())
-                    out_gcode.g_add('G11; unretract', meta_initial = meta_initial)
+                    out_gcode.g_add('G11; unretract')
                 past_item = None
                 
                 out_gcode.append(item.copy())

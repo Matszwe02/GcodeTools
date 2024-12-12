@@ -598,7 +598,7 @@ class Gcode(list[Block]):
         return new
 
 
-    def g_add(self, gcode: Block|str, index: int = -1, data:BlockData|None=None, meta: dict|None=None, meta_initial: dict|None=None):
+    def g_add(self, gcode: Block|str, index: int = -1, data:BlockData|None=None, meta: dict|None=None):
         """Appends gcode block to Gcode.\n\n`gcode`: Block or gcode str.\n\ndefault `index` -1: append to the end"""
         
         idx = index if index < len(self) else -1
@@ -618,7 +618,7 @@ class Gcode(list[Block]):
                 if data is None: data = self[last_index].block_data
                 if meta is None: meta = self[last_index].meta
             
-            if meta is None: meta = meta_initial
+            if meta is None: meta = {}
             gcode_obj = Block(move, gcode, True, data, meta)
             
         else:
