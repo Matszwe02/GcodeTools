@@ -6,13 +6,13 @@ import re
 
 class GcodeLoader:
 
-    def from_str(gcode_str):
-        return GcodeLoader.generate_moves(gcode_str)
+    def from_str(gcode_str, config = Config()):
+        return GcodeLoader.generate_moves(gcode_str, config)
     
     
-    def from_file(filename: str):
+    def from_file(filename: str, config = Config()):
         with open(filename, 'r') as f:
-            return GcodeLoader.from_str(f.read())
+            return GcodeLoader.from_str(f.read(), config)
 
 
     def write_str(gcode: Gcode, verbose = False):

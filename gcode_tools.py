@@ -107,15 +107,16 @@ class MoveTypes:
     
     def get_type(line: str):
         string = line.lower()
-        if not string.startswith(';type:'): return None
+        # if not string.startswith(';type:'): return None
+        if not string.startswith(';'): return None
         
         type_assign = {
             'skirt': MoveTypes.SKIRT,
             'external': MoveTypes.EXTERNAL_PERIMETER,
             'overhang': MoveTypes.OVERHANG_PERIMETER,
+            'outer': MoveTypes.EXTERNAL_PERIMETER,
             'perimeter': MoveTypes.INTERNAL_PERIMETER,
             'inner': MoveTypes.INTERNAL_PERIMETER,
-            'outer': MoveTypes.EXTERNAL_PERIMETER,
             'bridge': MoveTypes.BRIDGE,
             'top': MoveTypes.TOP_SOLID_INFILL,
             'solid': MoveTypes.SOLID_INFILL,

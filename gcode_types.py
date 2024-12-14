@@ -572,10 +572,11 @@ class Block:
         
         if line_str != '':
             if verbose:
-                line_str += '; ' + remove_chars(json.dumps(self.block_data.to_dict()), '{} \"').replace(",", " ")
+                line_str += '; '
                 if self.meta is not None:
-                    line_str += ', ' + remove_chars(json.dumps(self.meta), '{} "').replace(",", " ")
-                line_str += f' duration:{self.move.duration(prev.move):.3f}s\n'
+                    line_str += remove_chars(json.dumps(self.meta), '{} "').replace(",", " ") + ', '
+                line_str += remove_chars(json.dumps(self.block_data.to_dict()), '{} \"').replace(",", " ")
+                line_str += f', duration:{self.move.duration(prev.move):.3f}s\n'
         
         return line_str
 
@@ -593,6 +594,29 @@ class Gcode(list[Block]):
         Configuration of the G-Code computation
         """
         super().__init__()
+
+
+    def get_by_meta(self, meta: str, value = any, value_check = lambda x: False, break_on = lambda x: False):
+        gcode = self.new()
+        is_none = True
+        for i in self:
+            i_meta = i.meta.get(meta, None)
+            
+            if value == any:
+                if value_check(i_meta):
+                    gcode.g_add(i)
+                    is_none = False
+            else:
+                if i_meta == value:
+                    gcode.g_add(i)
+                    is_none = False
+            
+            if break_on(i_meta):
+                break
+        
+        if is_none:
+            return None
+        return gcode
 
 
     def new(self):
@@ -628,9 +652,17 @@ class Gcode(list[Block]):
             gcode_obj = Block(move, gcode, True, data, meta)
             
         else:
-            gcode_obj = gcode
+            gcode_obj = gcode.copy()
         if idx == -1:
             self.append(gcode_obj)
             return
         self.insert(index, gcode_obj)
 
+
+    def copy(self):
+        gcode = self.new()
+        
+        for i in self:
+            gcode.g_add(i.copy())
+        
+        return gcode
