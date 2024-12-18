@@ -1,13 +1,7 @@
-import os
-# import numpy as np
-import re
 import json
-import time
-import math
-from tqdm import tqdm
 from gcode_types import *
-from gcode_parser import *
 from gcode import Gcode
+
 
 
 meta_initial = {'object': None, 'type': None, 'layer': 0.0}
@@ -172,11 +166,17 @@ class GcodeTools:
         return metadata
 
 
-    def fill_meta(gcode: Gcode):
+    def fill_meta(gcode: Gcode, progress_callback = None):
+        """
+        `progress_callback`: function(current: int, total: int)
+        """
         new_gcode = Gcode()
         meta = meta_initial
         was_start = False
-        for id, block in tqdm(enumerate(gcode), desc="Analising G-code", unit="line", total=len(gcode)):
+        
+        len_gcode = len(gcode)
+        
+        for id, block in enumerate(gcode):
             
             line = block.command
             
@@ -202,6 +202,9 @@ class GcodeTools:
             new_block = block.copy()
             new_block.meta = json.loads(json.dumps(meta))
             new_gcode.append(new_block)
+            
+            if progress_callback:
+                progress_callback(id, len_gcode)
             
         return new_gcode
 

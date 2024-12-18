@@ -13,20 +13,19 @@ class Gcode(list[Block]):
         super().__init__()
 
 
-    def from_file(self, filename: str):
-        self = GcodeParser.from_file(self, filename)
+    def from_file(self, filename: str, progress_callback = None):
+        self = GcodeParser.from_file(self, filename, progress_callback)
         return self
     
-    def from_str(self, gcode_str: str):
-        self = GcodeParser.from_str(self, gcode_str)
+    def from_str(self, gcode_str: str, progress_callback = None):
+        self = GcodeParser.from_str(self, gcode_str, progress_callback)
         return self
     
-    def write_str(self, verbose = False):
-        return GcodeParser.write_str(self, verbose)
+    def write_str(self, verbose = False, progress_callback = None):
+        return GcodeParser.write_str(self, verbose, progress_callback)
 
-    def write_file(self, filename: str, verbose = False):
-        return GcodeParser.write_file(self, filename, verbose)
-
+    def write_file(self, filename: str, verbose = False, progress_callback = None):
+        return GcodeParser.write_file(self, filename, verbose, progress_callback)
 
 
     def get_by_meta(self, meta: str, value = any, value_check = lambda x: False, break_on = lambda x: False):

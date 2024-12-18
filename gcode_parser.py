@@ -1,34 +1,33 @@
 from gcode_types import *
-from tqdm import tqdm
 
 
 
 class GcodeParser:
 
-    def from_str(gcode, gcode_str):
+    def from_str(gcode, gcode_str, progress_callback = None):
         """
         `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode.
-        """
-        if gcode is None:
-            from gcode import Gcode
-            gcode = Gcode()
-            
-        return GcodeParser.generate_moves(gcode, gcode_str)
-    
-    
-    def from_file(gcode, filename: str):
-        """
-        `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode.
+        
+        `progress_callback`: function(current: int, total: int)
         """
         if gcode is None:
             from gcode import Gcode
             gcode = Gcode()
         
+        return GcodeParser._generate_moves(gcode, gcode_str, progress_callback)
+
+
+    def from_file(gcode, filename: str, progress_callback = None):
+        """
+        `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode.
+        
+        `progress_callback`: function(current: int, total: int)
+        """
         with open(filename, 'r') as f:
-            return GcodeParser.from_str(gcode, f.read())
+            return GcodeParser.from_str(gcode, f.read(), progress_callback)
 
 
-    def write_str(gcode, verbose = False):
+    def write_str(gcode, verbose = False, progress_callback = None):
         """
         Write G-Code as a string
         
@@ -37,23 +36,30 @@ class GcodeParser:
         `verbose`: include Block's metadata for each line.
         Includes object name, line type, layer number, etc.
         Warning: takes up much more time and space
+        
+        `progress_callback`: function(current: int, total: int)
         """
         last_block = Block(Move())
         coords = CoordSystem(speed=gcode.config.speed, abs_e=False)
         out_str = coords.to_str()
-        
 
-        for block in tqdm(gcode, desc="Writing G-code", unit="line"):
+        len_blocks = len(gcode)
+
+        for i, block in enumerate(gcode):
             
             line_str = block.to_str(last_block, verbose)
             
             out_str += line_str
             last_block = block
             
+            if progress_callback:
+                progress_callback(i, len_blocks)
+        
+        
         return out_str
 
 
-    def write_file(gcode, filename: str, verbose = False):
+    def write_file(gcode, filename: str, verbose = False, progress_callback = None):
         """
         Write G-Code as a string
         
@@ -62,12 +68,14 @@ class GcodeParser:
         `filename`: str of output path
         
         `verbose`: include Block's metadata for each line. Warning: takes up much more time and space
+        
+        `progress_callback`: function(current: int, total: int)
         """
-        gcode_str = GcodeParser.write_str(gcode, verbose = verbose)
+        gcode_str = GcodeParser.write_str(gcode, verbose, progress_callback)
         with open(filename, 'w') as f:
             f.write(gcode_str)
-    
-    
+
+
     def log_json(object, filename: str):
         class CustomEncoder(json.JSONEncoder):
             def default(self, obj):
@@ -80,7 +88,7 @@ class GcodeParser:
             f.write(json.dumps(object, indent=4, cls=CustomEncoder))
 
 
-    def line_to_dict(line: str) -> dict[str, str]:
+    def _line_to_dict(line: str) -> dict[str, str]:
         line_parts = line.split(';')[0].split()
         if not line_parts:
             return {'0': ''}
@@ -104,21 +112,24 @@ class GcodeParser:
         return params
 
 
-    def generate_moves(gcode, gcode_str: str):
+    def _generate_moves(gcode, gcode_str: str, progress_callback = None):
 
         coord_system = CoordSystem(speed = gcode.config.speed)
         move = Move(gcode.config, coord_system.position)
         data = BlockData.zero()
         
         gcode_lines = list(filter(str.strip, gcode_str.split('\n')))
-        for line in tqdm(gcode_lines, 'Generating moves', unit='line'):
+        
+        len_gcode_lines = len(gcode_lines)
+        
+        for i, line in enumerate(gcode_lines):
             command = None
             arc = None
             emit_command = False
             
             data.clear_wait()
             
-            line_dict: dict = GcodeParser.line_to_dict(line)
+            line_dict: dict = GcodeParser._line_to_dict(line)
             command: str = line_dict['0']
             
             if command in ['G0', 'G1', 'G2', 'G3']:
@@ -169,4 +180,8 @@ class GcodeParser:
             else:
                 block = Block(move, line, emit_command, data.copy(), {})
                 gcode.append(block)
+                
+            if progress_callback:
+                progress_callback(i, len_gcode_lines)
+        
         return gcode
