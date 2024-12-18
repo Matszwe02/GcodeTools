@@ -1,21 +1,34 @@
 from gcode_types import *
 from tqdm import tqdm
-import re
 
 
 
-class GcodeLoader:
+class GcodeParser:
 
-    def from_str(gcode_str, config = Config()):
-        return GcodeLoader.generate_moves(gcode_str, config)
+    def from_str(gcode, gcode_str):
+        """
+        `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode.
+        """
+        if gcode is None:
+            from gcode import Gcode
+            gcode = Gcode()
+            
+        return GcodeParser.generate_moves(gcode, gcode_str)
     
     
-    def from_file(filename: str, config = Config()):
+    def from_file(gcode, filename: str):
+        """
+        `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode.
+        """
+        if gcode is None:
+            from gcode import Gcode
+            gcode = Gcode()
+        
         with open(filename, 'r') as f:
-            return GcodeLoader.from_str(f.read(), config)
+            return GcodeParser.from_str(gcode, f.read())
 
 
-    def write_str(gcode: Gcode, verbose = False):
+    def write_str(gcode, verbose = False):
         """
         Write G-Code as a string
         
@@ -26,7 +39,7 @@ class GcodeLoader:
         Warning: takes up much more time and space
         """
         last_block = Block(Move())
-        coords = CoordSystem(abs_e=False)
+        coords = CoordSystem(speed=gcode.config.speed, abs_e=False)
         out_str = coords.to_str()
         
 
@@ -40,7 +53,7 @@ class GcodeLoader:
         return out_str
 
 
-    def write_file(gcode: Gcode, filename: str, verbose = False):
+    def write_file(gcode, filename: str, verbose = False):
         """
         Write G-Code as a string
         
@@ -50,7 +63,7 @@ class GcodeLoader:
         
         `verbose`: include Block's metadata for each line. Warning: takes up much more time and space
         """
-        gcode_str = GcodeLoader.write_str(gcode, verbose = verbose)
+        gcode_str = GcodeParser.write_str(gcode, verbose = verbose)
         with open(filename, 'w') as f:
             f.write(gcode_str)
     
@@ -91,10 +104,8 @@ class GcodeLoader:
         return params
 
 
-    def generate_moves(gcode_str: str, config = Config()):
+    def generate_moves(gcode, gcode_str: str):
 
-        gcode = Gcode()
-        gcode.config = config
         coord_system = CoordSystem(speed = gcode.config.speed)
         move = Move(gcode.config, coord_system.position)
         data = BlockData.zero()
@@ -107,7 +118,7 @@ class GcodeLoader:
             
             data.clear_wait()
             
-            line_dict: dict = GcodeLoader.line_to_dict(line)
+            line_dict: dict = GcodeParser.line_to_dict(line)
             command: str = line_dict['0']
             
             if command in ['G0', 'G1', 'G2', 'G3']:
