@@ -95,8 +95,8 @@ Tested with:
 | Keep track of coordinates |     ✅     |      |                   |                  |        |                   |            |
 | Temperature control       |     ✅     |      |                   |                  |        |                   |            |
 | Fan control               |     ✅     |      |                   |                  |        |                   |            |
-| Spliting Objects          |     ❌     |  ✅  |       ☑️1       |        ✅        |   ❌   |        ✅         |     ✅     |
-| Extracting features       |     ❌     |  ➖  |        ✅         |        ✅        |   ❌   |        ✅         |     ✅     |
+| Spliting Objects          |     ❌     |  ✅  |       ☑️1       |        ✅        |   ❌   |        ❌         |     ✅     |
+| Extracting features       |     ❌     |  ➖  |        ✅         |        ✅        |   ❌   |        ❌         |     ✅     |
 | Arc Moves                 |   ☑️2    |      |                   |                  |        |                   |            |
 
 
