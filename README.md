@@ -70,7 +70,7 @@ out_gcode = GcodeTools.trim(meta_gcode)
 translation = Vector(-200, -100, 0)
 
 for x in out_gcode:
-    obj: str = bl.meta.get('object')
+    obj: str = x.meta.get('object')
     if 'benchy' in obj.lower():
         x.translate(translation)
 
