@@ -108,8 +108,8 @@ Tested with:
 - ➖ Partially supported, limited by slicer
 - ☑️ Supported, with precautions:
 
-  1. Turn on `LABEL_OBJECTS`
-  2. Arc moves currently automatically translate to G1 moves
+  1: Turn on `LABEL_OBJECTS`\
+  2: Arc moves currently automatically translate to G1 moves
 
 
 
