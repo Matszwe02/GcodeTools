@@ -3,25 +3,32 @@
 \*as per 3D-Printing needs
 
 
+**This library is under development - method names, workflow and logic will differ between releases!**
+
+**Ensure your printer software can catch illegal g-code moves, as this library has still very large amount of bugs! Also keep an eye on your print.**
+
+
 # Available G-Code Tools
 
-| Feature                        | Status |                command                 |
-| ------------------------------ | :----: | :------------------------------------: |
-| Translate Gcode                |   ✅   |       `gcode.translate(Vector)`        |
-| Rotate Gcode                   |   ✅   |         `gcode.rotate(float) `         |
-| Scale Gcode                    |   ✅   |         `gcode.scale(Vector)`          |
-| Detect Gcode features          |  🔜   |     `GcodeTools.fill_meta(gcode)`      |
-| Split layers                   |  🔜   |     `gcode.get_by_meta(str, Any)`      |
-| Split bodies                   |  🔜   |       `GcodeTools.split(gcode)`        |
-| Insert custom Gcode            |   ❌   |                                        |
-| Generate Thumbnails            |   ❌   |                                        |
-| Convert from/to Arc Moves      |   ❌   |                                        |
-| Split bodies                   |   ❌   |                                        |
-| Find body bounds               |   ✅   | `GcodeTools.get_bounding_cube(gcode)`  |
-| Trim unused Gcode              |  🔜   |        `GcodeTools.trim(gcode)`        |
-| Offset Gcodes in time          |   ❌   |                                        |
-| Create custom travel movement  |   ❌   |                                        |
-| convert to firmware retraction |  🔜   | `GcodeTools.regenerate_travels(gcode)` |
+| Feature                                              | Status |                command                 |
+| ---------------------------------------------------- | :----: | :------------------------------------: |
+| Translate Gcode                                      |   ✅   |       `move.translate(Vector)`        |
+| Rotate Gcode                                         |   ✅   |         `move.rotate(float) `         |
+| Scale Gcode                                          |   ✅   |      `move.scale(Vector\|float)`      |
+| subdivide Gcode                                      |   ✅   |     `move.subdivide(prev, step)`      |
+| Get move's flowrate                                  |   ✅   |       `move.get_flowrate(prev)`       |
+| Set flowrate <br> (in mm^2, use `scale` to set in %) |   ✅   |   `move.set_flowrate(prev, float)`    |
+| Detect Gcode features                                |   ✅   |     `GcodeTools.fill_meta(gcode)`      |
+| Split layers                                         |  🔜   |     `gcode.get_by_meta(str, Any)`      |
+| Split bodies                                         |  🔜   |       `GcodeTools.split(gcode)`        |
+| Insert custom Gcode                                  |   ❌   |                                        |
+| Generate Thumbnails                                  |   ❌   |                                        |
+| Convert from/to Arc Moves                            |   ❌   |                                        |
+| Find body bounds                                     |   ✅   | `GcodeTools.get_bounding_cube(gcode)`  |
+| Trim unused Gcode                                    |  🔜   |        `GcodeTools.trim(gcode)`        |
+| Offset Gcodes in time                                |   ❌   |                                        |
+| Create custom travel movement                        |   ❌   |                                        |
+| convert to firmware retraction                       |  🔜   | `GcodeTools.regenerate_travels(gcode)` |
 
 
 ### Legend:
@@ -30,38 +37,61 @@
 - ❌ Not yet supported, to be implemented
 - 🔜 Partially supported, to be implemented
 
+More features soon! Feel free to open feature request
+
+
+# G-Code
+
+Current G-Code object relation:
+```
+Gcode (list)
+│
+├─slicing config: Config
+│
+├─ single Gcode line (Block)
+│  │
+│  ├─ Object handling everything move-related: Move
+│  │  ├─ Position: Vector
+│  │  └─ move speed: float
+│  │
+│  ├─ Everything G-code related other than position: BlockData
+│  └─ Slicer-specific features (meta): dict
+└─ ...
+```
+
+In each block, every G-Code variable is contained. That means, blocks can be taken out of Gcode, rearranged, etc.
+
+That however does not take move length (move starting position) in count! `regenerate_travels` will be able to handle that in future.
+
+
 # G-Code Parser
 
 ```py
 from gcode import Gcode
 
 gcode = Gcode()
-# gcode.config.speed = ...
 gcode.from_file('file.gcode')
 ```
 
-## Progress Callback
+## Progress Callback example implementation
 
 ```py
-from gcode import Gcode
-import tqdm
-
 my_tqdm = tqdm(unit="lines", desc="Reading Gcode")
 update = lambda i, length: (setattr(my_tqdm, 'total', length), my_tqdm.update(1))
-
-gcode.from_file('file.gcode', update)
+gcode = Gcode().from_file('file.gcode', update)
 ```
 
 
 # Example usage
 
+Example to move objects that have `benchy` in their name, by `translation` vector.
 ```py
 from gcode_tools import Gcode, GcodeTools, Vector
 
 do_verbose = False
 
 gcode = Gcode()
-gcode.config.speed = 1200
+gcode.config.speed = 1200 # initial speed before first Gcode's `F` parameter
 
 gcode.from_file('file.gcode')
 meta_gcode: Gcode = GcodeTools.fill_meta(gcode)
@@ -73,6 +103,7 @@ for x in out_gcode:
     obj: str = x.meta.get('object')
     if 'benchy' in obj.lower():
         x.translate(translation)
+out_gcode = GcodeTools.regenerate_travels(out_gcode)
 
 out_gcode.write_file('out.gcode', do_verbose)
 ```
@@ -95,22 +126,17 @@ Tested with:
 | Keep track of coordinates |     ✅     |      |                   |                  |        |                   |            |
 | Temperature control       |     ✅     |      |                   |                  |        |                   |            |
 | Fan control               |     ✅     |      |                   |                  |        |                   |            |
-| Spliting Objects          |     ❌     |  ✅  |       ☑️1       |        ✅        |   ❌   |        ❌         |     ✅     |
+| Spliting Objects          |     ❌     |  ✅  |       ✅1       |        ✅        |   ❌   |        ✅         |     ✅     |
 | Extracting features       |     ❌     |  ➖  |        ✅         |        ✅        |   ❌   |        ❌         |     ✅     |
-| Arc Moves                 |   ☑️2    |      |                   |                  |        |                   |            |
+| Arc Moves                 |   🔜2    |      |                   |                  |        |                   |            |
 
 
 ### Legend:
+
+1: Turn on `LABEL_OBJECTS`\
+2: Arc moves currently automatically translate to G1 moves
 
 - ✅ Fully supported
 - ❌ Not supported
 - 🔜 Partially supported, to be implemented
 - ➖ Partially supported, limited by slicer
-- ☑️ Supported, with precautions:
-
-  1: Turn on `LABEL_OBJECTS`\
-  2: Arc moves currently automatically translate to G1 moves
-
-
-
-More features soon!

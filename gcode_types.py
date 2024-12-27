@@ -272,7 +272,7 @@ class Move:
 
     def __init__(self, config = Config(), position = Vector(), speed: float|None = None):
         self.position = position.copy()
-        """The end vector of Move"""
+        """The end vector of Move.\n\n`XYZ` is always absolute\n\n`E` is always relative\n\nEvery logic is performend regarding to that."""
         self.speed = speed
         self.config = config
 
@@ -335,16 +335,17 @@ class Move:
         if not isinstance(prev, Move): return None
         distance = self.float_distance(prev = prev)
         if distance < self.config.step: return None
-        return (self.position.E - prev.position.E) / distance
+        return self.position.E / distance
 
 
     def set_flowrate(self, prev, flowrate: float):
         """Sets flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement, otherwise returns E mm"""
-        if not isinstance(prev, Move): prev = Move(self.config)
+        if not isinstance(prev, Move):
+            prev = Move(self.config)
         distance = self.float_distance(prev = prev)
         if distance < self.config.step: return None
         flow = distance * flowrate
-        self.position.E = prev.position.E + flow
+        self.position.E = flow
         return flow
 
 
