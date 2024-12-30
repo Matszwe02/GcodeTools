@@ -15,6 +15,21 @@ def remove_chars(string: str, chars: str)->str:
     return outstr
 
 
+def check_null_except(obj, obj_type, on_none = set, alert="Can only use {0}, not {1}"):
+    """
+    Check wrong object, with optional object creation on None.
+    
+    checks if `obj` is instance of `obj_type`, otherwise raises `TypeError` with `alert`
+    
+    `on_none`: `set` to automatically set with `obj_type` constructor, `None` to except on None, `Object` constructor method
+    """
+    if not isinstance(obj, obj_type):
+        if obj is None and on_none is not None:
+            obj = on_none if on_none is not set else obj_type()
+        else:
+            raise TypeError(alert.format(obj_type, type(obj)))
+
+
 class Config:
     """G-Code configuration"""
     
@@ -88,31 +103,32 @@ class Vector:
         return self
 
 
-    def vector_op(self, other, operation = lambda x, y: x + y, on_a_none: any = 'b', on_b_none: any = 'a', on_none = None):
+    def vector_op(self, other: 'Vector', operation = lambda x, y: x + y, on_a_none: str|float|None = 'b', on_b_none: str|float|None = 'a', on_none: float|None = None):
         """
         Returns a new `Vector` object, does not affect `self` or `other`
         
         `operation`: lambda
         
-        `on_a_none`, `on_b_none`: `any` to skip None checking ; `'a'`, `'b'`, `None`, `float` to return
+        `on_a_none`, `on_b_none`: `''` to skip None checking ; `'a'`, `'b'`, `None`, `float` to return
         
-        `on_none`: number|None
+        `on_none`: float|None if both `a` and `b` are none
         """
         
         def nullable_op(a: float | None, b: float | None):
             if a is None and b is None: return on_none
-            if a is None and on_a_none is not any:
+            if a is None and on_a_none != '':
                 if on_a_none == 'a': return a
                 if on_a_none == 'b': return b
                 return on_a_none
-            if b is None and on_b_none is not any:
+            if b is None and on_b_none != '':
                 if on_b_none == 'a': return a
                 if on_b_none == 'b': return b
                 return on_b_none
             
             return operation(a, b)
         
-        if type(other) is not Vector: raise TypeError(f'Invalid operation between Vector and {type(other)}')
+        check_null_except(other, Vector, None, 'Can only operate on {0}, not {1}')
+        
         X = nullable_op(self.X, other.X)
         Y = nullable_op(self.Y, other.Y)
         Z = nullable_op(self.Z, other.Z)
@@ -120,23 +136,23 @@ class Vector:
         return Vector(X, Y, Z, E)
 
 
-    def __add__(self, other):
+    def __add__(self, other: 'Vector'):
         add = lambda x, y: x + y
         return self.vector_op(other, add)
 
 
-    def __sub__(self, other):
+    def __sub__(self, other: 'Vector'):
         subtr = lambda x, y: x - y
         return self.vector_op(other, subtr)
 
 
-    def __mul__(self, other):
+    def __mul__(self, other: 'Vector|float'):
         if not isinstance(other, Vector): other = Vector(other, other, other, other)
         scale = lambda a,b: a * b
         return self.vector_op(other, scale, on_a_none='a', on_b_none='a')
 
 
-    def valid(self, other):
+    def valid(self, other: 'Vector'):
         """Return `Vector` with non-null dimensions from `other` vector"""
         valid = lambda a, b: a
         return self.vector_op(other, valid, on_a_none=None, on_b_none=None)
@@ -150,17 +166,17 @@ class Vector:
         return Vector(E=self.E)
 
 
-    def add(self, other):
+    def add(self, other: 'Vector'):
         """Adds `Vector`'s dimensions to `other`'s that are not None"""
-        if type(other) is not Vector: raise TypeError(f'You can only add Vector to Vector, not {type(other)}')
+        check_null_except(other, Vector, None, 'Can only add {0} to {0}, not {1}')
         add_op = lambda a, b: a + b
         new_vec = self.vector_op(other, add_op, None, 'a')
         self.set(new_vec)
 
 
-    def set(self, other):
+    def set(self, other: 'Vector'):
         """Sets `Vector`'s dimensions to `other`'s that are not None"""
-        if type(other) is not Vector: raise TypeError(f'You can only set Vector to Vector, not {type(other)}')
+        check_null_except(other, Vector, None, 'Can only set {0} to {0}, not {1}')
         if other.X is not None: self.X = other.X
         if other.Y is not None: self.Y = other.Y
         if other.Z is not None: self.Z = other.Z
@@ -240,10 +256,10 @@ class CoordSystem:
             self.abs_position_e += (self.offset.E or 0)
 
 
-    def to_str(self, last_coords = None):
+    def to_str(self, last_coords: 'CoordSystem|None' = None):
         out = ''
         
-        if type(last_coords) == CoordSystem:
+        if isinstance(last_coords, CoordSystem):
             if last_coords.abs_xyz != self.abs_xyz:
                 out += (Static.ABSOLUTE_COORDS_DESC if self.abs_xyz else Static.RELATIVE_COORDS_DESC) + '\n'
             if last_coords.abs_e != self.abs_e:
@@ -282,7 +298,7 @@ class Move:
         return self
 
 
-    def translate(self, vec):
+    def translate(self, vec: Vector):
         self.position.add(vec)
         return self
 
@@ -302,14 +318,14 @@ class Move:
         return self
 
 
-    def distance(self, prev):
+    def distance(self, prev: 'Move|Vector'):
         if not isinstance(prev, Move) and not isinstance(prev, Vector): prev = Move(self.config)
         if isinstance(prev, Move): prev = prev.position
         distance = lambda x, y: x - y
         return self.position.vector_op(prev, distance, on_a_none=0, on_b_none=0, on_none=0)
 
 
-    def float_distance(self, distance: Vector=None, prev=None):
+    def float_distance(self, distance: Vector|None = None, prev: 'Move|None' = None):
         if isinstance(distance, Vector):
             return math.sqrt(math.pow(distance.X or 0, 2) + math.pow(distance.Y or 0, 2) + math.pow(distance.Z or 0, 2))
         if isinstance(prev, Vector) or isinstance(prev, Move):
@@ -317,7 +333,7 @@ class Move:
         raise AttributeError
 
 
-    def subdivide(self, prev, step = None) -> list[Vector]:
+    def subdivide(self, prev: 'Move', step = None) -> list[Vector]:
         if not isinstance(prev, Move): prev = Move(self.config)
         if step is None: step = self.config.step
         dist = self.float_distance(prev = prev)
@@ -330,7 +346,7 @@ class Move:
         return pos_list
 
 
-    def get_flowrate(self, prev):
+    def get_flowrate(self, prev: 'Move'):
         """Returns flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement"""
         if not isinstance(prev, Move): return None
         distance = self.float_distance(prev = prev)
@@ -338,10 +354,10 @@ class Move:
         return self.position.E / distance
 
 
-    def set_flowrate(self, prev, flowrate: float):
+    def set_flowrate(self, prev: 'Move', flowrate: float):
         """Sets flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement, otherwise returns E mm"""
-        if not isinstance(prev, Move):
-            prev = Move(self.config)
+        check_null_except(prev, Move, Move(self.config))
+        
         distance = self.float_distance(prev = prev)
         if distance < self.config.step: return None
         flow = distance * flowrate
@@ -349,15 +365,16 @@ class Move:
         return flow
 
 
-    def duration(self, prev):
+    def duration(self, prev: 'Move'):
         if not isinstance(prev, Move): return 0.0
         dist = self.float_distance(prev = prev)
         if dist == 0: dist = abs(self.position.E or 0)
         return dist * 60 / self.config.speed
 
 
-    def to_str(self, prev):
-        if not isinstance(prev, Move): prev = Move(self.config)
+    def to_str(self, prev: 'Move'):
+        check_null_except(prev, Move, Move(self.config))
+        
         nullable = lambda param, a: '' if a is None else f' {param}{round(a, self.config.precision)}'
         
         out = ''
@@ -417,7 +434,7 @@ class Arc:
         return self
 
 
-    def subdivide(self, next: Move, step=None) -> list[Move]:
+    def subdivide(self, next: Move, step: float|None=None) -> list[Move]:
         if step is None: step = self.move.config.step
         
         center = self.ijk + self.move.position.xyz()
@@ -507,9 +524,8 @@ class BlockData:
             self.T = tool
 
 
-    def to_str(self, prev):
-        if not isinstance(prev, BlockData):
-            prev = BlockData()
+    def to_str(self, prev: 'BlockData'):
+        check_null_except(prev, BlockData)
         
         out = ''
         if self.e_temp != prev.e_temp and self.e_temp is not None:
@@ -540,13 +556,25 @@ class BlockData:
 
 class Block:
     
-    def __init__(self, move: Move, command: str | None = None, emit_command = True, block_data = BlockData(), meta: dict = {}):
+    def __init__(self, move: Move = Move(), command: str | None = None, emit_command = True, block_data = BlockData(), meta: dict = {}):
         
         self.move = move.copy()
         self.command = command
         self.emit_command = emit_command
         self.block_data = block_data.copy()
         self.meta: dict = json.loads(json.dumps(meta))
+
+
+    def as_origin(self):
+        """
+        Treat as origin to the next `Block`
+        
+        Used to ensure that move path is deterministic, when splitting `Gcode`
+        """
+        new = Block(self.move.copy(), block_data=self.block_data.copy(), meta=self.meta)
+        new.move.position.E = 0
+        new.move.speed = 0
+        return new
 
 
     def to_dict(self):
@@ -559,9 +587,9 @@ class Block:
             }
 
 
-    def to_str(self, prev, verbose=False):
+    def to_str(self, prev: 'Block', verbose=False):
         
-        if not isinstance(prev, Block): prev = Block(Move())
+        check_null_except(prev, Block)
         
         line_str = ''
         

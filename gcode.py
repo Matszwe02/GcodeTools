@@ -1,5 +1,6 @@
 from gcode_types import *
 from gcode_parser import *
+from typing import Callable, Any
 
 
 
@@ -28,18 +29,18 @@ class Gcode(list[Block]):
         return GcodeParser.write_file(self, filename, verbose, progress_callback)
 
 
-    def get_by_meta(self, meta: str, value = any, value_check = lambda x: False, break_on = lambda x: False):
+    def get_by_meta(self, meta: str, value = None, value_check: Callable[[Any], bool]|None = None, break_on = lambda x: False):
         gcode = self.new()
         is_none = True
         for i in self:
             i_meta = i.meta.get(meta, None)
             
-            if value == any:
-                if value_check(i_meta):
+            if value_check is None:
+                if i_meta == value:
                     gcode.g_add(i)
                     is_none = False
             else:
-                if i_meta == value:
+                if value_check(i_meta):
                     gcode.g_add(i)
                     is_none = False
             

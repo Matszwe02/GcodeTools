@@ -4,7 +4,7 @@ from gcode_types import *
 
 class GcodeParser:
 
-    def from_str(gcode, gcode_str, progress_callback = None):
+    def from_str(gcode, gcode_str: str, progress_callback = None):
         """
         `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode.
         
@@ -39,7 +39,7 @@ class GcodeParser:
         
         `progress_callback`: function(current: int, total: int)
         """
-        last_block = Block(Move())
+        last_block = Block()
         coords = CoordSystem(speed=gcode.config.speed, abs_e=False)
         out_str = coords.to_str()
 

@@ -42,17 +42,17 @@ More features soon! Feel free to open feature request
 
 # G-Code
 
-Current G-Code object relation:
+## Current G-Code object relation:
 ```
-Gcode (list)
+Gcode (list[Block])
 │
-├─slicing config: Config
+├─ slicing config: Config
 │
-├─ single Gcode line (Block)
+├─ single Gcode instruction: Block
 │  │
 │  ├─ Object handling everything move-related: Move
 │  │  ├─ Position: Vector
-│  │  └─ move speed: float
+│  │  └─ speed: float
 │  │
 │  ├─ Everything G-code related other than position: BlockData
 │  └─ Slicer-specific features (meta): dict
@@ -61,7 +61,7 @@ Gcode (list)
 
 In each block, every G-Code variable is contained. That means, blocks can be taken out of Gcode, rearranged, etc.
 
-That however does not take move length (move starting position) in count! `regenerate_travels` will be able to handle that in future.
+That however does not take move origin (move starting position) in count! `regenerate_travels` will be able to handle that in future.
 
 
 # G-Code Parser
@@ -127,7 +127,7 @@ Tested with:
 | Temperature control       |     ✅     |      |                   |                  |        |                   |            |
 | Fan control               |     ✅     |      |                   |                  |        |                   |            |
 | Spliting Objects          |     ❌     |  ✅  |       ✅1       |        ✅        |   ❌   |        ✅         |     ✅     |
-| Extracting features       |     ❌     |  ➖  |        ✅         |        ✅        |   ❌   |        ❌         |     ✅     |
+| Extracting features       |     ❌     |  ➖  |        ✅         |        ✅        |   ❌   |        🔜         |     ✅     |
 | Arc Moves                 |   🔜2    |      |                   |                  |        |                   |            |
 
 
@@ -137,6 +137,6 @@ Tested with:
 2: Arc moves currently automatically translate to G1 moves
 
 - ✅ Fully supported
-- ❌ Not supported
-- 🔜 Partially supported, to be implemented
+- ❌ Not supported, limited by slicer
+- 🔜 To be implemented
 - ➖ Partially supported, limited by slicer
