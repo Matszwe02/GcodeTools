@@ -286,7 +286,9 @@ class CoordSystem:
 
 class Move:
 
-    def __init__(self, config = Config(), position = Vector(), speed: float|None = None):
+    def __init__(self, block_ref:'Block|None' = None, config = Config(), position = Vector(), speed: float|None = None):
+        
+        self.block_ref = block_ref
         self.position = position.copy()
         """The end vector of Move.\n\n`XYZ` is always absolute\n\n`E` is always relative\n\nEvery logic is performend regarding to that."""
         self.speed = speed
@@ -318,25 +320,29 @@ class Move:
         return self
 
 
-    def distance(self, prev: 'Move|Vector'):
-        if not isinstance(prev, Move) and not isinstance(prev, Vector): prev = Move(self.config)
-        if isinstance(prev, Move): prev = prev.position
+    def distance(self):
+        prev = getattr(getattr(self.block_ref, 'prev', None), 'move', Move())
+        
         distance = lambda x, y: x - y
-        return self.position.vector_op(prev, distance, on_a_none=0, on_b_none=0, on_none=0)
+        return self.position.vector_op(prev.position, distance, on_a_none=0, on_b_none=0, on_none=0)
 
 
-    def float_distance(self, distance: Vector|None = None, prev: 'Move|None' = None):
+    def float_distance(self, distance: Vector|None = None):
+        """
+        Return float distance of current move or between self and a Vector
+        """
+        
         if isinstance(distance, Vector):
             return math.sqrt(math.pow(distance.X or 0, 2) + math.pow(distance.Y or 0, 2) + math.pow(distance.Z or 0, 2))
-        if isinstance(prev, Vector) or isinstance(prev, Move):
-            return self.float_distance(distance = self.distance(prev))
-        raise AttributeError
+        
+        return self.float_distance(distance = self.distance())
 
 
-    def subdivide(self, prev: 'Move', step = None) -> list[Vector]:
-        if not isinstance(prev, Move): prev = Move(self.config)
-        if step is None: step = self.config.step
-        dist = self.float_distance(prev = prev)
+    def subdivide(self, step = None) -> list[Vector]:
+        prev = getattr(getattr(self.block_ref, 'prev', None), 'move', Move())
+        step = step or self.config.step
+        
+        dist = self.float_distance()
         pos_list = []
         if dist <= step: return [self]
         stop = round(dist / step)
@@ -346,35 +352,33 @@ class Move:
         return pos_list
 
 
-    def get_flowrate(self, prev: 'Move'):
+    def get_flowrate(self):
         """Returns flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement"""
-        if not isinstance(prev, Move): return None
-        distance = self.float_distance(prev = prev)
+        
+        distance = self.float_distance()
         if distance < self.config.step: return None
         return self.position.E / distance
 
 
-    def set_flowrate(self, prev: 'Move', flowrate: float):
+    def set_flowrate(self, flowrate: float):
         """Sets flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement, otherwise returns E mm"""
-        check_null_except(prev, Move, Move(self.config))
         
-        distance = self.float_distance(prev = prev)
+        distance = self.float_distance()
         if distance < self.config.step: return None
         flow = distance * flowrate
         self.position.E = flow
         return flow
 
 
-    def duration(self, prev: 'Move'):
-        if not isinstance(prev, Move): return 0.0
-        dist = self.float_distance(prev = prev)
+    def duration(self):
+        dist = self.float_distance()
         if dist == 0: dist = abs(self.position.E or 0)
-        return dist * 60 / self.config.speed
+        return dist * 60 / (self.speed or self.config.speed)
 
 
-    def to_str(self, prev: 'Move'):
-        check_null_except(prev, Move, Move(self.config))
+    def to_str(self):
         
+        prev = getattr(getattr(self.block_ref, 'prev', None), 'move', Move())
         nullable = lambda param, a: '' if a is None else f' {param}{round(a, self.config.precision)}'
         
         out = ''
@@ -396,7 +400,7 @@ class Move:
 
     def copy(self):
         """Create a deep copy"""
-        return Move(self.config, self.position.copy(), self.speed)
+        return Move(None, self.config, self.position.copy(), self.speed)
 
 
     def __eq__(self, other: object) -> bool:
@@ -466,7 +470,7 @@ class Arc:
             z = self.move.position.Z + t * (next.position.Z - self.move.position.Z)
             e = (next.position.E - self.move.position.E) / num_steps + self.move.position.E
 
-            new_move = Move(self.move.config, Vector(x, y, z, e), self.move.speed)
+            new_move = Move(None, self.move.config, Vector(x, y, z, e), self.move.speed)
             moves.append(new_move)
 
         return moves
@@ -479,8 +483,9 @@ class BlockData:
         return BlockData(0, False, 0, False, 0, 0)
 
 
-    def __init__(self, e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None):
+    def __init__(self, block_ref: 'Block|None' = None, e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None):
         
+        self.block_ref = block_ref
         self.e_temp = e_temp
         self.e_wait = e_wait
         self.bed_temp = bed_temp
@@ -524,8 +529,8 @@ class BlockData:
             self.T = tool
 
 
-    def to_str(self, prev: 'BlockData'):
-        check_null_except(prev, BlockData)
+    def to_str(self):
+        prev = getattr(getattr(self.block_ref, 'prev', None), 'BlockData', BlockData())
         
         out = ''
         if self.e_temp != prev.e_temp and self.e_temp is not None:
@@ -556,8 +561,9 @@ class BlockData:
 
 class Block:
     
-    def __init__(self, move: Move = Move(), command: str | None = None, emit_command = True, block_data = BlockData(), meta: dict = {}):
+    def __init__(self, prev:'Block|None' = None, move: Move = Move(), command: str | None = None, emit_command = True, block_data = BlockData(), meta: dict = {}):
         
+        self.prev = prev
         self.move = move.copy()
         self.command = command
         self.emit_command = emit_command
@@ -575,6 +581,25 @@ class Block:
         new.move.position.E = 0
         new.move.speed = 0
         return new
+    
+
+    def sync(self):
+        """
+        Sync objects inside `Block` to refer to it
+        """
+        self.move.block_ref = self
+        self.block_data.block_ref = self
+        return self
+
+
+    def unlink(self):
+        """
+        Inverse of `sync`. Used to make object serializable
+        """
+        self.move.block_ref = None
+        self.block_data.block_ref = None
+        self.prev = None
+        return self
 
 
     def to_dict(self):
@@ -587,14 +612,12 @@ class Block:
             }
 
 
-    def to_str(self, prev: 'Block', verbose=False):
-        
-        check_null_except(prev, Block)
+    def to_str(self, verbose=False):
         
         line_str = ''
         
-        line_str += self.block_data.to_str(prev.block_data)
-        line_str += self.move.to_str(prev.move)
+        line_str += self.block_data.to_str()
+        line_str += self.move.to_str()
         
         if self.emit_command:
             line_str += self.command + '\n'
@@ -605,11 +628,14 @@ class Block:
                 if self.meta is not None:
                     line_str += remove_chars(json.dumps(self.meta), '{} "').replace(",", " ") + ', '
                 line_str += remove_chars(json.dumps(self.block_data.to_dict()), '{} \"').replace(",", " ")
-                line_str += f', duration:{self.move.duration(prev.move):.3f}s\n'
+                line_str += f', duration:{self.move.duration():.3f}s\n'
         
         return line_str
 
 
-    def copy(self):
-        return Block(self.move, self.command, self.emit_command, self.block_data, self.meta)
+    def noprev_copy(self):
+        return Block(self.prev, self.move, self.command, self.emit_command, self.block_data, self.meta)
 
+
+    def copy(self):
+        return Block(self.prev and self.prev.noprev_copy(), self.move, self.command, self.emit_command, self.block_data, self.meta)

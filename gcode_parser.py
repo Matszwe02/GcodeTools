@@ -1,23 +1,19 @@
 from gcode_types import *
-
+from gcode import Gcode
 
 
 class GcodeParser:
 
-    def from_str(gcode, gcode_str: str, progress_callback = None):
+    def from_str(gcode: Gcode, gcode_str: str, progress_callback = None) -> Gcode:
         """
         `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode.
         
         `progress_callback`: function(current: int, total: int)
         """
-        if gcode is None:
-            from gcode import Gcode
-            gcode = Gcode()
-        
         return GcodeParser._generate_moves(gcode, gcode_str, progress_callback)
 
 
-    def from_file(gcode, filename: str, progress_callback = None):
+    def from_file(gcode: Gcode, filename: str, progress_callback = None) -> Gcode:
         """
         `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode.
         
@@ -27,7 +23,7 @@ class GcodeParser:
             return GcodeParser.from_str(gcode, f.read(), progress_callback)
 
 
-    def write_str(gcode, verbose = False, progress_callback = None):
+    def write_str(gcode: Gcode, verbose = False, progress_callback = None):
         """
         Write G-Code as a string
         
@@ -39,7 +35,7 @@ class GcodeParser:
         
         `progress_callback`: function(current: int, total: int)
         """
-        last_block = Block()
+        # last_block = Block()
         coords = CoordSystem(speed=gcode.config.speed, abs_e=False)
         out_str = coords.to_str()
 
@@ -47,10 +43,10 @@ class GcodeParser:
 
         for i, block in enumerate(gcode):
             
-            line_str = block.to_str(last_block, verbose)
+            line_str = block.to_str(verbose)
             
             out_str += line_str
-            last_block = block
+            # last_block = block
             
             if progress_callback:
                 progress_callback(i, len_blocks)
@@ -59,7 +55,7 @@ class GcodeParser:
         return out_str
 
 
-    def write_file(gcode, filename: str, verbose = False, progress_callback = None):
+    def write_file(gcode: Gcode, filename: str, verbose = False, progress_callback = None):
         """
         Write G-Code as a string
         
@@ -74,18 +70,6 @@ class GcodeParser:
         gcode_str = GcodeParser.write_str(gcode, verbose, progress_callback)
         with open(filename, 'w') as f:
             f.write(gcode_str)
-
-
-    def log_json(object, filename: str):
-        class CustomEncoder(json.JSONEncoder):
-            def default(self, obj):
-                if hasattr(obj, 'to_dict'):
-                    return obj.to_dict()
-                return super().default(obj)
-        
-        print('Logging json...')
-        with open(filename, 'w') as f:
-            f.write(json.dumps(object, indent=4, cls=CustomEncoder))
 
 
     def _line_to_dict(line: str) -> dict[str, str]:
@@ -112,10 +96,10 @@ class GcodeParser:
         return params
 
 
-    def _generate_moves(gcode, gcode_str: str, progress_callback = None):
+    def _generate_moves(gcode: Gcode, gcode_str: str, progress_callback = None) -> Gcode:
 
         coord_system = CoordSystem(speed = gcode.config.speed)
-        move = Move(gcode.config, coord_system.position)
+        move = Move(config = gcode.config, position = coord_system.position)
         data = BlockData.zero()
         
         gcode_lines = list(filter(str.strip, gcode_str.split('\n')))
@@ -174,11 +158,11 @@ class GcodeParser:
             
             if arc is not None:
                 for section in arc.subdivide(move, 1): # TODO: improve default step size
-                    block = Block(section, line, emit_command, data.copy(), {})
+                    block = Block(None, section, line, emit_command, data.copy(), {})
                     gcode.append(block)
             
             else:
-                block = Block(move, line, emit_command, data.copy(), {})
+                block = Block(None, move, line, emit_command, data.copy(), {})
                 gcode.append(block)
                 
             if progress_callback:

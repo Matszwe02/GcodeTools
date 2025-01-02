@@ -1,5 +1,4 @@
 from gcode_types import *
-from gcode_parser import *
 from typing import Callable, Any
 
 
@@ -14,19 +13,28 @@ class Gcode(list[Block]):
         super().__init__()
 
 
-    def from_file(self, filename: str, progress_callback = None):
-        self = GcodeParser.from_file(self, filename, progress_callback)
+    def __get_parser__(self):
+        from gcode_parser import GcodeParser
+        return GcodeParser
+
+
+    def from_file(self, filename: str, progress_callback = None) -> 'Gcode':
+        self:'Gcode' = self.__get_parser__().from_file(self, filename, progress_callback)
+        self.order()
         return self
-    
-    def from_str(self, gcode_str: str, progress_callback = None):
-        self = GcodeParser.from_str(self, gcode_str, progress_callback)
+
+    def from_str(self, gcode_str: str, progress_callback = None) -> 'Gcode':
+        self:'Gcode' = self.__get_parser__().from_str(self, gcode_str, progress_callback)
+        self.order()
         return self
-    
+
     def write_str(self, verbose = False, progress_callback = None):
-        return GcodeParser.write_str(self, verbose, progress_callback)
+        self.order() # TODO: detect need for ordering, skip already ordered `Gcode`
+        return self.__get_parser__().write_str(self, verbose, progress_callback)
 
     def write_file(self, filename: str, verbose = False, progress_callback = None):
-        return GcodeParser.write_file(self, filename, verbose, progress_callback)
+        self.order() # TODO: detect need for ordering, skip already ordered `Gcode`
+        return self.__get_parser__().write_file(self, filename, verbose, progress_callback)
 
 
     def get_by_meta(self, meta: str, value = None, value_check: Callable[[Any], bool]|None = None, break_on = lambda x: False):
@@ -63,7 +71,6 @@ class Gcode(list[Block]):
 
     def g_add(self, gcode: Block|str, index: int = -1, data:BlockData|None=None, meta: dict|None=None):
         """Appends gcode block to Gcode.\n\n`gcode`: Block or gcode str.\n\ndefault `index` -1: append to the end"""
-        
         idx = index if index < len(self) else -1
         
         if type(gcode) == str:
@@ -82,7 +89,7 @@ class Gcode(list[Block]):
                 if meta is None: meta = self[last_index].meta
             
             if meta is None: meta = {}
-            gcode_obj = Block(move, gcode, True, data, meta)
+            gcode_obj = Block(None, move, gcode, True, data, meta)
             
         else:
             gcode_obj = gcode.copy()
@@ -90,6 +97,22 @@ class Gcode(list[Block]):
             self.append(gcode_obj)
             return
         self.insert(index, gcode_obj)
+
+
+    def order(self):
+        """
+        Order `Blocks` inside `Gcode`. Used to create position reference inside each `Block`
+        """
+        for idx, i in enumerate(self):
+            i.prev = self[idx-1]
+
+
+    def unlink(self):
+        """
+        Inverse of `order`. Used to make object serializable
+        """
+        for i in self:
+            i.unlink()
 
 
     def copy(self):
