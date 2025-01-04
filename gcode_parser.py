@@ -35,7 +35,6 @@ class GcodeParser:
         
         `progress_callback`: function(current: int, total: int)
         """
-        # last_block = Block()
         coords = CoordSystem(speed=gcode.config.speed, abs_e=False)
         out_str = coords.to_str()
 
@@ -46,7 +45,6 @@ class GcodeParser:
             line_str = block.to_str(verbose)
             
             out_str += line_str
-            # last_block = block
             
             if progress_callback:
                 progress_callback(i, len_blocks)
@@ -67,9 +65,22 @@ class GcodeParser:
         
         `progress_callback`: function(current: int, total: int)
         """
-        gcode_str = GcodeParser.write_str(gcode, verbose, progress_callback)
+        coords = CoordSystem(speed=gcode.config.speed, abs_e=False)
+        out_str = coords.to_str()
+        
         with open(filename, 'w') as f:
-            f.write(gcode_str)
+            f.write(out_str)
+
+            len_blocks = len(gcode)
+
+            for i, block in enumerate(gcode):
+                
+                line_str = block.to_str(verbose)
+                
+                f.write(line_str)
+                
+                if progress_callback:
+                    progress_callback(i, len_blocks)
 
 
     def _line_to_dict(line: str) -> dict[str, str]:
