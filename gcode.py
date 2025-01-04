@@ -104,7 +104,8 @@ class Gcode(list[Block]):
         Order `Blocks` inside `Gcode`. Used to create position reference inside each `Block`
         """
         for idx, i in enumerate(self):
-            i.prev = self[idx-1]
+            i.prev = self[idx-1] if idx > 0 else None
+            i.sync()
 
 
     def unlink(self):

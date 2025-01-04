@@ -530,7 +530,7 @@ class BlockData:
 
 
     def to_str(self):
-        prev = getattr(getattr(self.block_ref, 'prev', None), 'BlockData', BlockData())
+        prev = getattr(getattr(self.block_ref, 'prev', None), 'block_data', BlockData())
         
         out = ''
         if self.e_temp != prev.e_temp and self.e_temp is not None:
@@ -555,7 +555,7 @@ class BlockData:
 
 
     def copy(self):
-        return BlockData(self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T)
+        return BlockData(self.block_ref, self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T)
 
 
 
