@@ -379,7 +379,7 @@ class Move:
     def to_str(self):
         
         prev = getattr(getattr(self.block_ref, 'prev', None), 'move', Move())
-        nullable = lambda param, a: '' if a is None else f' {param}{round(a, self.config.precision)}'
+        nullable = lambda param, a: '' if a is None else f' {param}{a:.{self.config.precision}f}'
         
         out = ''
         
@@ -480,7 +480,7 @@ class Arc:
 class BlockData:
     
     def zero():
-        return BlockData(0, False, 0, False, 0, 0)
+        return BlockData(None, 0, False, 0, False, 0, 0)
 
 
     def __init__(self, block_ref: 'Block|None' = None, e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None):
@@ -633,9 +633,5 @@ class Block:
         return line_str
 
 
-    def noprev_copy(self):
-        return Block(self.prev, self.move, self.command, self.emit_command, self.block_data, self.meta)
-
-
     def copy(self):
-        return Block(self.prev and self.prev.noprev_copy(), self.move, self.command, self.emit_command, self.block_data, self.meta)
+        return Block(self.prev, self.move, self.command, self.emit_command, self.block_data, self.meta)

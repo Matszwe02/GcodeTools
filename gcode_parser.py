@@ -169,11 +169,11 @@ class GcodeParser:
             
             if arc is not None:
                 for section in arc.subdivide(move, 1): # TODO: improve default step size
-                    block = Block(None, section, line, emit_command, data.copy(), {})
+                    block = Block(None, section, line, emit_command, data)
                     gcode.append(block)
             
             else:
-                block = Block(None, move, line, emit_command, data.copy(), {})
+                block = Block(None, move, line, emit_command, data)
                 gcode.append(block)
                 
             if progress_callback:
