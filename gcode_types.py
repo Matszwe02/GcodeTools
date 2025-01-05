@@ -295,6 +295,15 @@ class Move:
         self.config = config
 
 
+    def duplicate(self):
+        """
+        Use in consecutive `Block`. Used to duplicate `Block`.
+        """
+        move = self.copy()
+        move.position.E = 0
+        return move
+
+
     def from_params(self, params: dict[str, str]):
         self.speed = float_nullable(params.get('F', self.speed))
         return self

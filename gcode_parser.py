@@ -4,23 +4,27 @@ from gcode import Gcode
 
 class GcodeParser:
 
-    def from_str(gcode: Gcode, gcode_str: str, progress_callback = None) -> Gcode:
+    def from_str(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback = None) -> Gcode:
         """
-        `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode.
+        `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode
+        
+        `data`: BlockData - initial printer state
         
         `progress_callback`: function(current: int, total: int)
         """
-        return GcodeParser._generate_moves(gcode, gcode_str, progress_callback)
+        return GcodeParser._generate_moves(gcode, gcode_str, data, progress_callback)
 
 
-    def from_file(gcode: Gcode, filename: str, progress_callback = None) -> Gcode:
+    def from_file(gcode: Gcode, filename: str, data = BlockData(), progress_callback = None) -> Gcode:
         """
-        `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode.
+        `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode
+        
+        `data`: BlockData - initial printer state
         
         `progress_callback`: function(current: int, total: int)
         """
         with open(filename, 'r') as f:
-            return GcodeParser.from_str(gcode, f.read(), progress_callback)
+            return GcodeParser.from_str(gcode, f.read(), data, progress_callback)
 
 
     def write_str(gcode: Gcode, verbose = False, progress_callback = None):
@@ -107,11 +111,10 @@ class GcodeParser:
         return params
 
 
-    def _generate_moves(gcode: Gcode, gcode_str: str, progress_callback = None) -> Gcode:
+    def _generate_moves(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback = None) -> Gcode:
 
         coord_system = CoordSystem(speed = gcode.config.speed)
         move = Move(config = gcode.config, position = coord_system.position)
-        data = BlockData.zero()
         
         gcode_lines = list(filter(str.strip, gcode_str.split('\n')))
         
@@ -121,6 +124,7 @@ class GcodeParser:
             command = None
             arc = None
             emit_command = False
+            move = move.duplicate()
             
             data.clear_wait()
             

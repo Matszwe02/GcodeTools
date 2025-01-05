@@ -18,13 +18,13 @@ class Gcode(list[Block]):
         return GcodeParser
 
 
-    def from_file(self, filename: str, progress_callback = None) -> 'Gcode':
-        self:'Gcode' = self.__get_parser__().from_file(self, filename, progress_callback)
+    def from_file(self, filename: str, data = BlockData(), progress_callback = None) -> 'Gcode':
+        self:'Gcode' = self.__get_parser__().from_file(self, filename, data, progress_callback)
         self.order()
         return self
 
-    def from_str(self, gcode_str: str, progress_callback = None) -> 'Gcode':
-        self:'Gcode' = self.__get_parser__().from_str(self, gcode_str, progress_callback)
+    def from_str(self, gcode_str: str, data = BlockData(), progress_callback = None) -> 'Gcode':
+        self:'Gcode' = self.__get_parser__().from_str(self, gcode_str, data, progress_callback)
         self.order()
         return self
 
@@ -84,7 +84,7 @@ class Gcode(list[Block]):
                 elif idx == 0:
                     last_index = 0
                 
-                move = self[last_index].move
+                move = self[last_index].move.duplicate()
                 if data is None: data = self[last_index].block_data
                 if meta is None: meta = self[last_index].meta
             
