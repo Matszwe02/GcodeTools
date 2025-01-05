@@ -253,9 +253,39 @@ class GcodeTools:
                 it.command = ''
                 gcode_new.append(it)
         return gcode_new
-    
-    
-    
+
+
+
+    def translate(gcode: Gcode, vector: Vector) -> Gcode:
+        for i in gcode:
+            i.move.translate(vector)
+        return gcode
+
+
+
+    def rotate(gcode: Gcode, deg: int) -> Gcode:
+        for i in gcode:
+            i.move.rotate(deg)
+        return gcode
+
+
+
+    def scale(gcode: Gcode, scale: int|Vector) -> Gcode:
+        for i in gcode:
+            i.move.scale(scale)
+        return gcode
+
+
+
+    def center(gcode: Gcode) -> Vector:
+        """
+        Get center of bounding cube of gcode.
+        """
+        vec1, vec2 = GcodeTools.get_bounding_cube(gcode)
+        return (vec1 + vec2) * 0.5
+
+
+
     def get_bounding_cube(gcode: Gcode) -> tuple[Vector, Vector]:
         """
         Get bounding cube of gcode. Returns a tuple of (low_corner, high_corner)
