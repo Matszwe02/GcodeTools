@@ -99,6 +99,18 @@ class MoveTypes:
     
     NO_OBJECT = -1
     
+    pprint_type = {
+        'inner' : ';TYPE:Perimeter',
+        'outer' : ';TYPE:External perimeter',
+        'skirt' : ';TYPE:Skirt/Brim',
+        'solid' : ';TYPE:Solid infill',
+        'sparse' : ';TYPE:Internal infill',
+        'bridge' : ';TYPE:Bridge infill',
+        'top' : ';TYPE:Top solid infill',
+        'overhang' : ';TYPE:Overhang perimeter',
+        '': ';TYPE:Custom'
+        }
+    
     
     def get_type(line: str):
         string = line.lower()
@@ -255,26 +267,38 @@ class GcodeTools:
         return gcode_new
 
 
+    def set_flowrate(gcode: Gcode, flowrate: float, force_extrusion = False) -> Gcode:
+        """
+        Sets flowrate (mm in E over mm in XYZ)
+        
+        `force_extrusion` : on True forces flowrate even on non-extrusion moves
+        """
+        gcode_new = gcode.copy()
+        for i in gcode_new:
+            if force_extrusion or i.move.position.E > 0:
+                i.move.set_flowrate(flowrate)
+        return gcode_new
+
 
     def translate(gcode: Gcode, vector: Vector) -> Gcode:
-        for i in gcode:
+        gcode_new = gcode.copy()
+        for i in gcode_new:
             i.move.translate(vector)
-        return gcode
-
+        return gcode_new
 
 
     def rotate(gcode: Gcode, deg: int) -> Gcode:
-        for i in gcode:
+        gcode_new = gcode.copy()
+        for i in gcode_new:
             i.move.rotate(deg)
-        return gcode
-
+        return gcode_new
 
 
     def scale(gcode: Gcode, scale: int|Vector) -> Gcode:
-        for i in gcode:
+        gcode_new = gcode.copy()
+        for i in gcode_new:
             i.move.scale(scale)
-        return gcode
-
+        return gcode_new
 
 
     def center(gcode: Gcode) -> Vector:
@@ -283,7 +307,6 @@ class GcodeTools:
         """
         vec1, vec2 = GcodeTools.get_bounding_cube(gcode)
         return (vec1 + vec2) * 0.5
-
 
 
     def get_bounding_cube(gcode: Gcode) -> tuple[Vector, Vector]:
@@ -302,7 +325,6 @@ class GcodeTools:
             low_corner = low_corner.vector_op(item.move.position, lower_bound)
             
         return (low_corner, high_corner)
-
 
 
     # TODO: regenerate_travels:
@@ -343,3 +365,31 @@ class GcodeTools:
             print('Cannot regenerate travels: no objects present in metadata')
         return out_gcode
 
+
+    def add_layer_tags(gcode: Gcode) -> Gcode:
+        
+        new_gcode = gcode.new()
+        
+        tag = ';LAYER_CHANGE'
+        layer = 0
+        for i in gcode:
+            meta_layer = i.meta.get('layer', -1)
+            if meta_layer != -1 and meta_layer != layer and meta_layer == int(meta_layer):
+                layer = meta_layer
+                new_gcode.g_add(tag)
+            new_gcode.g_add(i)
+        return new_gcode
+
+
+    def add_move_type_tags(gcode: Gcode) -> Gcode:
+                
+        new_gcode = gcode.new()
+        
+        move_type = ''
+        for i in gcode:
+            meta_type = i.meta.get('type', '')
+            if meta_type != move_type:
+                move_type = meta_type
+                new_gcode.g_add(MoveTypes.pprint_type.get(meta_type, MoveTypes.pprint_type['']))
+            new_gcode.g_add(i)
+        return new_gcode
