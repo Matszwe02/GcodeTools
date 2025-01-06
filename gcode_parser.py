@@ -88,11 +88,13 @@ class GcodeParser:
 
 
     def _line_to_dict(line: str) -> dict[str, str]:
-        line_parts = line.split(';')[0].split()
+        line_parts = line.split(';')[0].split('(')[0].split()
         if not line_parts:
             return {'0': ''}
 
         command = line_parts[0]
+        while len(command) > 2 and command[0].isalpha() and command[1] == '0':
+            command = command[0] + command[2:]
         params = {'0': command}
 
         for param in line_parts[1:]:
