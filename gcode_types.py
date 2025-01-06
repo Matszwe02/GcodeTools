@@ -388,7 +388,7 @@ class Move:
     def to_str(self):
         
         prev = getattr(getattr(self.block_ref, 'prev', None), 'move', Move())
-        nullable = lambda param, a: '' if a is None else f' {param}{a:.{self.config.precision}f}'
+        nullable = lambda param, a: '' if a is None else f' {param}{a:.{self.config.precision}f}'.rstrip('0').rstrip('.')
         
         out = ''
         
@@ -469,6 +469,7 @@ class Arc:
         num_steps = math.ceil(min(max(8, (abs(total_angle) * radius / step)), 360 * total_angle_normal))
 
         moves = []
+        e = (next.position.E) / num_steps
 
         for i in range(num_steps):
             t = i / (num_steps - 1) if num_steps > 1 else 0
@@ -477,7 +478,6 @@ class Arc:
             y = center.Y + radius * math.sin(angle)
 
             z = self.move.position.Z + t * (next.position.Z - self.move.position.Z)
-            e = (next.position.E - self.move.position.E) / num_steps + self.move.position.E
 
             new_move = Move(None, self.move.config, Vector(x, y, z, e), self.move.speed)
             moves.append(new_move)
