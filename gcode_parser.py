@@ -174,7 +174,7 @@ class GcodeParser:
             command = line.strip()
             
             if arc is not None:
-                for section in arc.subdivide(move, 1): # TODO: improve default step size
+                for section in arc.subdivide(move):
                     block = Block(None, section, line, emit_command, data)
                     gcode.append(block)
             
