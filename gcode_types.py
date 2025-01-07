@@ -330,7 +330,7 @@ class Move:
 
 
     def distance(self):
-        prev = getattr(getattr(self.block_ref, 'prev', None), 'move', Move())
+        prev = self.get_prev()
         
         distance = lambda x, y: x - y
         return self.position.vector_op(prev.position, distance, on_a_none=0, on_b_none=0, on_none=0)
@@ -348,7 +348,7 @@ class Move:
 
 
     def subdivide(self, step = None) -> list[Vector]:
-        prev = getattr(getattr(self.block_ref, 'prev', None), 'move', Move())
+        prev = self.get_prev()
         step = step or self.config.step
         
         dist = self.float_distance()
@@ -361,12 +361,16 @@ class Move:
         return pos_list
 
 
-    def get_flowrate(self):
-        """Returns flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement"""
+    def get_flowrate(self, filament_offset = 0.0):
+        """
+        Returns flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement
+        
+        filament_offset: if filament already started extruding or it's retracted
+        """
         
         distance = self.float_distance()
         if distance < self.config.step: return None
-        return self.position.E / distance
+        return (self.position.E - filament_offset) / distance
 
 
     def set_flowrate(self, flowrate: float):
@@ -385,9 +389,13 @@ class Move:
         return dist * 60 / (self.speed or self.config.speed)
 
 
+    def get_prev(self) -> 'Move':
+        return getattr(getattr(self.block_ref, 'prev', None), 'move', Move())
+
+
     def to_str(self):
         
-        prev = getattr(getattr(self.block_ref, 'prev', None), 'move', Move())
+        prev = self.get_prev()
         nullable = lambda param, a: '' if a is None else f' {param}{a:.{self.config.precision}f}'.rstrip('0').rstrip('.')
         
         out = ''
@@ -538,8 +546,12 @@ class BlockData:
             self.T = tool
 
 
+    def get_prev(self) -> 'BlockData':
+        return getattr(getattr(self.block_ref, 'prev', None), 'block_data', BlockData())
+
+
     def to_str(self):
-        prev = getattr(getattr(self.block_ref, 'prev', None), 'block_data', BlockData())
+        prev = self.get_prev()
         
         out = ''
         if self.e_temp != prev.e_temp and self.e_temp is not None:
