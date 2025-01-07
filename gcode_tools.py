@@ -327,6 +327,38 @@ class GcodeTools:
         return (low_corner, high_corner)
 
 
+    def center_of_mass(gcode: Gcode) -> Vector:
+        """
+        Calculate the center of mass of the model
+        """
+        
+        total_volume = 0
+        sum_x, sum_y, sum_z = 0, 0, 0
+        sum_e = 0
+
+        for block in gcode:
+            move = block.move
+            sum_e += move.position.E or 0
+            if sum_e > 0:
+                volume = move.position.E + sum_e
+                total_volume += volume
+                
+                # Accumulate weighted positions
+                sum_x += move.position.X * volume
+                sum_y += move.position.Y * volume
+                sum_z += move.position.Z * volume
+
+        if total_volume < gcode.config.step:
+            return Vector()
+
+        # Calculate average position
+        avg_x = sum_x / total_volume
+        avg_y = sum_y / total_volume
+        avg_z = sum_z / total_volume
+
+        return Vector(avg_x, avg_y, avg_z)
+
+
     # TODO: regenerate_travels:
     # - ensure clean travel trimming
     # FIXME: correct travel begin/end
