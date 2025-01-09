@@ -61,6 +61,8 @@ class Static:
     RELATIVE_EXTRUDER = 'M83'
 
     SET_POSITION = 'G92'
+    
+    HOME = 'G28'
 
     ARC_PLANES = {'G17': 17, 'G18' : 18, 'G19': 19, 'XY' : 17, 'XZ': 18, 'YZ': 19}
 
@@ -76,6 +78,7 @@ class Static:
     RELATIVE_COORDS_DESC = 'G91; Relative Coordinates'
     ABSOLUTE_EXTRUDER_DESC = 'M82; Absolute Extruder'
     RELATIVE_EXTRUDER_DESC = 'M83; Relative Extruder'
+    HOME_DESC = 'G28; Home all axes'
     E_TEMP_DESC = 'M104 S{0}; Set Extruder Temperature'
     BED_TEMP_DESC = 'M140 S{0}; Set Bed Temperature'
     E_TEMP_WAIT_DESC = 'M109 S{0}; Set Extruder Temperature and Wait'
@@ -213,7 +216,7 @@ class Vector:
 
 
 class CoordSystem:
-    def __init__(self, abs_xyz = True, abs_e = True, speed = None, arc_plane = Static.ARC_PLANES['XY'], position = Vector.zero(), offset = Vector.zero(), abs_position_e = 0.0):
+    def __init__(self, abs_xyz = True, abs_e = True, speed = None, arc_plane = Static.ARC_PLANES['XY'], position = Vector(), offset = Vector.zero(), abs_position_e = 0.0):
         if speed is None:
             print('Warning: speed parameter is unset! Defaultnig to 1200 mm/min')
             speed = 1200
@@ -326,7 +329,7 @@ class Move:
 
     def rotate(self, deg: int):        
         angle_rad = math.radians(deg)
-        
+        if not (self.position.X and self.position.Y): return self
         x = self.position.X * math.cos(angle_rad) - self.position.Y * math.sin(angle_rad)
         y = self.position.X * math.sin(angle_rad) + self.position.Y * math.cos(angle_rad)
         
@@ -418,6 +421,8 @@ class Move:
         if self.speed != prev.speed: out += nullable('F', self.speed)
         
         if out != '': out = 'G1' + out + '\n'
+        
+        if self.position != Vector() and prev.position == Vector(): out = Static.HOME_DESC + '\n' + out
         
         return out
 

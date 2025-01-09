@@ -167,6 +167,9 @@ class GcodeParser:
             elif command in Static.ARC_PLANES.keys():
                 coord_system.arc_plane = Static.ARC_PLANES[command]
             
+            elif command == Static.HOME:
+                coord_system.position = Vector.zero()
+            
             else:
                 emit_command = True
             

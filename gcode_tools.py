@@ -287,7 +287,7 @@ class GcodeTools:
         """
         gcode_new = gcode.copy()
         for i in gcode_new:
-            if force_extrusion or i.move.position.E > 0:
+            if force_extrusion or (i.move.position.E and i.move.position.E > 0):
                 i.move.set_flowrate(flowrate)
         return gcode_new
 
