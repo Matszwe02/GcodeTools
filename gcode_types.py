@@ -655,7 +655,7 @@ class Block:
         line_str += self.block_data.to_str()
         line_str += self.move.to_str()
         
-        if self.emit_command:
+        if self.emit_command and self.command:
             line_str += self.command + '\n'
         
         if line_str != '':
