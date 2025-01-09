@@ -613,7 +613,7 @@ class Block:
         
         Used to ensure that move path is deterministic, when splitting `Gcode`
         """
-        new = Block(self.move.copy(), block_data=self.block_data.copy(), meta=self.meta)
+        new = Block(None, self.move.copy(), block_data=self.block_data.copy(), meta=self.meta)
         new.move.position.E = 0
         new.move.speed = 0
         return new
