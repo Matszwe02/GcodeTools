@@ -119,6 +119,8 @@ class GcodeParser:
         
         len_gcode_lines = len(gcode_lines)
         
+        out_gcode = gcode.new()
+        
         for i, line in enumerate(gcode_lines):
             command = None
             arc = None
@@ -173,13 +175,13 @@ class GcodeParser:
             if arc is not None:
                 for section in arc.subdivide(move):
                     block = Block(None, section, line, emit_command, data)
-                    gcode.append(block)
+                    out_gcode.append(block)
             
             else:
                 block = Block(None, move, line, emit_command, data)
-                gcode.append(block)
+                out_gcode.append(block)
                 
             if progress_callback:
                 progress_callback(i, len_gcode_lines)
         
-        return gcode
+        return out_gcode
