@@ -188,6 +188,10 @@ class Vector:
         return Vector(self.X, self.Y, self.Z, self.E)
 
 
+    def to_str(self):
+        return f'X={self.X}, Y={self.Y}, Z={self.Z}, E={self.E}'
+
+
     def to_dict(self):
         return {'X': self.X, 'Y': self.Y, 'Z': self.Z, 'E': self.E}
 
