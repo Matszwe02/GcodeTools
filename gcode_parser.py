@@ -4,40 +4,39 @@ from gcode import Gcode
 
 class GcodeParser:
 
-    def from_str(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback = None) -> Gcode:
+    def from_str(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> Gcode:
         """
-        `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode
-        
-        `data`: BlockData - initial printer state
-        
-        `progress_callback`: function(current: int, total: int)
+        Args:
+            gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
+            gcode_str: `str` - string that will be parsed into `Gcode`
+            data: `BlockData` - initial printer state
+            progress_callback: `Callable(current: int, total: int)`
         """
         return GcodeParser._generate_moves(gcode, gcode_str, data, progress_callback)
 
 
-    def from_file(gcode: Gcode, filename: str, data = BlockData(), progress_callback = None) -> Gcode:
+    def from_file(gcode: Gcode, filename: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> Gcode:
         """
-        `gcode`: Gcode or None. When Gcode, uses its config. When None, creates an empty Gcode
-        
-        `data`: BlockData - initial printer state
-        
-        `progress_callback`: function(current: int, total: int)
+        Args:
+            gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
+            filename: `str` - filename containing g-code to be parsed
+            data: `BlockData` - initial printer state
+            progress_callback: `Callable(current: int, total: int)`
         """
         with open(filename, 'r') as f:
             return GcodeParser.from_str(gcode, f.read(), data, progress_callback)
 
 
-    def write_str(gcode: Gcode, verbose = False, progress_callback = None):
+    def write_str(gcode: Gcode, verbose = False, progress_callback: typing.Callable|None = None):
         """
         Write G-Code as a string
         
-        `gcode`: Gcode
-        
-        `verbose`: include Block's metadata for each line.
-        Includes object name, line type, layer number, etc.
-        Warning: takes up much more time and space
-        
-        `progress_callback`: function(current: int, total: int)
+        Args:
+            gcode: `Gcode`
+            verbose: `bool` - include Block's metadata for each line. Warning: takes up much more time and space
+            progress_callback: `Callable(current: int, total: int)`
+        Returns:
+            str
         """
         coords = CoordSystem(speed=gcode.config.speed, abs_e=False)
         out_str = coords.to_str()
@@ -57,17 +56,15 @@ class GcodeParser:
         return out_str
 
 
-    def write_file(gcode: Gcode, filename: str, verbose = False, progress_callback = None):
+    def write_file(gcode: Gcode, filename: str, verbose = False, progress_callback: typing.Callable|None = None):
         """
-        Write G-Code as a string
+        Write G-Code as a string into a file
         
-        `gcode`: Gcode
-        
-        `filename`: str of output path
-        
-        `verbose`: include Block's metadata for each line. Warning: takes up much more time and space
-        
-        `progress_callback`: function(current: int, total: int)
+        Args:
+            gcode: `Gcode`
+            filename: `str` of output path
+            verbose: `bool` - include Block's metadata for each line. Warning: takes up much more time and space
+            progress_callback: `Callable(current: int, total: int)`
         """
         coords = CoordSystem(speed=gcode.config.speed, abs_e=False)
         out_str = coords.to_str()

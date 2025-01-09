@@ -160,6 +160,9 @@ class MoveTypes:
 class GcodeTools:
 
     def read_config(gcode: Gcode):
+        """
+        Read slicer's config from `Gcode`
+        """
         metadata = {}
         start_id, end_id = -1, -1
         for id, block in enumerate(gcode):
@@ -178,9 +181,10 @@ class GcodeTools:
         return metadata
 
 
-    def fill_meta(gcode: Gcode, progress_callback = None):
+    def fill_meta(gcode: Gcode, progress_callback: typing.Callable|None = None):
         """
-        `progress_callback`: function(current: int, total: int)
+        Args:
+            progress_callback: `Callable(current: int, total: int)`
         """
         new_gcode = Gcode()
         meta = meta_initial
@@ -223,7 +227,13 @@ class GcodeTools:
 
     def split(gcode: Gcode) -> tuple[Gcode, Gcode, Gcode, dict[Gcode]]:
         """
-        returns (`start_gcode`: Gcode, `end_gcode`: Gcode, `object_gcode`: Gcode, `objects`: dict[Gcode])
+        Splits `Gcode` into:
+            start_gcode, object_gcode, end_gcode, where object_gcode is everything between start and end gcodes
+            objects: `dict` of individual objects' `Gcode`s
+        
+        
+        Returns:
+            `tuple`: (`start_gcode`: Gcode, `end_gcode`: Gcode, `object_gcode`: Gcode, `objects`: dict[Gcode])
         """
         object_gcode = gcode.new()
         start_gcode = gcode.new()
@@ -250,7 +260,7 @@ class GcodeTools:
 
     def trim(gcode: Gcode):
         """
-        Trims G-code from every command that's not handled by GcodeTools.
+        Trims G-code from every command that's not handled by GcodeTools
         
         Warning: some commands that aren't handled, may be important for the G-code!
         """
@@ -271,7 +281,9 @@ class GcodeTools:
         """
         Sets flowrate (mm in E over mm in XYZ)
         
-        `force_extrusion` : on True forces flowrate even on non-extrusion moves
+        Args:
+            flowrate: `float` - desired flowrate
+            force_extrusion: `bool` - on `True` forces flowrate even on non-extrusion moves
         """
         gcode_new = gcode.copy()
         for i in gcode_new:
@@ -303,7 +315,7 @@ class GcodeTools:
 
     def center(gcode: Gcode) -> Vector:
         """
-        Get center of bounding cube of gcode.
+        Get center of bounding cube of gcode
         """
         vec1, vec2 = GcodeTools.get_bounding_cube(gcode)
         return (vec1 + vec2) * 0.5
@@ -311,7 +323,10 @@ class GcodeTools:
 
     def get_bounding_cube(gcode: Gcode) -> tuple[Vector, Vector]:
         """
-        Get bounding cube of gcode. Returns a tuple of (low_corner, high_corner)
+        Get bounding cube of gcode
+        
+        Returns:
+            `tuple` of (low_corner, high_corner)
         """
         
         low_corner = Vector(None, None, None)

@@ -1,6 +1,6 @@
 import math
 import json
-
+import typing
 
 
 def float_nullable(input):
@@ -15,16 +15,23 @@ def remove_chars(string: str, chars: str)->str:
     return outstr
 
 
-def check_null_except(obj, obj_type, on_none = set, alert="Can only use {0}, not {1}"):
+def check_null_except(obj, obj_type, on_none: typing.Callable|Exception|None = Exception, alert="Can only use {0}, not {1}"):
     """
-    Check wrong object, with optional object creation on None.
+    Check wrong object, with optional object creation on None
     
     checks if `obj` is instance of `obj_type`, otherwise raises `TypeError` with `alert`
     
-    `on_none`: `set` to automatically set with `obj_type` constructor, `None` to except on None, `Object` constructor method
+    Args:
+        obj: `Object`
+        obj_type: `class`
+        on_none: 
+            None: to automatically set with `obj_type` constructor
+            Exception: to except on None
+            Object's constructor method: to construct `Object`
+        alert: `str`
     """
     if not isinstance(obj, obj_type):
-        if obj is None and on_none is not None:
+        if obj is None and on_none is not Exception:
             obj = on_none if on_none is not set else obj_type()
         else:
             raise TypeError(alert.format(obj_type, type(obj)))
@@ -107,11 +114,10 @@ class Vector:
         """
         Returns a new `Vector` object, does not affect `self` or `other`
         
-        `operation`: lambda
-        
-        `on_a_none`, `on_b_none`: `''` to skip None checking ; `'a'`, `'b'`, `None`, `float` to return
-        
-        `on_none`: float|None if both `a` and `b` are none
+        Args:
+            `operation`: lambda
+            `on_a_none`, `on_b_none`: `''` to skip None checking ; `'a'`, `'b'`, `None`, `float` to return that value
+            `on_none`: float|None if both `a` and `b` are none
         """
         
         def nullable_op(a: float | None, b: float | None):
@@ -127,7 +133,7 @@ class Vector:
             
             return operation(a, b)
         
-        check_null_except(other, Vector, None, 'Can only operate on {0}, not {1}')
+        check_null_except(other, Vector, Exception, 'Can only operate on {0}, not {1}')
         
         X = nullable_op(self.X, other.X)
         Y = nullable_op(self.Y, other.Y)
@@ -168,7 +174,7 @@ class Vector:
 
     def add(self, other: 'Vector'):
         """Adds `Vector`'s dimensions to `other`'s that are not None"""
-        check_null_except(other, Vector, None, 'Can only add {0} to {0}, not {1}')
+        check_null_except(other, Vector, Exception, 'Can only add {0} to {0}, not {1}')
         add_op = lambda a, b: a + b
         new_vec = self.vector_op(other, add_op, None, 'a')
         self.set(new_vec)
@@ -176,7 +182,7 @@ class Vector:
 
     def set(self, other: 'Vector'):
         """Sets `Vector`'s dimensions to `other`'s that are not None"""
-        check_null_except(other, Vector, None, 'Can only set {0} to {0}, not {1}')
+        check_null_except(other, Vector, Exception, 'Can only set {0} to {0}, not {1}')
         if other.X is not None: self.X = other.X
         if other.Y is not None: self.Y = other.Y
         if other.Z is not None: self.Z = other.Z
@@ -294,14 +300,14 @@ class Move:
         
         self.block_ref = block_ref
         self.position = position.copy()
-        """The end vector of Move.\n\n`XYZ` is always absolute\n\n`E` is always relative\n\nEvery logic is performend regarding to that."""
+        """The end vector of Move\n\n`XYZ` is always absolute\n\n`E` is always relative\n\nEvery logic is performend regarding to that"""
         self.speed = speed
         self.config = config
 
 
     def duplicate(self):
         """
-        Use in consecutive `Block`. Used to duplicate `Block`.
+        Use in consecutive `Block`. Used to duplicate `Block`
         """
         move = self.copy()
         move.position.E = 0
@@ -342,7 +348,7 @@ class Move:
 
     def float_distance(self, distance: Vector|None = None):
         """
-        Return float distance of current move or between self and a Vector
+        Float distance of current move or between self and a Vector
         """
         
         if isinstance(distance, Vector):
@@ -369,7 +375,8 @@ class Move:
         """
         Returns flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement
         
-        filament_offset: if filament already started extruding or it's retracted
+        Args:
+            filament_offset: `float` - amount of filament already extruding or that's retracted
         """
         
         distance = self.float_distance()
@@ -436,11 +443,11 @@ class Arc:
     
     def __init__(self, move = Move(), dir = 0, ijk = Vector()):
         """
-        `direction` 2=CW, 3=CCW
-        
-        `move` is the start position of the arc. End position is to be supplied in `subdivide`.
-        
-        It is not possible to perform any operations on arc moves, only subdivision is possible.
+        Args:
+            dir: `int` - 2=CW, 3=CCW
+            move: `Move` - start position of the arc. End position is to be supplied in `subdivide()`
+            ijk: `Vector` with respectful dimensions
+        It is not possible to perform any operations on arc moves, only subdivision is possible
         """
         self.move = move
         self.dir = dir
@@ -519,9 +526,8 @@ class BlockData:
         """
         Set fan with index to desired speed.
         
-        `fan` - speed in range 0..255
-        
-        `index` - fan number, default 0
+        Args:
+            fan: `int` - speed in range 0..255
         """
         
         if type(fan) == int and fan in range(256):
