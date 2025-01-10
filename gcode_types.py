@@ -573,6 +573,12 @@ class BlockData:
             out += f'{Static.E_TEMP_DESC.format(self.e_temp)}\n'
         if self.bed_temp != prev.bed_temp and self.bed_temp is not None:
             out += f'{Static.BED_TEMP_DESC.format(self.bed_temp)}\n'
+        
+        if self.e_temp != prev.e_temp and self.e_temp is not None and self.e_wait:
+            out += f'{Static.E_TEMP_WAIT_DESC.format(self.e_temp)}\n'
+        if self.bed_temp != prev.bed_temp and self.bed_temp is not None and self.bed_wait:
+            out += f'{Static.BED_TEMP_WAIT_DESC.format(self.bed_temp)}\n'
+        
         if self.fan != prev.fan and self.fan is not None:
             out += f'{Static.FAN_SPEED_DESC.format(self.fan)}\n'
         if self.T != prev.T and self.T is not None:
