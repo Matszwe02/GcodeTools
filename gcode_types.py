@@ -501,7 +501,12 @@ class Arc:
             x = center.X + radius * math.cos(angle)
             y = center.Y + radius * math.sin(angle)
 
-            z = self.move.position.Z + t * (next.position.Z - self.move.position.Z)
+            if next.position.Z is None:
+                z = None
+            elif self.move.position.Z is None:
+                z = next.position.Z
+            else:
+                z = self.move.position.Z + t * (next.position.Z - self.move.position.Z)
 
             new_move = Move(None, self.move.config, Vector(x, y, z, e), self.move.speed)
             moves.append(new_move)
