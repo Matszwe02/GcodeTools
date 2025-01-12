@@ -4,6 +4,24 @@ from gcode import Gcode
 
 class GcodeParser:
 
+
+    class ParserData:
+        """
+        Data used to parse g-code. Stores current state of the printer and everything that is needed to generate a new `Block`
+        """
+        def __init__(self, coord_system: CoordSystem, block: Block):
+            # self.line = line
+            self.coord_system = coord_system
+            # self.move = move
+            # self.data = data
+            self.block = block
+
+
+        def copy(self):
+            return GcodeParser.ParserData(self.coord_system.copy(), self.block.copy())
+
+
+
     def from_str(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> Gcode:
         """
         Args:
@@ -110,6 +128,76 @@ class GcodeParser:
         return params
 
 
+    def _parse_line(parser_data: 'GcodeParser.ParserData') -> list['GcodeParser.ParserData']:
+
+        pd = parser_data.copy()
+        command = None
+        arc = None
+        emit_command = False
+        move = pd.block.move.duplicate()
+        
+        pd.block.block_data.clear_wait()
+        
+        line_dict: dict = GcodeParser._line_to_dict(pd.block.command)
+        command: str = line_dict['0']
+        
+        if command in ['G0', 'G1', 'G2', 'G3']:
+            if command in ['G2', 'G3']:
+                arc = Arc(move.copy(), int(command[1])).from_params(line_dict)
+                
+            move.position = pd.coord_system.apply_move(line_dict)
+            move.from_params(line_dict)
+        
+        elif command in [Static.ABSOLUTE_COORDS, Static.RELATIVE_COORDS]:
+            pd.coord_system.set_abs_xyz(command == Static.ABSOLUTE_COORDS)
+
+        elif command in [Static.ABSOLUTE_EXTRUDER, Static.RELATIVE_EXTRUDER]:
+            pd.coord_system.set_abs_e(command == Static.ABSOLUTE_EXTRUDER)
+
+        elif command == Static.SET_POSITION:
+            vec = Vector().from_params(line_dict)
+            pd.coord_system.set_offset(vec)
+        
+        elif command == Static.FAN_SPEED:
+            pd.block.block_data.set_fan(line_dict.get('S', None))
+        
+        elif command == Static.FAN_OFF:
+            pd.block.block_data.set_fan(0)
+        
+        elif command == Static.E_TEMP or command == Static.E_TEMP_WAIT:
+            pd.block.block_data.set_e_temp(line_dict.get('S', None), (command == Static.E_TEMP_WAIT))
+        
+        elif command == Static.BED_TEMP or command == Static.BED_TEMP_WAIT:
+            pd.block.block_data.set_bed_temp(line_dict.get('S', None), (command == Static.BED_TEMP_WAIT))
+        
+        elif command.startswith(Static.TOOL_CHANGE) and command[1:].isdigit():
+            pd.block.block_data.set_tool(int(command[1:]))
+        
+        elif command in Static.ARC_PLANES.keys():
+            pd.coord_system.arc_plane = Static.ARC_PLANES[command]
+        
+        elif command == Static.HOME:
+            pd.coord_system.position = Vector.zero()
+        
+        else:
+            emit_command = True
+        
+        command = pd.block.command.strip()
+        
+        if arc is not None:
+            listdata = []
+            pd_new = pd.copy()
+            for section in arc.subdivide(move):
+                block = Block(None, section, pd.block.command, emit_command, pd.block.block_data)
+                pd_new.block = block
+                listdata.append(pd_new)
+            return listdata
+        
+        else:
+            pd.block = Block(None, move, pd.block.command, emit_command, pd.block.block_data)
+            return [pd]
+
+
     def _generate_moves(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback = None) -> Gcode:
 
         coord_system = CoordSystem(speed = gcode.config.speed)
@@ -119,69 +207,17 @@ class GcodeParser:
         
         len_gcode_lines = len(gcode_lines)
         
+        pd = GcodeParser.ParserData(coord_system, Block())
+        
         for i, line in enumerate(gcode_lines):
-            command = None
-            arc = None
-            emit_command = False
-            move = move.duplicate()
             
-            data.clear_wait()
+            pd.block.command = line
+            list_pd:list[GcodeParser.ParserData] = GcodeParser._parse_line(pd)
             
-            line_dict: dict = GcodeParser._line_to_dict(line)
-            command: str = line_dict['0']
+            for num in list_pd:
+                gcode.g_add(num.block)
+            pd = list_pd[-1]
             
-            if command in ['G0', 'G1', 'G2', 'G3']:
-                if command in ['G2', 'G3']:
-                    arc = Arc(move.copy(), int(command[1])).from_params(line_dict)
-                    
-                move.position = coord_system.apply_move(line_dict)
-                move.from_params(line_dict)
-            
-            elif command in [Static.ABSOLUTE_COORDS, Static.RELATIVE_COORDS]:
-                coord_system.set_abs_xyz(command == Static.ABSOLUTE_COORDS)
-
-            elif command in [Static.ABSOLUTE_EXTRUDER, Static.RELATIVE_EXTRUDER]:
-                coord_system.set_abs_e(command == Static.ABSOLUTE_EXTRUDER)
-
-            elif command == Static.SET_POSITION:
-                vec = Vector().from_params(line_dict)
-                coord_system.set_offset(vec)
-            
-            elif command == Static.FAN_SPEED:
-                data.set_fan(line_dict.get('S', None))
-            
-            elif command == Static.FAN_OFF:
-                data.set_fan(0)
-            
-            elif command == Static.E_TEMP or command == Static.E_TEMP_WAIT:
-                data.set_e_temp(line_dict.get('S', None), (command == Static.E_TEMP_WAIT))
-            
-            elif command == Static.BED_TEMP or command == Static.BED_TEMP_WAIT:
-                data.set_bed_temp(line_dict.get('S', None), (command == Static.BED_TEMP_WAIT))
-            
-            elif command.startswith(Static.TOOL_CHANGE) and command[1:].isdigit():
-                data.set_tool(int(command[1:]))
-            
-            elif command in Static.ARC_PLANES.keys():
-                coord_system.arc_plane = Static.ARC_PLANES[command]
-            
-            elif command == Static.HOME:
-                coord_system.position = Vector.zero()
-            
-            else:
-                emit_command = True
-            
-            command = line.strip()
-            
-            if arc is not None:
-                for section in arc.subdivide(move):
-                    block = Block(None, section, line, emit_command, data)
-                    gcode.append(block)
-            
-            else:
-                block = Block(None, move, line, emit_command, data)
-                gcode.append(block)
-                
             if progress_callback:
                 progress_callback(i, len_gcode_lines)
         
