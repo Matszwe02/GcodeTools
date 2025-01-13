@@ -102,7 +102,7 @@ class Gcode(list[Block]):
         return new
 
 
-    def g_add(self, gcode: Block|str, index: int = -1, data:BlockData|None=None, meta: dict|None=None):
+    def g_add(self, gcode: Block|str, index: int = -1, data:BlockData|None=None, meta: dict|None=None, compile = False):
         """
         Appends a G-code block to the `Gcode`.
 
@@ -112,6 +112,7 @@ class Gcode(list[Block]):
                 Default index = `-1` => append to the end of `Gcode`
             data: `BlockData`
             meta: `dict`
+            compile: `bool` - when `gcode` is `str`, it can be compiled into a `Block` instead of being a command
         """
         
         idx = index if index < len(self) else -1
@@ -132,6 +133,17 @@ class Gcode(list[Block]):
                 if meta is None: meta = self[last_index].meta
             
             if meta is None: meta = {}
+            if compile:
+                parser = self.__get_parser__()
+                speed = self[max(idx, 0) - 1].move.speed if len(self) else None
+                position = self[max(idx, 0) - 1].move.position if len(self) else Vector()
+                gcode_objs = parser._parse_line(parser.ParserData(CoordSystem(speed=speed, position=position), Block(None, move, gcode, True, data, meta)))
+                for idx, obj in enumerate(gcode_objs):
+                    if idx == -1:
+                        self.append(obj.block)
+                    else:
+                        self.insert(index + idx, obj.block)
+                return
             gcode_obj = Block(None, move, gcode, True, data, meta)
             
         else:
