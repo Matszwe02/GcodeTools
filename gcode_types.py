@@ -672,7 +672,7 @@ class Block:
         if line_str != '':
             if verbose:
                 line_str += '; '
-                if self.meta is not None:
+                if self.meta is not None and self.meta != {}:
                     line_str += remove_chars(json.dumps(self.meta), '{} "').replace(",", " ") + ', '
                 line_str += remove_chars(json.dumps(self.block_data.to_dict()), '{} \"').replace(",", " ")
                 line_str += f', duration:{self.move.duration():.3f}s\n'
