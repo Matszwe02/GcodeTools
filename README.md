@@ -13,7 +13,7 @@
 | Feature                                              | Status |                 command                  |
 | ---------------------------------------------------- | :----: | :--------------------------------------: |
 | Translate Gcode                                      |   ✅   |  `GcodeTools.translate(gcode, Vector)`   |
-| Rotate Gcode                                         |   ✅   |    `GcodeTools.rotate(gcode, int) `    |
+| Rotate Gcode                                         |   ✅   |     `GcodeTools.rotate(gcode, int) `     |
 | Scale Gcode                                          |   ✅   | `GcodeTools.scale(gcode, Vector\|float)` |
 | subdivide Gcode                                      |   ✅   |       `move.subdivide(prev, step)`       |
 | Get move's flowrate                                  |   ✅   |        `move.get_flowrate(prev)`         |
@@ -22,6 +22,7 @@
 | Split layers                                         |  🔜   |      `gcode.get_by_meta(str, Any)`       |
 | Split bodies                                         |  🔜   |        `GcodeTools.split(gcode)`         |
 | Insert custom Gcode                                  |   ❌   |                                          |
+| Read Thumbnails                                      |   ✅   |    `GcodeTools.get_thumbnails(gcode)`    |
 | Generate Thumbnails                                  |   ❌   |                                          |
 | Convert from/to Arc Moves                            |   ❌   |                                          |
 | Find body bounds                                     |   ✅   |  `GcodeTools.get_bounding_cube(gcode)`   |

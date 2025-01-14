@@ -1,8 +1,7 @@
 import json
 from gcode_types import *
 from gcode import Gcode
-
-
+import base64
 
 meta_initial = {'object': None, 'type': None, 'layer': 0.0}
 
@@ -440,3 +439,34 @@ class GcodeTools:
                 new_gcode.g_add(MoveTypes.pprint_type.get(meta_type, MoveTypes.pprint_type['']))
             new_gcode.g_add(i)
         return new_gcode
+
+
+    def get_thumbnails(gcode: Gcode) -> list[bytes]:
+        """
+        Get all thumbnails from `Gcode`, ordered as appearing in `Gcode`. For now only `png` format is supported
+        
+        Example implementation:
+        ```py
+        for idx, thumb in enumerate(GcodeTools.get_thumbnails(gcode)):
+            with open(f'thumb{idx}.png', 'wb') as f:
+                f.write(thumb)
+        ```
+        """
+        start = -1
+        image_text = ''
+        images = []
+        for idx, i in enumerate(gcode):
+            if start > -1:
+                if i.command == '; THUMBNAIL_BLOCK_END':
+                    start = -1
+                    images.append(base64.b64decode(image_text))
+                
+                text = i.command.removeprefix(';').strip()
+                if 'thumbnail end' in text or 'thumbnail begin' in text or len(text) == 0: continue
+                image_text += text
+            
+            if i.command == '; THUMBNAIL_BLOCK_START':
+                start = idx
+                image_text = ''
+        
+        return images
