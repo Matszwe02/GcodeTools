@@ -10,10 +10,7 @@ class GcodeParser:
         Data used to parse g-code. Stores current state of the printer and everything that is needed to generate a new `Block`
         """
         def __init__(self, coord_system: CoordSystem, block: Block):
-            # self.line = line
             self.coord_system = coord_system
-            # self.move = move
-            # self.data = data
             self.block = block
 
 
