@@ -2,6 +2,7 @@ import json
 from gcode_types import *
 from gcode import Gcode
 import base64
+import textwrap
 
 meta_initial = {'object': None, 'type': None, 'layer': 0.0}
 
@@ -470,3 +471,31 @@ class GcodeTools:
                 image_text = ''
         
         return images
+
+
+    def generate_thumbnail(gcode: Gcode, data: bytes, width: int, height: int, textwidth = 80) -> Gcode:
+        """
+        Args:
+            data: `bytes` - raw png data
+            width: `int` - width in pixels
+            height: `int` - height in pixels
+            textwidth: `int` - custom wrapping width of thumbnail text
+                Recommended to set `>=160` on large thumbnails
+        """
+        new = gcode.copy()
+        
+        THUMB_BLOCK = '\n'\
+        '; THUMBNAIL_BLOCK_START\n'\
+        '; thumbnail begin {0}x{1} {2}\n'\
+        '{3}\n'\
+        '; thumbnail end\n'\
+        '; THUMBNAIL_BLOCK_END\n'
+        
+        text = base64.b64encode(data)
+        len_text = len(text)
+        text = textwrap.indent(textwrap.fill(text.decode('utf-8'), textwidth - 2), '; ')
+
+        thumb = THUMB_BLOCK.format(width, height, len_text, text)
+        block = Block(command=thumb, emit_command=True)
+        new.g_add(block, 0)
+        return new

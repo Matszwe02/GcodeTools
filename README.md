@@ -10,26 +10,26 @@
 
 # Available G-Code Tools
 
-| Feature                                              | Status |                 command                  |
-| ---------------------------------------------------- | :----: | :--------------------------------------: |
-| Translate Gcode                                      |   ✅   |  `GcodeTools.translate(gcode, Vector)`   |
-| Rotate Gcode                                         |   ✅   |     `GcodeTools.rotate(gcode, int) `     |
-| Scale Gcode                                          |   ✅   | `GcodeTools.scale(gcode, Vector\|float)` |
-| subdivide Gcode                                      |   ✅   |       `move.subdivide(prev, step)`       |
-| Get move's flowrate                                  |   ✅   |        `move.get_flowrate(prev)`         |
-| Set flowrate <br> (in mm^2, use `scale` to set in %) |   ✅   |     `move.set_flowrate(prev, float)`     |
-| Detect Gcode features                                |   ✅   |      `GcodeTools.fill_meta(gcode)`       |
-| Split layers                                         |  🔜   |      `gcode.get_by_meta(str, Any)`       |
-| Split bodies                                         |  🔜   |        `GcodeTools.split(gcode)`         |
-| Insert custom Gcode                                  |   ❌   |                                          |
-| Read Thumbnails                                      |   ✅   |    `GcodeTools.get_thumbnails(gcode)`    |
-| Generate Thumbnails                                  |   ❌   |                                          |
-| Convert from/to Arc Moves                            |   ❌   |                                          |
-| Find body bounds                                     |   ✅   |  `GcodeTools.get_bounding_cube(gcode)`   |
-| Trim unused Gcode                                    |  🔜   |         `GcodeTools.trim(gcode)`         |
-| Offset Gcodes in time                                |   ❌   |                                          |
-| Create custom travel movement                        |   ❌   |                                          |
-| convert to firmware retraction                       |  🔜   |  `GcodeTools.regenerate_travels(gcode)`  |
+| Feature                                              | Status |                                command                                 |
+| ---------------------------------------------------- | :----: | :--------------------------------------------------------------------: |
+| Translate Gcode                                      |   ✅   |                 `GcodeTools.translate(gcode, Vector)`                  |
+| Rotate Gcode                                         |   ✅   |                    `GcodeTools.rotate(gcode, int) `                    |
+| Scale Gcode                                          |   ✅   |                `GcodeTools.scale(gcode, Vector\|float)`                |
+| subdivide Gcode                                      |   ✅   |                      `move.subdivide(prev, step)`                      |
+| Get move's flowrate                                  |   ✅   |                       `move.get_flowrate(prev)`                        |
+| Set flowrate <br> (in mm^2, use `scale` to set in %) |   ✅   |                    `move.set_flowrate(prev, float)`                    |
+| Detect Gcode features                                |   ✅   |                     `GcodeTools.fill_meta(gcode)`                      |
+| Split layers                                         |  🔜   |                     `gcode.get_by_meta(str, Any)`                      |
+| Split bodies                                         |  🔜   |                       `GcodeTools.split(gcode)`                        |
+| Insert custom Gcode                                  |   ❌   |                                                                        |
+| Read Thumbnails                                      |   ✅   |                   `GcodeTools.get_thumbnails(gcode)`                   |
+| Generate Thumbnails                                  |   ✅   | `GcodeTools.generate_thumbnail(gcode, data, width, height, textwidth)` |
+| Convert from/to Arc Moves                            |   ❌   |                                                                        |
+| Find body bounds                                     |   ✅   |                 `GcodeTools.get_bounding_cube(gcode)`                  |
+| Trim unused Gcode                                    |  🔜   |                        `GcodeTools.trim(gcode)`                        |
+| Offset Gcodes in time                                |   ❌   |                                                                        |
+| Create custom travel movement                        |   ❌   |                                                                        |
+| convert to firmware retraction                       |  🔜   |                 `GcodeTools.regenerate_travels(gcode)`                 |
 
 
 ### Legend:
