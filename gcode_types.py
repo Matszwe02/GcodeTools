@@ -198,6 +198,8 @@ class Vector:
 
 
     def to_str(self):
+        if not self.E and not self.Z: return f'X={self.X}, Y={self.Y}'
+        if not self.E: return f'X={self.X}, Y={self.Y}, Z={self.Z}'
         return f'X={self.X}, Y={self.Y}, Z={self.Z}, E={self.E}'
 
 
