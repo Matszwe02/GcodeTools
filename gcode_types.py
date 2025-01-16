@@ -161,14 +161,24 @@ class Vector:
         return self.vector_op(other, scale, on_a_none='a', on_b_none='a')
 
 
+    def __truediv__(self, other: 'Vector|float'):
+        if not isinstance(other, Vector): other = Vector(other, other, other, other)
+        scale = lambda a,b: a / b
+        return self.vector_op(other, scale, on_a_none='a', on_b_none='a')
+
+
     def valid(self, other: 'Vector'):
         """Return `Vector` with non-null dimensions from `other` vector"""
         valid = lambda a, b: a
         return self.vector_op(other, valid, on_a_none=None, on_b_none=None)
 
 
+    def xy(self):
+        return Vector(self.X, self.Y)
+
+
     def xyz(self):
-        return Vector(X=self.X, Y=self.Y, Z=self.Z)
+        return Vector(self.X, self.Y, self.Z)
 
 
     def e(self):

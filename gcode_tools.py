@@ -318,7 +318,7 @@ class GcodeTools:
         Get center of bounding cube of gcode
         """
         vec1, vec2 = GcodeTools.get_bounding_cube(gcode)
-        return (vec1 + vec2) * 0.5
+        return (vec1 + vec2) / 2
 
 
     def get_bounding_cube(gcode: Gcode) -> tuple[Vector, Vector]:
@@ -363,7 +363,7 @@ class GcodeTools:
         if total_volume < gcode.config.step:
             return Vector()
         
-        return (sum * (1 / total_volume)).xyz()
+        return (sum / total_volume).xyz()
 
 
     # TODO: regenerate_travels:
