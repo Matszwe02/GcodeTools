@@ -204,7 +204,7 @@ class GcodeParser:
         
         len_gcode_lines = len(gcode_lines)
         
-        pd = GcodeParser.ParserData(coord_system, Block())
+        pd = GcodeParser.ParserData(coord_system, Block(move=move))
         
         for i, line in enumerate(gcode_lines):
             
