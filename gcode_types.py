@@ -207,7 +207,7 @@ class Vector:
         return Vector(self.X, self.Y, self.Z, self.E)
 
 
-    def to_str(self):
+    def __str__(self):
         if not self.E and not self.Z: return f'X={self.X}, Y={self.Y}'
         if not self.E: return f'X={self.X}, Y={self.Y}, Z={self.Z}'
         return f'X={self.X}, Y={self.Y}, Z={self.Z}, E={self.E}'
@@ -664,9 +664,9 @@ class Block:
     def to_dict(self):
         return {
                 'command': self.command,
-                'move': self.move.__dict__,
+                'move': self.move.to_dict(),
                 'emit_command': self.emit_command,
-                'data': self.block_data,
+                'data': self.block_data.to_dict(),
                 'meta': self.meta
             }
 
