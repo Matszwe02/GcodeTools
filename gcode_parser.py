@@ -178,19 +178,17 @@ class GcodeParser:
         else:
             emit_command = True
         
-        command = pd.block.command.strip()
-        
         if arc is not None:
             listdata = []
             pd_new = pd.copy()
             for section in arc.subdivide(move):
-                block = Block(None, section, pd.block.command, emit_command, pd.block.block_data)
+                block = Block(None, section, pd.block.command.strip(), emit_command, pd.block.block_data)
                 pd_new.block = block
                 listdata.append(pd_new)
             return listdata
         
         else:
-            pd.block = Block(None, move, pd.block.command, emit_command, pd.block.block_data)
+            pd.block = Block(None, move, pd.block.command.strip(), emit_command, pd.block.block_data)
             return [pd]
 
 
