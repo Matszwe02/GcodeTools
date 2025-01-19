@@ -184,8 +184,8 @@ class GcodeTools:
         """
         Args:
             progress_callback: `Callable(current: int, total: int)`
+        passed `Gcode` gets modified so meta is added into it
         """
-        new_gcode = Gcode()
         meta = meta_initial
         was_start = False
         
@@ -211,14 +211,10 @@ class GcodeTools:
             if Keywords.get_keyword_line(id, gcode, Keywords.GCODE_END):
                 meta['type'] = MoveTypes.PRINT_END
             
-            new_block = block.copy()
-            new_block.meta = json.loads(json.dumps(meta))
-            new_gcode.append(new_block)
+            block.meta = json.loads(json.dumps(meta))
             
             if progress_callback:
                 progress_callback(id, len_gcode)
-            
-        return new_gcode
 
 
     def split(gcode: Gcode) -> tuple[Gcode, Gcode, Gcode, dict[Gcode]]:

@@ -2,7 +2,6 @@ from gcode_types import *
 from typing import Callable, Any
 
 
-
 class Gcode(list[Block]):
     
     def __init__(self):
@@ -17,34 +16,56 @@ class Gcode(list[Block]):
         return GcodeParser
 
 
+    def __get_meta_provider__(self):
+        from gcode_tools import GcodeTools
+        meta_provider = GcodeTools.fill_meta
+        return meta_provider
+
+
+    def __fill_meta__(self, meta_provider: Callable = None):
+        """
+            meta_provider: `Callable` - method to fill in meta
+                Default `None` = `GcodeTools.fill_meta()`
+        """
+        if meta_provider is None:
+            meta_provider = self.__get_meta_provider__()
+        meta_provider(self)
+
+
     def try_order(self):
         if not self.ordered:
             self.order()
             self.ordered = True
 
 
-    def from_str(self, gcode_str: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> 'Gcode':
+    def from_str(self, gcode_str: str, data = BlockData(), progress_callback: typing.Callable|None = None, meta_provider: Callable = None) -> 'Gcode':
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
             gcode_str: `str` - string that will be parsed into `Gcode`
             data: `BlockData` - initial printer state
             progress_callback: `Callable(current: int, total: int)`
+            meta_provider: `Callable` - method to fill in meta
+                Default `None` = `GcodeTools.fill_meta()`
         """
-        self:'Gcode' = self.__get_parser__().from_str(self, gcode_str, data, progress_callback)
+        self: Gcode = self.__get_parser__().from_str(self, gcode_str, data, progress_callback)
         self.order()
+        self.__fill_meta__(meta_provider)
         return self
 
-    def from_file(self, filename: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> 'Gcode':
+    def from_file(self, filename: str, data = BlockData(), progress_callback: typing.Callable|None = None, meta_provider: Callable = None) -> 'Gcode':
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
             filename: `str` - filename containing g-code to be parsed
             data: `BlockData` - initial printer state
             progress_callback: `Callable(current: int, total: int)`
+            meta_provider: `Callable` - method to fill in meta
+                Default `None` = `GcodeTools.fill_meta()`
         """
-        self:'Gcode' = self.__get_parser__().from_file(self, filename, data, progress_callback)
+        self: Gcode = self.__get_parser__().from_file(self, filename, data, progress_callback)
         self.order()
+        self.__fill_meta__(meta_provider)
         return self
 
     def write_str(self, verbose = False, progress_callback: typing.Callable|None = None):
