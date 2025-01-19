@@ -4,7 +4,7 @@ from gcode import Gcode
 import base64
 import textwrap
 
-meta_initial = {'object': None, 'type': None, 'layer': 0.0}
+meta_initial = {'object': None, 'type': None, 'layer': 0}
 
 class Keywords:
     """
@@ -31,8 +31,7 @@ class Keywords:
     EXECUTABLE_START = [KW("; EXECUTABLE_BLOCK_START"), KW(";TYPE:"), KW(";Generated with Cura_SteamEngine")]
     EXECUTABLE_END = [KW("; EXECUTABLE_BLOCK_END")]
     
-    LAYER_CHANGE_START = [KW(";LAYER_CHANGE"), KW(";LAYER:", ";TYPE:")]
-    LAYER_CHANGE_END = [KW(";TYPE:"), KW(";TYPE:")]
+    LAYER_CHANGE = [KW(";LAYER_CHANGE"), KW(";LAYER:", ";TYPE:")]
     
     GCODE_START = [KW(";TYPE:"), KW(";Generated with Cura_SteamEngine")]
     GCODE_END = [KW("EXCLUDE_OBJECT_END", "; EXECUTABLE_BLOCK_END"), KW(";TIME_ELAPSED:", ";End of Gcode", ";TIME_ELAPSED:"), KW(";TYPE:Custom", "; filament used")]
@@ -203,11 +202,8 @@ class GcodeTools:
             if move_object == MoveTypes.NO_OBJECT: meta["object"] = None
             elif move_object is not None: meta['object'] = move_object
             
-            
-            if Keywords.get_keyword_line(id, gcode, Keywords.LAYER_CHANGE_START):
-                meta['layer'] = int(meta['layer']) + 0.5
-            if meta['layer'] != int(meta['layer']) and Keywords.get_keyword_line(id, gcode, Keywords.LAYER_CHANGE_END):
-                meta['layer'] = int(meta['layer']) + 1
+            if Keywords.get_keyword_line(id, gcode, Keywords.LAYER_CHANGE):
+                meta['layer'] += 1
             
             if not was_start and Keywords.get_keyword_line(id, gcode, Keywords.GCODE_START):
                 meta['type'] = MoveTypes.PRINT_START
