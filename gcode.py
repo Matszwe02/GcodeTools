@@ -7,15 +7,20 @@ class Gcode(list[Block]):
     
     def __init__(self):
         self.config = Config()
-        """
-        Configuration of the G-Code computation
-        """
+        "Configuration of the G-Code computation"
+        self.ordered = False
         super().__init__()
 
 
     def __get_parser__(self):
         from gcode_parser import GcodeParser
         return GcodeParser
+
+
+    def try_order(self):
+        if not self.ordered:
+            self.order()
+            self.ordered = True
 
 
     def from_str(self, gcode_str: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> 'Gcode':
@@ -53,7 +58,7 @@ class Gcode(list[Block]):
         Returns:
             str
         """
-        self.order() # TODO: detect need for ordering, skip already ordered `Gcode`
+        self.try_order()
         return self.__get_parser__().write_str(self, verbose, progress_callback)
 
     def write_file(self, filename: str, verbose = False, progress_callback: typing.Callable|None = None):
@@ -66,7 +71,7 @@ class Gcode(list[Block]):
             verbose: `bool` - include Block's metadata for each line. Warning: takes up much more time and space
             progress_callback: `Callable(current: int, total: int)`
         """
-        self.order() # TODO: detect need for ordering, skip already ordered `Gcode`
+        self.try_order()
         return self.__get_parser__().write_file(self, filename, verbose, progress_callback)
 
 
@@ -114,6 +119,7 @@ class Gcode(list[Block]):
             meta: `dict`
             compile: `bool` - when `gcode` is `str`, it can be compiled into a `Block` instead of being a command
         """
+        self.ordered = False
         
         idx = index if index < len(self) else -1
         
@@ -171,8 +177,18 @@ class Gcode(list[Block]):
         """
         Inverse of `order`. Used to make object serializable
         """
+        self.ordered = False
         for i in self:
             i.unlink()
+
+
+    def __iter__(self):
+        self.ordered = False
+        return super().__iter__()
+
+    def __getitem__(self, i):
+        self.ordered = False
+        return super().__getitem__(i)
 
 
     def copy(self):
@@ -182,3 +198,5 @@ class Gcode(list[Block]):
             gcode.g_add(i.copy())
         
         return gcode
+    
+    list

@@ -82,10 +82,9 @@ class GcodeParser:
             progress_callback: `Callable(current: int, total: int)`
         """
         coords = CoordSystem(speed=gcode.config.speed, abs_e=False)
-        out_str = coords.to_str()
         
         with open(filename, 'w') as f:
-            f.write(out_str)
+            f.write(coords.to_str())
 
             len_blocks = len(gcode)
 
