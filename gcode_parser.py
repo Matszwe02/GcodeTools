@@ -19,7 +19,7 @@ class GcodeParser:
 
 
 
-    def from_str(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> Gcode:
+    def from_str(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback: Callable|None = None) -> Gcode:
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
@@ -30,7 +30,7 @@ class GcodeParser:
         return GcodeParser._generate_moves(gcode, gcode_str, data, progress_callback)
 
 
-    def from_file(gcode: Gcode, filename: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> Gcode:
+    def from_file(gcode: Gcode, filename: str, data = BlockData(), progress_callback: Callable|None = None) -> Gcode:
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
@@ -42,7 +42,7 @@ class GcodeParser:
             return GcodeParser.from_str(gcode, f.read(), data, progress_callback)
 
 
-    def write_str(gcode: Gcode, verbose = False, progress_callback: typing.Callable|None = None):
+    def write_str(gcode: Gcode, verbose = False, progress_callback: Callable|None = None):
         """
         Write G-Code as a string
         
@@ -71,7 +71,7 @@ class GcodeParser:
         return out_str
 
 
-    def write_file(gcode: Gcode, filename: str, verbose = False, progress_callback: typing.Callable|None = None):
+    def write_file(gcode: Gcode, filename: str, verbose = False, progress_callback: Callable|None = None):
         """
         Write G-Code as a string into a file
         

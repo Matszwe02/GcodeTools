@@ -4,6 +4,7 @@ from gcode import Gcode
 import base64
 import textwrap
 
+
 meta_initial = {'object': None, 'type': None, 'layer': 0}
 
 class Keywords:
@@ -92,10 +93,6 @@ class MoveTypes:
     
     BRIDGE = 'bridge'
     
-    # TODO: wipe meta
-    WIPE = 'wipe'
-    END_WIPE = 'no_wipe'
-    
     NO_OBJECT = -1
     
     pprint_type = {
@@ -113,7 +110,6 @@ class MoveTypes:
     
     def get_type(line: str):
         string = line.lower()
-        # if not string.startswith(';type:'): return None
         if not string.startswith(';'): return None
         
         type_assign = {
@@ -131,8 +127,6 @@ class MoveTypes:
             'fill': MoveTypes.SPARSE_INFILL,
             'skin': MoveTypes.SOLID_INFILL,
             'bottom': MoveTypes.SOLID_INFILL,
-            # 'wipe_end': MoveTypes.END_WIPE,
-            # 'wipe': MoveTypes.WIPE,
             }
         
         for test in type_assign.keys():
@@ -153,7 +147,7 @@ class MoveTypes:
             return sanitize(name)
 
         return None
-        
+
 
 
 class GcodeTools:
@@ -180,7 +174,7 @@ class GcodeTools:
         return metadata
 
 
-    def fill_meta(gcode: Gcode, progress_callback: typing.Callable|None = None):
+    def fill_meta(gcode: Gcode, progress_callback: Callable|None = None):
         """
         Args:
             progress_callback: `Callable(current: int, total: int)`
@@ -215,6 +209,38 @@ class GcodeTools:
             
             if progress_callback:
                 progress_callback(id, len_gcode)
+
+
+    def get_by_meta(gcode: Gcode, meta: str, value = None, value_check: Callable[[Any], bool]|None = None, break_on = lambda x: False):
+        """
+        Args:
+            meta: `str` - meta's key which needs to be compared
+            value: `Any` - the value that is compared
+            value_check: `Callable` - comparison method
+                for example `lambda x: x == 'inner'`
+            break_on: `Callable` - stop further checking
+                inactive until first `Block` is added
+        """
+        gcode_new = gcode.new()
+        is_none = True
+        for i in gcode:
+            i_meta = i.meta.get(meta, None)
+            
+            if value_check is None:
+                if i_meta == value:
+                    gcode_new.g_add(i)
+                    is_none = False
+            else:
+                if value_check(i_meta):
+                    gcode_new.g_add(i)
+                    is_none = False
+            
+            if len(gcode_new) > 0 and break_on(i_meta):
+                break
+        
+        if is_none:
+            return None
+        return gcode_new
 
 
     def split(gcode: Gcode) -> tuple[Gcode, Gcode, Gcode, dict[Gcode]]:

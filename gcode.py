@@ -1,5 +1,4 @@
 from gcode_types import *
-from typing import Callable, Any
 
 
 class Gcode(list[Block]):
@@ -38,7 +37,7 @@ class Gcode(list[Block]):
             self.ordered = True
 
 
-    def from_str(self, gcode_str: str, data = BlockData(), progress_callback: typing.Callable|None = None, meta_provider: Callable = None) -> 'Gcode':
+    def from_str(self, gcode_str: str, data = BlockData(), progress_callback: Callable|None = None, meta_provider: Callable = None) -> 'Gcode':
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
@@ -53,7 +52,7 @@ class Gcode(list[Block]):
         self.__fill_meta__(meta_provider)
         return self
 
-    def from_file(self, filename: str, data = BlockData(), progress_callback: typing.Callable|None = None, meta_provider: Callable = None) -> 'Gcode':
+    def from_file(self, filename: str, data = BlockData(), progress_callback: Callable|None = None, meta_provider: Callable = None) -> 'Gcode':
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
@@ -68,7 +67,7 @@ class Gcode(list[Block]):
         self.__fill_meta__(meta_provider)
         return self
 
-    def write_str(self, verbose = False, progress_callback: typing.Callable|None = None):
+    def write_str(self, verbose = False, progress_callback: Callable|None = None):
         """
         Write G-Code as a string
         
@@ -82,7 +81,7 @@ class Gcode(list[Block]):
         self.try_order()
         return self.__get_parser__().write_str(self, verbose, progress_callback)
 
-    def write_file(self, filename: str, verbose = False, progress_callback: typing.Callable|None = None):
+    def write_file(self, filename: str, verbose = False, progress_callback: Callable|None = None):
         """
         Write G-Code as a string into a file
         
@@ -94,29 +93,6 @@ class Gcode(list[Block]):
         """
         self.try_order()
         return self.__get_parser__().write_file(self, filename, verbose, progress_callback)
-
-
-    def get_by_meta(self, meta: str, value = None, value_check: Callable[[Any], bool]|None = None, break_on = lambda x: False):
-        gcode = self.new()
-        is_none = True
-        for i in self:
-            i_meta = i.meta.get(meta, None)
-            
-            if value_check is None:
-                if i_meta == value:
-                    gcode.g_add(i)
-                    is_none = False
-            else:
-                if value_check(i_meta):
-                    gcode.g_add(i)
-                    is_none = False
-            
-            if break_on(i_meta):
-                break
-        
-        if is_none:
-            return None
-        return gcode
 
 
     def new(self):

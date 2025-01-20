@@ -1,6 +1,6 @@
 import math
 import json
-import typing
+from typing import Callable, Any
 
 
 def float_nullable(input):
@@ -15,7 +15,7 @@ def remove_chars(string: str, chars: str)->str:
     return outstr
 
 
-def check_null_except(obj, obj_type, on_none: typing.Callable|Exception|None = Exception, alert="Can only use {0}, not {1}"):
+def check_null_except(obj, obj_type, on_none: Callable|Exception|None = Exception, alert="Can only use {0}, not {1}"):
     """
     Check wrong object, with optional object creation on None
     
