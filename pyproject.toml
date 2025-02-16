@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+# dynamic = ["version"]
+version = "0.0.1"
+name = "GcodeTools"
+description = "Python G-Code Tools library with complete G-Code Reader and Writer"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICENSE*"]
+keywords = ["gcode", "g-code", "printing", "3d"]
+
+
+[project.urls]
+Homepage = "https://github.com/matszwe02/GcodeTools"
+Issues = "https://github.com/matszwe02/GcodeTools/issues"

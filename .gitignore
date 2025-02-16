@@ -1,7 +1,4 @@
-*.json
-.venv
-*.gcode
 __pycache__
-
-main*
-/*/*
+*/*
+!.github/*
+!src/*

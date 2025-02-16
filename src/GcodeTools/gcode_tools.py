@@ -1,6 +1,6 @@
 import json
-from gcode_types import *
-from gcode import Gcode
+from GcodeTools.gcode_types import *
+from GcodeTools.gcode import Gcode
 import base64
 import textwrap
 
@@ -174,7 +174,7 @@ class GcodeTools:
         return metadata
 
 
-    def fill_meta(gcode: Gcode, progress_callback: Callable|None = None):
+    def fill_meta(gcode: Gcode, progress_callback: typing.Callable|None = None):
         """
         Args:
             progress_callback: `Callable(current: int, total: int)`
@@ -211,7 +211,7 @@ class GcodeTools:
                 progress_callback(id, len_gcode)
 
 
-    def get_by_meta(gcode: Gcode, meta: str, value = None, value_check: Callable[[Any], bool]|None = None, break_on = lambda x: False):
+    def get_by_meta(gcode: Gcode, meta: str, value = None, value_check: typing.Callable[[typing.Any], bool]|None = None, break_on = lambda x: False):
         """
         Args:
             meta: `str` - meta's key which needs to be compared

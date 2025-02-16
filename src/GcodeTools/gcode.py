@@ -1,4 +1,4 @@
-from gcode_types import *
+from GcodeTools.gcode_types import *
 
 
 class Gcode(list[Block]):
@@ -11,17 +11,17 @@ class Gcode(list[Block]):
 
 
     def __get_parser__(self):
-        from gcode_parser import GcodeParser
+        from GcodeTools.gcode_parser import GcodeParser
         return GcodeParser
 
 
     def __get_meta_provider__(self):
-        from gcode_tools import GcodeTools
+        from GcodeTools.gcode_tools import GcodeTools
         meta_provider = GcodeTools.fill_meta
         return meta_provider
 
 
-    def __fill_meta__(self, meta_provider: Callable = None):
+    def __fill_meta__(self, meta_provider: typing.Callable = None):
         """
             meta_provider: `Callable` - method to fill in meta
                 Default `None` = `GcodeTools.fill_meta()`
@@ -37,7 +37,7 @@ class Gcode(list[Block]):
             self.ordered = True
 
 
-    def from_str(self, gcode_str: str, data = BlockData(), progress_callback: Callable|None = None, meta_provider: Callable = None) -> 'Gcode':
+    def from_str(self, gcode_str: str, data = BlockData(), progress_callback: typing.Callable|None = None, meta_provider: typing.Callable = None) -> 'Gcode':
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
@@ -52,7 +52,7 @@ class Gcode(list[Block]):
         self.__fill_meta__(meta_provider)
         return self
 
-    def from_file(self, filename: str, data = BlockData(), progress_callback: Callable|None = None, meta_provider: Callable = None) -> 'Gcode':
+    def from_file(self, filename: str, data = BlockData(), progress_callback: typing.Callable|None = None, meta_provider: typing.Callable = None) -> 'Gcode':
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
@@ -67,7 +67,7 @@ class Gcode(list[Block]):
         self.__fill_meta__(meta_provider)
         return self
 
-    def write_str(self, verbose = False, progress_callback: Callable|None = None):
+    def write_str(self, verbose = False, progress_callback: typing.Callable|None = None):
         """
         Write G-Code as a string
         
@@ -81,7 +81,7 @@ class Gcode(list[Block]):
         self.try_order()
         return self.__get_parser__().write_str(self, verbose, progress_callback)
 
-    def write_file(self, filename: str, verbose = False, progress_callback: Callable|None = None):
+    def write_file(self, filename: str, verbose = False, progress_callback: typing.Callable|None = None):
         """
         Write G-Code as a string into a file
         
