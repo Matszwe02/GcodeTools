@@ -68,7 +68,7 @@ That however does not take move origin (move starting position) in count! `regen
 # G-Code Parser
 
 ```py
-from gcode import Gcode
+from GcodeTools import Gcode
 
 gcode = Gcode()
 gcode.from_file('file.gcode')
@@ -87,7 +87,7 @@ gcode = Gcode().from_file('file.gcode', update)
 
 Example to move objects that have `benchy` in their name, by `translation` vector.
 ```py
-from gcode_tools import Gcode, GcodeTools, Vector
+from GcodeTools import Gcode, GcodeTools, Vector
 
 do_verbose = False
 
@@ -96,14 +96,14 @@ gcode.config.speed = 1200 # initial speed before first Gcode's `F` parameter
 
 gcode.from_file('file.gcode')
 meta_gcode: Gcode = GcodeTools.fill_meta(gcode)
-out_gcode = GcodeTools.trim(meta_gcode)
+out_gcode: Gcode = GcodeTools.trim(meta_gcode)
 
 translation = Vector(-200, -100, 0)
 
 for x in out_gcode:
     obj: str = x.meta.get('object')
     if 'benchy' in obj.lower():
-        x.translate(translation)
+        x.move.translate(translation)
 out_gcode = GcodeTools.regenerate_travels(out_gcode)
 
 out_gcode.write_file('out.gcode', do_verbose)
