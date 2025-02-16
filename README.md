@@ -7,6 +7,11 @@
 
 **Ensure your printer software can catch illegal g-code moves, as this library has still very large amount of bugs! Also keep an eye on your print.**
 
+# Installation
+
+```sh
+pip install GcodeTools
+```
 
 # Available G-Code Tools
 
