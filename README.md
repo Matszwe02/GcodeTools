@@ -114,6 +114,27 @@ out_gcode.write_file('out.gcode', do_verbose)
 ```
 
 
+Change tool to `T1` when printing sparse infill, otherwise change to `T0`.
+For bridges set fan speed to 100%.
+```py
+from GcodeTools import *
+
+gcode = Gcode().from_file('file.gcode')
+
+for block in gcode:
+    if block.meta.get('type') == MoveTypes.SPARSE_INFILL:
+        block.block_data.set_tool(1)
+    else:
+        block.block_data.set_tool(0)
+    
+    if block.meta.get('type') == MoveTypes.BRIDGE:
+        block.block_data.set_fan(255)
+
+gcode.write_file('out.gcode')
+```
+
+
+
 # Supported Slicers
 
 Tested with:
