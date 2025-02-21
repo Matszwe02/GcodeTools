@@ -23,7 +23,7 @@ pip install GcodeTools
 | subdivide Gcode                                      |   ✅   |                      `move.subdivide(prev, step)`                      |
 | Get move's flowrate                                  |   ✅   |                       `move.get_flowrate(prev)`                        |
 | Set flowrate <br> (in mm^2, use `scale` to set in %) |   ✅   |                    `move.set_flowrate(prev, float)`                    |
-| Detect Gcode features                                |   ✅   |                     `GcodeTools.fill_meta(gcode)`                      |
+| Detect Gcode features                                |   ✅   |  `GcodeTools.fill_meta(gcode)`, option `meta_provider` at gcode load   |
 | Split layers                                         |  🔜   |                     `gcode.get_by_meta(str, Any)`                      |
 | Split bodies                                         |  🔜   |                       `GcodeTools.split(gcode)`                        |
 | Insert custom Gcode                                  |   ❌   |                                                                        |
