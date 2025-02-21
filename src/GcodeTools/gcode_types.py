@@ -208,8 +208,12 @@ class Vector:
 
 
     def __str__(self):
-        if not self.E and not self.Z: return f'X={self.X}, Y={self.Y}'
-        if not self.E: return f'X={self.X}, Y={self.Y}, Z={self.Z}'
+        if self.E is None:
+            if self.Z is None:
+                if self.Y is None and self.X is None:
+                    return f'XYZE={None}'
+                return f'X={self.X}, Y={self.Y}'
+            return f'X={self.X}, Y={self.Y}, Z={self.Z}'
         return f'X={self.X}, Y={self.Y}, Z={self.Z}, E={self.E}'
 
 
@@ -223,7 +227,7 @@ class Vector:
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Vector): return False
-        return all(coord == coord2 for coord, coord2 in zip([self.X, self.Y, self.Z, self.E], [other.X, other.Y, other.Z, other.E]))
+        return all(coord == coord2 for coord, coord2 in zip([self.X, self.Y, self.Z, self.E or 0], [other.X, other.Y, other.Z, other.E or 0]))
 
 
 
