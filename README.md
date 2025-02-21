@@ -99,9 +99,8 @@ do_verbose = False
 gcode = Gcode()
 gcode.config.speed = 1200 # initial speed before first Gcode's `F` parameter
 
-gcode.from_file('file.gcode')
-meta_gcode: Gcode = GcodeTools.fill_meta(gcode)
-out_gcode: Gcode = GcodeTools.trim(meta_gcode)
+gcode.from_file('file.gcode', meta_provider=GcodeTools.fill_meta)
+out_gcode: Gcode = GcodeTools.trim(gcode)
 
 translation = Vector(-200, -100, 0)
 
