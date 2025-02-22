@@ -99,16 +99,15 @@ do_verbose = False
 gcode = Gcode()
 gcode.config.speed = 1200 # initial speed before first Gcode's `F` parameter
 
-gcode.from_file('file.gcode', meta_provider=GcodeTools.fill_meta)
+gcode.from_file('file.gcode')
 out_gcode: Gcode = GcodeTools.trim(gcode)
 
 translation = Vector(-200, -100, 0)
 
 for x in out_gcode:
-    obj: str = x.meta.get('object')
+    obj: str = x.meta.get('object') or ''
     if 'benchy' in obj.lower():
         x.move.translate(translation)
-out_gcode = GcodeTools.regenerate_travels(out_gcode)
 
 out_gcode.write_file('out.gcode', do_verbose)
 ```

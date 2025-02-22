@@ -314,6 +314,7 @@ class GcodeTools:
         gcode_new = gcode.copy()
         for i in gcode_new:
             i.move.translate(vector)
+        gcode_new.order()
         return gcode_new
 
 

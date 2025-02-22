@@ -165,9 +165,25 @@ class Gcode(list[Block]):
         """
         Order `Blocks` inside `Gcode`. Used to create position reference inside each `Block`
         """
-        for idx, i in enumerate(self):
-            i.prev = self[idx-1] if idx > 0 else None
-            i.sync()
+        i = 0
+        while i < len(self):
+            block: Block = self[i]
+            block.prev = self[i - 1] if i > 0 else None
+            if prev := block.prev:
+                prev: Block
+                if prev.move.position != block.move.origin and block.move.origin:
+                    travel_block: Block = block.as_origin()
+                    # print(f'spawning travel move between {str(prev.move.position.xyz())} and {str(block.move.origin)}')
+                    # travel_block.command = f'; ORIGIN MOVE FOR {i}'
+                    # travel_block.emit_command = True
+                    travel_block.move.position = block.move.origin
+                    travel_block.prev = self[i - 1]
+                    block.prev = travel_block
+                    travel_block.sync()
+                    self.g_add(travel_block, i)
+                    i += 1
+            i += 1
+            block.sync()
 
 
     def unlink(self):

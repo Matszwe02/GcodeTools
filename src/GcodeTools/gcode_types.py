@@ -322,6 +322,7 @@ class Move:
         """The end vector of Move\n\n`XYZ` is always absolute\n\n`E` is always relative\n\nEvery logic is performend regarding to that"""
         self.speed = speed
         self.config = config
+        self.origin = Vector()
 
 
     def duplicate(self):
@@ -339,7 +340,13 @@ class Move:
 
 
     def translate(self, vec: Vector):
+        """
+        Translates `Move` with `Vector`\n
+        `Gcode.order()` will add travel moves for these translations\n
+        Use `Gcode.unlink()` to cancel travel move generation on `order`
+        """
         self.position.add(vec)
+        self.origin.add(vec.xyz())
         return self
 
 
@@ -423,6 +430,10 @@ class Move:
         return getattr(getattr(self.block_ref, 'prev', None), 'move', Move())
 
 
+    def update_origin(self):
+        self.origin = self.get_prev().position.xyz()
+
+
     def to_str(self):
         
         prev = self.get_prev()
@@ -430,15 +441,15 @@ class Move:
         
         out = ''
         
-        if self.position.X != prev.position.X: out += nullable('X', self.position.X)
-        if self.position.Y != prev.position.Y: out += nullable('Y', self.position.Y)
-        if self.position.Z != prev.position.Z: out += nullable('Z', self.position.Z)
+        if self.position.X != self.origin.X: out += nullable('X', self.position.X)
+        if self.position.Y != self.origin.Y: out += nullable('Y', self.position.Y)
+        if self.position.Z != self.origin.Z: out += nullable('Z', self.position.Z)
         if self.position.E != 0: out += nullable('E', self.position.E)
         if self.speed != prev.speed: out += nullable('F', self.speed)
         
         if out != '': out = 'G1' + out + '\n'
         
-        if self.position != Vector() and prev.position == Vector(): out = Static.HOME_DESC + '\n' + out
+        if self.position != Vector() and self.origin == Vector(): out = Static.HOME_DESC + '\n' + out
         
         return out
 
@@ -652,6 +663,7 @@ class Block:
         """
         self.move.block_ref = self
         self.block_data.block_ref = self
+        self.move.update_origin()
         return self
 
 
@@ -660,6 +672,7 @@ class Block:
         Inverse of `sync`. Used to make object serializable
         """
         self.move.block_ref = None
+        self.move.origin = Vector()
         self.block_data.block_ref = None
         self.prev = None
         return self
