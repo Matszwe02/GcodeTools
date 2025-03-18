@@ -334,15 +334,15 @@ class GcodeTools:
 
     def center(gcode: Gcode) -> Vector:
         """
-        Get center of bounding cube of gcode
+        Get center of bounding box of gcode
         """
-        vec1, vec2 = GcodeTools.get_bounding_cube(gcode)
+        vec1, vec2 = GcodeTools.get_bounding_box(gcode)
         return (vec1 + vec2) / 2
 
 
-    def get_bounding_cube(gcode: Gcode) -> tuple[Vector, Vector]:
+    def get_bounding_box(gcode: Gcode) -> tuple[Vector, Vector]:
         """
-        Get bounding cube of gcode
+        Get bounding box of gcode
         
         Returns:
             `tuple` of (low_corner, high_corner)
