@@ -17,24 +17,24 @@ pip install GcodeTools
 
 | Feature                                              | Status |                                command                                 |
 | ---------------------------------------------------- | :----: | :--------------------------------------------------------------------: |
-| Translate Gcode                                      |   ✅   |                 `GcodeTools.translate(gcode, Vector)`                  |
-| Rotate Gcode                                         |   ✅   |                    `GcodeTools.rotate(gcode, int) `                    |
-| Scale Gcode                                          |   ✅   |                `GcodeTools.scale(gcode, Vector\|float)`                |
+| Translate Gcode                                      |   ✅   |                 `Tools.translate(gcode, Vector)`                  |
+| Rotate Gcode                                         |   ✅   |                    `Tools.rotate(gcode, int) `                    |
+| Scale Gcode                                          |   ✅   |                `Tools.scale(gcode, Vector\|float)`                |
 | subdivide Gcode                                      |   ✅   |                         `move.subdivide(step)`                         |
 | Get move's flowrate                                  |   ✅   |                         `move.get_flowrate()`                          |
 | Set flowrate <br> (in mm^2, use `scale` to set in %) |   ✅   |                       `move.set_flowrate(float)`                       |
-| Detect Gcode features                                |   ✅   |   `GcodeTools.fill_meta(gcode)`, param `meta_provider` at gcode load   |
-| Split layers                                         |   ✅   |                `GcodeTools.get_by_meta(gcode, "layer")`                |
-| Split bodies                                         |  🔜   |                       `GcodeTools.split(gcode)`                        |
+| Detect Gcode features                                |   ✅   |   `Tools.fill_meta(gcode)`, param `meta_provider` at gcode load   |
+| Split layers                                         |   ✅   |                `Tools.get_by_meta(gcode, "layer")`                |
+| Split bodies                                         |  🔜   |                       `Tools.split(gcode)`                        |
 | Insert custom Gcode                                  |   ❌   |                                                                        |
-| Read Thumbnails                                      |   ✅   |                   `GcodeTools.get_thumbnails(gcode)`                   |
-| Generate Thumbnails                                  |   ✅   | `GcodeTools.generate_thumbnail(gcode, data, width, height, textwidth)` |
+| Read Thumbnails                                      |   ✅   |                   `Tools.get_thumbnails(gcode)`                   |
+| Generate Thumbnails                                  |   ✅   | `Tools.generate_thumbnail(gcode, data, width, height, textwidth)` |
 | Convert from/to Arc Moves                            |   ❌   |            currently auto-translation to G1 in GcodeParser             |
-| Find body bounds                                     |   ✅   |                  `GcodeTools.get_bounding_box(gcode)`                  |
-| Trim unused Gcode                                    |  🔜   |                        `GcodeTools.trim(gcode)`                        |
+| Find body bounds                                     |   ✅   |                  `Tools.get_bounding_box(gcode)`                  |
+| Trim unused Gcode                                    |  🔜   |                        `Tools.trim(gcode)`                        |
 | Offset Gcodes in time                                |   ❌   |                                                                        |
 | Create custom travel movement                        |   ❌   |                                                                        |
-| convert to firmware retraction                       |  🔜   |                 `GcodeTools.regenerate_travels(gcode)`                 |
+| convert to firmware retraction                       |  🔜   |                 `Tools.regenerate_travels(gcode)`                 |
 
 
 ### Legend:
@@ -97,7 +97,7 @@ gcode = Gcode().from_file('file.gcode', update)
 
 Example to move objects that have `benchy` in their name, by `translation` vector. It will also trim gcode (minify).
 ```py
-from GcodeTools import Gcode, GcodeTools, Vector
+from GcodeTools import Gcode, Tools, Vector
 
 do_verbose = False
 
@@ -105,7 +105,7 @@ gcode = Gcode()
 gcode.config.speed = 1200 # initial speed before first Gcode's `F` parameter
 
 gcode.from_file('file.gcode')
-out_gcode: Gcode = GcodeTools.trim(gcode)
+out_gcode: Gcode = Tools.trim(gcode)
 
 translation = Vector(-200, -100, 0)
 

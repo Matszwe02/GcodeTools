@@ -150,7 +150,7 @@ class MoveTypes:
 
 
 
-class GcodeTools:
+class Tools:
 
     def read_config(gcode: Gcode):
         """
@@ -336,7 +336,7 @@ class GcodeTools:
         """
         Get center of bounding box of gcode
         """
-        vec1, vec2 = GcodeTools.get_bounding_box(gcode)
+        vec1, vec2 = Tools.get_bounding_box(gcode)
         return (vec1 + vec2) / 2
 
 
@@ -459,7 +459,7 @@ class GcodeTools:
         
         Example implementation:
         ```py
-        for idx, thumb in enumerate(GcodeTools.get_thumbnails(gcode)):
+        for idx, thumb in enumerate(Tools.get_thumbnails(gcode)):
             with open(f'thumb{idx}.png', 'wb') as f:
                 f.write(thumb)
         ```

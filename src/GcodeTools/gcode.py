@@ -16,15 +16,15 @@ class Gcode(list[Block]):
 
 
     def __get_meta_provider__(self):
-        from GcodeTools.gcode_tools import GcodeTools
-        meta_provider = GcodeTools.fill_meta
+        from GcodeTools.gcode_tools import Tools
+        meta_provider = Tools.fill_meta
         return meta_provider
 
 
     def __fill_meta__(self, meta_provider: typing.Callable = None):
         """
             meta_provider: `Callable` - method to fill in meta
-                Default `None` = `GcodeTools.fill_meta()`
+                Default `None` = `Tools.fill_meta()`
         """
         if meta_provider is None:
             meta_provider = self.__get_meta_provider__()
@@ -45,7 +45,7 @@ class Gcode(list[Block]):
             data: `BlockData` - initial printer state
             progress_callback: `Callable(current: int, total: int)`
             meta_provider: `Callable` - method to fill in meta
-                Default `None` = `GcodeTools.fill_meta()`
+                Default `None` = `Tools.fill_meta()`
         """
         self: Gcode = self.__get_parser__().from_str(self, gcode_str, data, progress_callback)
         self.order()
@@ -60,7 +60,7 @@ class Gcode(list[Block]):
             data: `BlockData` - initial printer state
             progress_callback: `Callable(current: int, total: int)`
             meta_provider: `Callable` - method to fill in meta
-                Default `None` = `GcodeTools.fill_meta()`
+                Default `None` = `Tools.fill_meta()`
         """
         self: Gcode = self.__get_parser__().from_file(self, filename, data, progress_callback)
         self.order()
