@@ -20,17 +20,17 @@ pip install GcodeTools
 | Translate Gcode                                      |   ✅   |                 `GcodeTools.translate(gcode, Vector)`                  |
 | Rotate Gcode                                         |   ✅   |                    `GcodeTools.rotate(gcode, int) `                    |
 | Scale Gcode                                          |   ✅   |                `GcodeTools.scale(gcode, Vector\|float)`                |
-| subdivide Gcode                                      |   ✅   |                      `move.subdivide(prev, step)`                      |
-| Get move's flowrate                                  |   ✅   |                       `move.get_flowrate(prev)`                        |
-| Set flowrate <br> (in mm^2, use `scale` to set in %) |   ✅   |                    `move.set_flowrate(prev, float)`                    |
-| Detect Gcode features                                |   ✅   |  `GcodeTools.fill_meta(gcode)`, option `meta_provider` at gcode load   |
-| Split layers                                         |  🔜   |                     `gcode.get_by_meta(str, Any)`                      |
+| subdivide Gcode                                      |   ✅   |                         `move.subdivide(step)`                         |
+| Get move's flowrate                                  |   ✅   |                         `move.get_flowrate()`                          |
+| Set flowrate <br> (in mm^2, use `scale` to set in %) |   ✅   |                       `move.set_flowrate(float)`                       |
+| Detect Gcode features                                |   ✅   |   `GcodeTools.fill_meta(gcode)`, param `meta_provider` at gcode load   |
+| Split layers                                         |   ✅   |                `GcodeTools.get_by_meta(gcode, "layer")`                |
 | Split bodies                                         |  🔜   |                       `GcodeTools.split(gcode)`                        |
 | Insert custom Gcode                                  |   ❌   |                                                                        |
 | Read Thumbnails                                      |   ✅   |                   `GcodeTools.get_thumbnails(gcode)`                   |
 | Generate Thumbnails                                  |   ✅   | `GcodeTools.generate_thumbnail(gcode, data, width, height, textwidth)` |
-| Convert from/to Arc Moves                            |   ❌   |                                                                        |
-| Find body bounds                                     |   ✅   |                 `GcodeTools.get_bounding_cube(gcode)`                  |
+| Convert from/to Arc Moves                            |   ❌   |            currently auto-translation to G1 in GcodeParser             |
+| Find body bounds                                     |   ✅   |                  `GcodeTools.get_bounding_box(gcode)`                  |
 | Trim unused Gcode                                    |  🔜   |                        `GcodeTools.trim(gcode)`                        |
 | Offset Gcodes in time                                |   ❌   |                                                                        |
 | Create custom travel movement                        |   ❌   |                                                                        |
@@ -52,7 +52,7 @@ More features soon! Feel free to open feature request
 ```
 Gcode (list[Block])
 │
-├─ slicing config: Config
+├─ slicing config (precision, speed): Config
 │
 ├─ single Gcode instruction: Block
 │  │
@@ -60,14 +60,19 @@ Gcode (list[Block])
 │  │  ├─ Position: Vector
 │  │  └─ speed: float
 │  │
-│  ├─ Everything G-code related other than position: BlockData
-│  └─ Slicer-specific features (meta): dict
+│  ├─ Every other standard G-code: BlockData
+│  ├─ Slicer-specific features (meta) (non-standarized, one may set their own custom meta provider method): dict
+│  └─ Original command and if it's to be emitted: command, emit_command
 └─ ...
 ```
 
 In each block, every G-Code variable is contained. That means, blocks can be taken out of Gcode, rearranged, etc.
 
-That however does not take move origin (move starting position) in count! `regenerate_travels` will be able to handle that in future.
+That however does not take move origin (move starting position) in count! That will be adressed in future.
+
+`Gcode` structure and its components will be changing heavily during beta!
+- Current target is to get rid of original command (work on trimmed `Gcode`) to decrease RAM usage and computation time
+- Gcode is in the first tests of linked-list approach for simplification of iterating methods
 
 
 # G-Code Parser
@@ -90,7 +95,7 @@ gcode = Gcode().from_file('file.gcode', update)
 
 # Example usage
 
-Example to move objects that have `benchy` in their name, by `translation` vector.
+Example to move objects that have `benchy` in their name, by `translation` vector. It will also trim gcode (minify).
 ```py
 from GcodeTools import Gcode, GcodeTools, Vector
 
