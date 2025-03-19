@@ -173,9 +173,6 @@ class Gcode(list[Block]):
                 prev: Block
                 if prev.move.position != block.move.origin and block.move.origin:
                     travel_block: Block = block.as_origin()
-                    # print(f'spawning travel move between {str(prev.move.position.xyz())} and {str(block.move.origin)}')
-                    # travel_block.command = f'; ORIGIN MOVE FOR {i}'
-                    # travel_block.emit_command = True
                     travel_block.move.position = block.move.origin
                     travel_block.prev = self[i - 1]
                     block.prev = travel_block
@@ -211,5 +208,3 @@ class Gcode(list[Block]):
             gcode.g_add(i.copy())
         
         return gcode
-    
-    list
