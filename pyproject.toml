@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 # dynamic = ["version"]
-version = "0.0.2"
+version = "0.1.0"
 name = "GcodeTools"
 description = "Python G-Code Tools library with complete G-Code Reader and Writer"
 readme = "README.md"
