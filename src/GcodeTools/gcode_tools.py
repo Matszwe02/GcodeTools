@@ -180,7 +180,7 @@ class Tools:
             progress_callback: `Callable(current: int, total: int)`
         passed `Gcode` gets modified so meta is added into it
         """
-        meta = meta_initial
+        meta = meta_initial.copy()
         was_start = False
         
         len_gcode = len(gcode)
