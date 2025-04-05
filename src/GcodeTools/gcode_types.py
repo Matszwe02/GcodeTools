@@ -167,10 +167,27 @@ class Vector:
         return self.vector_op(other, scale, on_a_none='a', on_b_none='a')
 
 
+    def __neg__(self):
+        subtr = lambda x, y: y - x
+        return self.vector_op(Vector.zero(), subtr, on_a_none=None)
+
+
     def valid(self, other: 'Vector'):
         """Return `Vector` with non-null dimensions from `other` vector"""
         valid = lambda a, b: a
         return self.vector_op(other, valid, on_a_none=None, on_b_none=None)
+
+
+    def x(self):
+        return Vector(X = self.X)
+
+
+    def y(self):
+        return Vector(Y = self.Y)
+
+
+    def z(self):
+        return Vector(Z = self.Z)
 
 
     def xy(self):
