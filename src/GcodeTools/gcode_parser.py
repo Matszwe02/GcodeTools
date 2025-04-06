@@ -18,7 +18,7 @@ class GcodeParser:
             return GcodeParser.ParserData(self.coord_system.copy(), self.block.copy())
 
 
-
+    @staticmethod
     def from_str(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> Gcode:
         """
         Args:
@@ -30,6 +30,7 @@ class GcodeParser:
         return GcodeParser._generate_moves(gcode, gcode_str, data, progress_callback)
 
 
+    @staticmethod
     def from_file(gcode: Gcode, filename: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> Gcode:
         """
         Args:
@@ -42,6 +43,7 @@ class GcodeParser:
             return GcodeParser.from_str(gcode, f.read(), data, progress_callback)
 
 
+    @staticmethod
     def write_str(gcode: Gcode, verbose = False, progress_callback: typing.Callable|None = None):
         """
         Write G-Code as a string
@@ -71,6 +73,7 @@ class GcodeParser:
         return out_str
 
 
+    @staticmethod
     def write_file(gcode: Gcode, filename: str, verbose = False, progress_callback: typing.Callable|None = None):
         """
         Write G-Code as a string into a file
@@ -98,6 +101,7 @@ class GcodeParser:
                     progress_callback(i, len_blocks)
 
 
+    @staticmethod
     def _line_to_dict(line: str) -> dict[str, str]:
         line_parts = line.split(';')[0].split('(')[0].split()
         if not line_parts:
@@ -124,6 +128,7 @@ class GcodeParser:
         return params
 
 
+    @staticmethod
     def _parse_line(parser_data: 'GcodeParser.ParserData') -> list['GcodeParser.ParserData']:
 
         pd = parser_data.copy()
@@ -192,6 +197,7 @@ class GcodeParser:
             return [pd]
 
 
+    @staticmethod
     def _generate_moves(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback = None) -> Gcode:
 
         coord_system = CoordSystem(speed = gcode.config.speed)

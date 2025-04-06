@@ -41,8 +41,9 @@ class Keywords:
     OBJECT_END = [KW("; stop printing object", None, "EXCLUDE_OBJECT_END"), KW("EXCLUDE_OBJECT_END"), KW(";MESH:NONMESH"), KW("M486 S-1")]
     # FIXME: Edge case scenarios, split travel moves perfectly
     # TODO: travel trimming, recalculation, preserve last travel vector at object
-    
-    
+
+
+    @staticmethod
     def get_keyword_arg(line_no: int, gcode: Gcode, keyword: list[KW], seek_limit = 20):
         
         pass
@@ -71,6 +72,7 @@ class Keywords:
         return None
 
 
+    @staticmethod
     def get_keyword_line(line_no: int, gcode: Gcode, keyword: list[KW], seek_limit = 20) -> bool:
         expr = Keywords.get_keyword_arg(line_no, gcode, keyword, seek_limit)
         return expr is not None
@@ -107,7 +109,8 @@ class MoveTypes:
         '': ';TYPE:Custom'
         }
     
-    
+
+    @staticmethod
     def get_type(line: str):
         string = line.lower()
         if not string.startswith(';'): return None
@@ -132,7 +135,9 @@ class MoveTypes:
         for test in type_assign.keys():
             if test in string: return type_assign[test]
         return None
-    
+
+
+    @staticmethod
     def get_object(id: int, gcode: Gcode):
         
         def sanitize(name: str):
@@ -152,6 +157,8 @@ class MoveTypes:
 
 class Tools:
 
+
+    @staticmethod
     def read_config(gcode: Gcode):
         """
         Read slicer's config from `Gcode`
@@ -174,6 +181,7 @@ class Tools:
         return metadata
 
 
+    @staticmethod
     def fill_meta(gcode: Gcode, progress_callback: typing.Callable|None = None):
         """
         Args:
@@ -211,6 +219,7 @@ class Tools:
                 progress_callback(id, len_gcode)
 
 
+    @staticmethod
     def get_by_meta(gcode: Gcode, meta: str, value = None, value_check: typing.Callable[[typing.Any], bool]|None = None, break_on = lambda x: False):
         """
         Args:
@@ -243,6 +252,7 @@ class Tools:
         return gcode_new
 
 
+    @staticmethod
     def split(gcode: Gcode) -> tuple[Gcode, Gcode, Gcode, dict[Gcode]]:
         """
         Splits `Gcode` into:
@@ -276,6 +286,7 @@ class Tools:
         return (start_gcode, end_gcode, object_gcode, objects)
 
 
+    @staticmethod
     def trim(gcode: Gcode):
         """
         Trims G-code from every command that's not handled by GcodeTools
@@ -295,6 +306,7 @@ class Tools:
         return gcode_new
 
 
+    @staticmethod
     def set_flowrate(gcode: Gcode, flowrate: float, force_extrusion = False) -> Gcode:
         """
         Sets flowrate (mm in E over mm in XYZ)
@@ -310,6 +322,7 @@ class Tools:
         return gcode_new
 
 
+    @staticmethod
     def translate(gcode: Gcode, vector: Vector) -> Gcode:
         gcode_new = gcode.copy()
         for i in gcode_new:
@@ -318,6 +331,7 @@ class Tools:
         return gcode_new
 
 
+    @staticmethod
     def rotate(gcode: Gcode, deg: int) -> Gcode:
         gcode_new = gcode.copy()
         for i in gcode_new:
@@ -325,6 +339,7 @@ class Tools:
         return gcode_new
 
 
+    @staticmethod
     def scale(gcode: Gcode, scale: int|Vector) -> Gcode:
         gcode_new = gcode.copy()
         for i in gcode_new:
@@ -332,6 +347,7 @@ class Tools:
         return gcode_new
 
 
+    @staticmethod
     def center(gcode: Gcode) -> Vector:
         """
         Get center of bounding box of gcode
@@ -340,6 +356,7 @@ class Tools:
         return (vec1 + vec2) / 2
 
 
+    @staticmethod
     def get_bounding_box(gcode: Gcode) -> tuple[Vector, Vector]:
         """
         Get bounding box of gcode
@@ -361,6 +378,7 @@ class Tools:
         return (low_corner, high_corner)
 
 
+    @staticmethod
     def center_of_mass(gcode: Gcode) -> Vector:
         """
         Calculate the center of mass of the model
@@ -388,6 +406,7 @@ class Tools:
     # TODO: regenerate_travels:
     # - ensure clean travel trimming
     # FIXME: correct travel begin/end
+    @staticmethod
     def regenerate_travels(gcode: Gcode, move_speed = 0):
         
         out_gcode = gcode.new()
@@ -424,6 +443,7 @@ class Tools:
         return out_gcode
 
 
+    @staticmethod
     def add_layer_tags(gcode: Gcode) -> Gcode:
         
         new_gcode = gcode.new()
@@ -439,6 +459,7 @@ class Tools:
         return new_gcode
 
 
+    @staticmethod
     def add_move_type_tags(gcode: Gcode) -> Gcode:
                 
         new_gcode = gcode.new()
@@ -453,6 +474,7 @@ class Tools:
         return new_gcode
 
 
+    @staticmethod
     def get_thumbnails(gcode: Gcode) -> list[bytes]:
         """
         Get all thumbnails from `Gcode`, ordered as appearing in `Gcode`. For now only `png` format is supported
@@ -484,6 +506,7 @@ class Tools:
         return images
 
 
+    @staticmethod
     def generate_thumbnail(gcode: Gcode, data: bytes, width: int, height: int, textwidth = 80) -> Gcode:
         """
         Args:

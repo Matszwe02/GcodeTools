@@ -92,6 +92,7 @@ class Static:
 
 class Vector:
 
+    @staticmethod
     def zero():
         """Vector(0, 0, 0, 0)"""
         return Vector(0, 0, 0, 0)
@@ -560,7 +561,8 @@ class Arc:
 
 
 class BlockData:
-    
+
+    @staticmethod
     def zero():
         return BlockData(None, 0, False, 0, False, 0, 0)
 
