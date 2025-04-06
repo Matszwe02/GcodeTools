@@ -138,6 +138,31 @@ gcode.write_file('out.gcode')
 ```
 
 
+Plot histogram of flow ratios. Useful for checking arachne settings.
+
+```py
+from GcodeTools import Gcode
+import matplotlib.pyplot as plt
+
+gcode_file = "1.gcode"
+
+gcode = Gcode().from_file(gcode_file)
+
+flowrates = []
+for block in gcode:
+    if flowrate := block.move.get_flowrate():
+        flowrates.append(flowrate)
+
+plt.figure(figsize=(12, 6))
+plt.hist(flowrates, bins=100)
+plt.xlabel("Flowrate (mm E / mm XYZ)")
+plt.ylabel("Frequency")
+plt.title(f"Flowrate Distribution for {gcode_file}")
+plt.grid(axis='y', alpha=0.75)
+plt.show()
+plt.close()
+```
+
 
 # Supported Slicers
 
