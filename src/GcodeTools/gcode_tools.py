@@ -375,7 +375,7 @@ class Tools:
             high_corner = high_corner.vector_op(item.move.position, upper_bound)
             low_corner = low_corner.vector_op(item.move.position, lower_bound)
             
-        return (low_corner, high_corner)
+        return (low_corner.xyz(), high_corner.xyz())
 
 
     @staticmethod
