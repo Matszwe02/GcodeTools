@@ -247,6 +247,14 @@ class Vector:
         if not isinstance(other, Vector): return False
         return all(coord == coord2 for coord, coord2 in zip([self.X, self.Y, self.Z, self.E or 0], [other.X, other.Y, other.Z, other.E or 0]))
 
+    def to_list(self):
+        """Returns the vector as a list [X, Y, Z], defaulting None to 0.0"""
+        return [
+            self.X if self.X is not None else 0.0,
+            self.Y if self.Y is not None else 0.0,
+            self.Z if self.Z is not None else 0.0
+        ]
+
 
 
 class CoordSystem:
@@ -501,7 +509,7 @@ class Arc:
         """
         self.move = move
         self.dir = dir
-        self.ijk = ijk.copy()
+        self.ijk = ijk.vector_op(Vector.zero(), on_a_none='b')
 
 
     def from_params(self, params: dict[str, str]):
@@ -535,7 +543,7 @@ class Arc:
         total_angle = end_angle - start_angle
         total_angle_normal = abs(total_angle / (2 * math.pi))
 
-        num_steps = math.ceil(min(max(8, (abs(total_angle) * radius / step)), 360 * total_angle_normal))
+        num_steps = max(math.ceil(min(max(8, (abs(total_angle) * radius / step)), 360 * total_angle_normal)), 1)
 
         moves = []
         e = (next.position.E) / num_steps
