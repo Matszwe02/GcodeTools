@@ -37,8 +37,8 @@ class Keywords:
     GCODE_START = [KW(";TYPE:"), KW(";Generated with Cura_SteamEngine")]
     GCODE_END = [KW("EXCLUDE_OBJECT_END", "; EXECUTABLE_BLOCK_END"), KW(";TIME_ELAPSED:", ";End of Gcode", ";TIME_ELAPSED:"), KW(";TYPE:Custom", "; filament used")]
     
-    OBJECT_START = [KW("; printing object", None, "EXCLUDE_OBJECT_START NAME="), KW("EXCLUDE_OBJECT_START NAME=", ";WIDTH:", None, -1), KW(";MESH:"), KW("M486 S")]
-    OBJECT_END = [KW("; stop printing object", None, "EXCLUDE_OBJECT_END"), KW("EXCLUDE_OBJECT_END"), KW(";MESH:NONMESH"), KW("M486 S-1")]
+    OBJECT_START = [KW("; printing object", None, "EXCLUDE_OBJECT_START NAME="), KW("EXCLUDE_OBJECT_START NAME=", ";WIDTH:", None, -1), KW(";MESH:"), KW("M486 S"), KW("M624")]
+    OBJECT_END = [KW("; stop printing object", None, "EXCLUDE_OBJECT_END"), KW("EXCLUDE_OBJECT_END"), KW(";MESH:NONMESH"), KW("M486 S-1"), KW("M625")]
     # FIXME: Edge case scenarios, split travel moves perfectly
     # TODO: travel trimming, recalculation, preserve last travel vector at object
 

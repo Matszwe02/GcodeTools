@@ -173,17 +173,18 @@ Tested with:
 - Slic3r `1.3.0`
 - Cura `5.8.1`
 - Simplify3D `4.0.0`
+- Bambu Studio `2.0.3.54`
 
 
-|                           | Any slicer | Cura | Prusa&nbsp;Slicer | Orca&nbsp;Slicer | Slic3r | Super&nbsp;Slicer | Simplify3D |
-| ------------------------- | :--------: | :--: | :---------------: | :--------------: | :----: | :---------------: | :--------: |
-| Reading Gcode             |     ✅     |      |                   |                  |        |                   |            |
-| Keep track of coordinates |     ✅     |      |                   |                  |        |                   |            |
-| Temperature control       |     ✅     |      |                   |                  |        |                   |            |
-| Fan control               |     ✅     |      |                   |                  |        |                   |            |
-| Spliting Objects          |     ❌     |  ✅  |       ✅1       |        ✅        |   ❌   |        ✅         |     ✅     |
-| Extracting features       |     ❌     |  ➖  |        ✅         |        ✅        |   ❌   |        🔜         |     ✅     |
-| Arc Moves                 |   🔜2    |      |                   |                  |        |                   |            |
+|                           | Any slicer | Cura | Prusa&nbsp;Slicer | Orca&nbsp;Slicer | Slic3r | Super&nbsp;Slicer | Simplify3D | Bambu&nbsp;Studio |
+| ------------------------- | :--------: | :--: | :---------------: | :--------------: | :----: | :---------------: | :--------: | :----------: |
+| Reading Gcode             |     ✅     |      |                   |                  |        |                   |            |              |
+| Keep track of coordinates |     ✅     |      |                   |                  |        |                   |            |              |
+| Temperature control       |     ✅     |      |                   |                  |        |                   |            |              |
+| Fan control               |     ✅     |      |                   |                  |        |                   |            |              |
+| Spliting Objects          |     ❌     |  ✅  |        ✅1        |        ✅        |   ❌   |        ✅         |     ✅     |     ✅      |
+| Extracting features       |     ❌     |  ➖  |        ✅         |        ✅        |   ❌   |        🔜        |     ✅     |      ✅      |
+| Arc Moves                 |    🔜2    |      |                   |                  |        |                   |            |              |
 
 
 ### Legend:
