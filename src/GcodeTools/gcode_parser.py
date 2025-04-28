@@ -189,7 +189,7 @@ class GcodeParser:
             for section in arc.subdivide(move):
                 block = Block(None, section, pd.block.command.strip(), emit_command, pd.block.block_data)
                 pd_new.block = block
-                listdata.append(pd_new)
+                listdata.append(pd_new.copy())
             return listdata
         
         else:
