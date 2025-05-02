@@ -15,26 +15,26 @@ pip install GcodeTools
 
 # Available G-Code Tools
 
-| Feature                                              | Status |                                command                                 |
-| ---------------------------------------------------- | :----: | :--------------------------------------------------------------------: |
-| Translate Gcode                                      |   ✅   |                 `Tools.translate(gcode, Vector)`                  |
-| Rotate Gcode                                         |   ✅   |                    `Tools.rotate(gcode, int) `                    |
-| Scale Gcode                                          |   ✅   |                `Tools.scale(gcode, Vector\|float)`                |
-| subdivide Gcode                                      |   ✅   |                         `move.subdivide(step)`                         |
-| Get move's flowrate                                  |   ✅   |                         `move.get_flowrate()`                          |
-| Set flowrate <br> (in mm^2, use `scale` to set in %) |   ✅   |                       `move.set_flowrate(float)`                       |
-| Detect Gcode features                                |   ✅   |   `Tools.fill_meta(gcode)`, param `meta_provider` at gcode load   |
-| Split layers                                         |   ✅   |                `Tools.get_by_meta(gcode, "layer")`                |
-| Split bodies                                         |  🔜   |                       `Tools.split(gcode)`                        |
-| Insert custom Gcode                                  |   ❌   |                                                                        |
-| Read Thumbnails                                      |   ✅   |                   `Tools.get_thumbnails(gcode)`                   |
-| Generate Thumbnails                                  |   ✅   | `Tools.generate_thumbnail(gcode, data, width, height, textwidth)` |
-| Convert from/to Arc Moves                            |   ❌   |            currently auto-translation to G1 in GcodeParser             |
-| Find body bounds                                     |   ✅   |                  `Tools.get_bounding_box(gcode)`                  |
-| Trim unused Gcode                                    |  🔜   |                        `Tools.trim(gcode)`                        |
-| Offset Gcodes in time                                |   ❌   |                                                                        |
-| Create custom travel movement                        |   ❌   |                                                                        |
-| convert to firmware retraction                       |  🔜   |                 `Tools.regenerate_travels(gcode)`                 |
+| Feature                                              | Status |                            command                             |
+| ---------------------------------------------------- | :----: | :------------------------------------------------------------: |
+| Translate Gcode                                      |   ✅   |                `Tools.translate(gcode, Vector)`                |
+| Rotate Gcode                                         |   ✅   |                  `Tools.rotate(gcode, int) `                   |
+| Scale Gcode                                          |   ✅   |              `Tools.scale(gcode, Vector\|float)`               |
+| subdivide Gcode                                      |   ✅   |                     `move.subdivide(step)`                     |
+| Get move's flowrate                                  |   ✅   |                     `move.get_flowrate()`                      |
+| Set flowrate <br> (in mm^2, use `scale` to set in %) |   ✅   |                   `move.set_flowrate(float)`                   |
+| Detect Gcode features                                |   ✅   | `Tools.fill_meta(gcode)`, param `meta_provider` at gcode load  |
+| Split layers                                         |   ✅   |              `Tools.get_by_meta(gcode, "layer")`               |
+| Split bodies                                         |  🔜   |                      `Tools.split(gcode)`                      |
+| Insert custom Gcode                                  |   ❌   |                                                                |
+| Read Thumbnails (raw PNG data)                       |   ✅   |                 `Tools.read_thumbnails(gcode)`                 |
+| Write Thumbnails (raw PNG data)                      |   ✅   | `Tools.write_thumbnail(gcode, data, width, height, textwidth)` |
+| Convert from/to Arc Moves                            |   ❌   |        currently auto-translation to G1 in GcodeParser         |
+| Find body bounds                                     |   ✅   |                `Tools.get_bounding_box(gcode)`                 |
+| Trim unused Gcode                                    |  🔜   |                      `Tools.trim(gcode)`                       |
+| Offset Gcodes in time                                |   ❌   |                                                                |
+| Create custom travel movement                        |   ❌   |                                                                |
+| convert to firmware retraction                       |  🔜   |               `Tools.regenerate_travels(gcode)`                |
 
 
 ### Legend:

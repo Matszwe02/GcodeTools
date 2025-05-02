@@ -475,12 +475,12 @@ class Tools:
 
 
     @staticmethod
-    def get_thumbnails(gcode: Gcode) -> list[bytes]:
+    def read_thumbnails(gcode: Gcode) -> list[bytes]:
         """
         Get all thumbnails from `Gcode`, ordered as appearing in `Gcode`. For now only `png` format is supported
         
         Example implementation:
-        ```py
+        ```
         for idx, thumb in enumerate(Tools.get_thumbnails(gcode)):
             with open(f'thumb{idx}.png', 'wb') as f:
                 f.write(thumb)
@@ -507,7 +507,7 @@ class Tools:
 
 
     @staticmethod
-    def generate_thumbnail(gcode: Gcode, data: bytes, width: int, height: int, textwidth = 80) -> Gcode:
+    def write_thumbnail(gcode: Gcode, data: bytes, width: int, height: int, textwidth = 80) -> Gcode:
         """
         Args:
             data: `bytes` - raw png data
