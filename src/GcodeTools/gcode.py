@@ -167,7 +167,7 @@ class Gcode(list[Block]):
         """
         i = 0
         while i < len(self):
-            block: Block = self[i]
+            block: Block = self[i].unlink()
             block.prev = self[i - 1] if i > 0 else None
             if prev := block.prev:
                 prev: Block
