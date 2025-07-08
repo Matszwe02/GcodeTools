@@ -24,7 +24,7 @@ pip install GcodeTools
 | Get move's flowrate                                  |   ✅   |                     `move.get_flowrate()`                      |
 | Set flowrate <br> (in mm^2, use `scale` to set in %) |   ✅   |                   `move.set_flowrate(float)`                   |
 | Detect Gcode features                                |   ✅   | `Tools.fill_meta(gcode)`, param `meta_provider` at gcode load  |
-| Split layers                                         |   ✅   |              `Tools.get_by_meta(gcode, "layer")`               |
+| Split layers                                         |   ✅   |                       `Gcode.layers[n]`                        |
 | Split bodies                                         |  🔜   |                      `Tools.split(gcode)`                      |
 | Insert custom Gcode                                  |   ❌   |                                                                |
 | Read Thumbnails (raw PNG data)                       |   ✅   |                 `Tools.read_thumbnails(gcode)`                 |

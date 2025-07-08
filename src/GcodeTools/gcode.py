@@ -212,3 +212,23 @@ class Gcode(list[Block]):
             gcode.g_add(i.copy())
         
         return gcode
+        
+    @property
+    def layers(self) -> list['Gcode']:
+        """
+        Returns a list of Gcode, each representing a layer in the original Gcode.
+        
+        Returns:
+            list[Gcode]: List of Gcode, one for each layer
+        """
+        
+        layer_dict = {}
+        
+        for block in self:
+            layer_num = block.meta.get('layer', None)
+            if layer_num is not None:
+                if layer_num not in layer_dict:
+                    layer_dict[layer_num] = self.new()
+                layer_dict[layer_num].g_add(block.copy())
+        
+        return [layer_dict[i] for i in sorted(layer_dict.keys())]
