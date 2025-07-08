@@ -1,10 +1,7 @@
 import math
 import io
-from GcodeTools.gcode_types import Vector
-from GcodeTools.gcode import Gcode
-from GcodeTools.gcode_tools import Tools, MoveTypes
-
 from PIL import Image, ImageDraw
+from GcodeTools import Vector, Gcode, Tools, MoveTypes
 
 
 class ThumbnailTools:
