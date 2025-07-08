@@ -235,6 +235,13 @@ class Vector:
         return f'X={self.X}, Y={self.Y}, Z={self.Z}, E={self.E}'
 
 
+    def is_none(self, with_e = True):
+        """Returns `True` when any of `Vector`'s coordinates is `None`"""
+        if with_e:
+            return any(coord is None for coord in [self.X, self.Y, self.Z, self.E])
+        return any(coord is None for coord in [self.X, self.Y, self.Z])
+
+
     def to_dict(self):
         return {'X': self.X, 'Y': self.Y, 'Z': self.Z, 'E': self.E}
 
@@ -247,13 +254,11 @@ class Vector:
         if not isinstance(other, Vector): return False
         return all(coord == coord2 for coord, coord2 in zip([self.X, self.Y, self.Z, self.E or 0], [other.X, other.Y, other.Z, other.E or 0]))
 
-    def to_list(self):
-        """Returns the vector as a list [X, Y, Z], defaulting None to 0.0"""
-        return [
-            self.X if self.X is not None else 0.0,
-            self.Y if self.Y is not None else 0.0,
-            self.Z if self.Z is not None else 0.0
-        ]
+    def to_list(self, with_e = True):
+        """Returns the vector as a list [X, Y, Z] or [X, Y, Z, E], defaulting None to 0.0"""
+        if with_e:
+            return [ self.X or 0.0, self.Y or 0.0, self.Z or 0.0, self.E or 0.0 ]
+        return [ self.X or 0.0, self.Y or 0.0, self.Z or 0.0 ]
 
 
 
