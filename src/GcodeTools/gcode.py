@@ -3,11 +3,15 @@ from GcodeTools.gcode_types import *
 
 class Gcode(list[Block]):
     
-    def __init__(self):
+    def __init__(self, *, filename = None, gcode_str = None):
         self.config = Config()
         "Configuration of the G-Code computation"
         self.ordered = False
         super().__init__()
+        if filename:
+            self.from_file(filename)
+        elif gcode_str:
+            self.from_str(gcode_str)
 
 
     def __get_parser__(self):
