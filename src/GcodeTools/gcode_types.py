@@ -260,6 +260,13 @@ class Vector:
             return [ self.X or 0.0, self.Y or 0.0, self.Z or 0.0, self.E or 0.0 ]
         return [ self.X or 0.0, self.Y or 0.0, self.Z or 0.0 ]
 
+    def __float__(self):
+        """Returns the magnitude of `Vector`"""
+        x = self.X or 0.0
+        y = self.Y or 0.0
+        z = self.Z or 0.0
+        return math.sqrt(x**2 + y**2 + z**2)
+
 
 
 class CoordSystem:
