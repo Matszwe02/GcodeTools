@@ -15,6 +15,11 @@ def remove_chars(string: str, chars: str)->str:
     return outstr
 
 
+def dict_to_pretty_str(d: dict) -> str:
+    """Converts a dictionary to a pretty string format: key=value, key2=value2"""
+    return ", ".join(f"{k}={v}" for k, v in d.items())
+
+
 def check_null_except(obj, obj_type, on_none: typing.Callable|Exception|None = Exception, alert="Can only use {0}, not {1}"):
     """
     Check wrong object, with optional object creation on None
@@ -284,7 +289,7 @@ class CoordSystem:
         self.abs_position_e = abs_position_e
 
     def __str__(self):
-        return f"abs_xyz={self.abs_xyz}, abs_e={self.abs_e}, speed={self.speed}, arc_plane={self.arc_plane}, position={self.position}, offset={self.offset}, abs_position_e={self.abs_position_e}"
+        return dict_to_pretty_str(self.to_dict())
 
 
     def set_abs_xyz(self, abs_xyz=None):
@@ -498,7 +503,7 @@ class Move:
 
 
     def to_dict(self):
-        return {'Pos' : self.position.to_dict()}
+        return {'Pos' : self.position.to_dict(), 'Speed' : self.speed}
 
 
     def copy(self):
@@ -506,7 +511,7 @@ class Move:
         return Move(None, self.config, self.position.copy(), self.speed)
 
     def __str__(self):
-        return f"Pos={self.position}, Speed={self.speed}"
+        return dict_to_pretty_str(self.to_dict())
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Move): return False
@@ -679,7 +684,7 @@ class BlockData:
         return BlockData(self.block_ref, self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T)
 
     def __str__(self):
-        return f"e_temp={self.e_temp}, bed_temp={self.bed_temp}, fan={self.fan}, T={self.T}"
+        return dict_to_pretty_str(self.to_dict())
 
 
 
@@ -764,4 +769,4 @@ class Block:
         return Block(self.prev, self.move, self.command, self.emit_command, self.block_data, self.meta)
 
     def __str__(self):
-        return f"command={self.command}, move={self.move}, emit_command={self.emit_command}, data={self.block_data}, meta={self.meta}"
+        return dict_to_pretty_str(self.to_dict())
