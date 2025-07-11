@@ -324,6 +324,7 @@ class CoordSystem:
 
 
     def to_str(self, last_coords: 'CoordSystem|None' = None):
+        """Returns gcode string of `CoordSystem`"""
         out = ''
         
         if isinstance(last_coords, CoordSystem):
@@ -473,6 +474,7 @@ class Move:
 
 
     def to_str(self):
+        """Returns gcode string of `Move`"""
         
         prev = self.get_prev()
         nullable = lambda param, a: '' if a is None else f' {param}{a:.{self.config.precision}f}'.rstrip('0').rstrip('.')
@@ -637,6 +639,7 @@ class BlockData:
 
 
     def to_str(self):
+        """Returns gcode string of `BlockData`"""
         prev = self.get_prev()
         
         out = ''
@@ -728,6 +731,7 @@ class Block:
 
 
     def to_str(self, verbose=False):
+        """Returns gcode string of `Block`"""
         
         line_str = ''
         
