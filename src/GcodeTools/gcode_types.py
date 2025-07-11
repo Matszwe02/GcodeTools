@@ -283,6 +283,9 @@ class CoordSystem:
         self.offset = offset
         self.abs_position_e = abs_position_e
 
+    def __str__(self):
+        return f"abs_xyz={self.abs_xyz}, abs_e={self.abs_e}, speed={self.speed}, arc_plane={self.arc_plane}, position={self.position}, offset={self.offset}, abs_position_e={self.abs_position_e}"
+
 
     def set_abs_xyz(self, abs_xyz=None):
         if abs_xyz is not None:
@@ -502,6 +505,8 @@ class Move:
         """Create a deep copy"""
         return Move(None, self.config, self.position.copy(), self.speed)
 
+    def __str__(self):
+        return f"Pos={self.position}, Speed={self.speed}"
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Move): return False
@@ -673,6 +678,9 @@ class BlockData:
     def copy(self):
         return BlockData(self.block_ref, self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T)
 
+    def __str__(self):
+        return f"e_temp={self.e_temp}, bed_temp={self.bed_temp}, fan={self.fan}, T={self.T}"
+
 
 
 class Block:
@@ -754,3 +762,6 @@ class Block:
 
     def copy(self):
         return Block(self.prev, self.move, self.command, self.emit_command, self.block_data, self.meta)
+
+    def __str__(self):
+        return f"command={self.command}, move={self.move}, emit_command={self.emit_command}, data={self.block_data}, meta={self.meta}"
