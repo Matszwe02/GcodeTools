@@ -3,7 +3,7 @@ from GcodeTools.gcode_types import *
 
 class Gcode(list[Block]):
     
-    def __init__(self, *, filename = None, gcode_str = None):
+    def __init__(self, filename = None, *, gcode_str = None):
         self.config = Config()
         "Configuration of the G-Code computation"
         self.ordered = False
