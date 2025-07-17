@@ -215,7 +215,7 @@ class GcodeParser:
             list_pd:list[GcodeParser.ParserData] = GcodeParser._parse_line(pd)
             
             for num in list_pd:
-                gcode.g_add(num.block)
+                gcode.gcode_add(num.block)
             pd = list_pd[-1]
             
             if progress_callback:
