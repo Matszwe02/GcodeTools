@@ -80,8 +80,7 @@ That however does not take move origin (move starting position) in count! That w
 ```py
 from GcodeTools import Gcode
 
-gcode = Gcode()
-gcode.from_file('file.gcode')
+gcode = Gcode('file.gcode')
 ```
 
 ## Progress Callback example implementation
@@ -123,7 +122,7 @@ For bridges set fan speed to 100%.
 ```py
 from GcodeTools import *
 
-gcode = Gcode().from_file('file.gcode')
+gcode = Gcode('file.gcode')
 
 for block in gcode:
     if block.meta.get('type') == MoveTypes.SPARSE_INFILL:
@@ -146,7 +145,7 @@ import matplotlib.pyplot as plt
 
 gcode_file = "1.gcode"
 
-gcode = Gcode().from_file(gcode_file)
+gcode = Gcode(gcode_file)
 
 flowrates = []
 for block in gcode:
