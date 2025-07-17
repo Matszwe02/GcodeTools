@@ -3,9 +3,16 @@ from GcodeTools.gcode_types import *
 
 class Gcode(list[Block]):
     
-    def __init__(self, filename = None, *, gcode_str = None):
-        self.config = Config()
-        "Configuration of the G-Code computation"
+    def __init__(self, filename = None, *, gcode_str = None, config = Config()):
+        """
+        Initializes a `Gcode` object.
+
+        Args:
+            filename: `str` - Path to a G-code file to load.
+            gcode_str: `str` - A string containing G-code to parse.
+            config: `Config` - Printer configuration for G-code.
+        """
+        self.config = config
         self.ordered = False
         super().__init__()
         if filename:
