@@ -319,6 +319,8 @@ class CoordSystem:
             if pos.E is not None:
                 self.position.E = (pos.E - self.abs_position_e)
                 self.abs_position_e = pos.E
+            else:
+                self.position.E = 0
         else:
             self.position.set(pos.e())
         
