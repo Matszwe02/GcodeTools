@@ -207,6 +207,7 @@ class Gcode(list[Block]):
         self.ordered = False
         return super().__iter__()
 
+
     def __getitem__(self, key):
         """Returns a shallow copy of `Gcode` or `Block`"""
         self.ordered = False
@@ -219,6 +220,42 @@ class Gcode(list[Block]):
             return super().__getitem__(key)
 
 
+    def __len__(self):
+        return super().__len__()
+
+    def __add__(self, other):
+        new_gcode = self.new()
+        new_gcode.extend(self)
+        new_gcode.extend(other)
+        new_gcode.ordered = False # Ensure the new combined Gcode is marked as unordered
+        return new_gcode
+
+
+    def insert(self, index: int, value: Block|str):
+        """
+        Inserts a G-code block at the specified index.
+        Uses gcode_add internally.
+        """
+        self.gcode_add(value, index)
+
+
+    def append(self, value: Block|str):
+        """
+        Appends a G-code block to the end of the Gcode list.
+        Uses gcode_add internally.
+        """
+        self.gcode_add(value)
+
+
+    def extend(self, iterable: typing.Iterable[Block|str]):
+        """
+        Extends the Gcode list by appending all the items from the iterable.
+        Uses gcode_add internally for each item.
+        """
+        for item in iterable:
+            self.gcode_add(item)
+
+
     def copy(self):
         gcode = self.new()
         
@@ -226,7 +263,8 @@ class Gcode(list[Block]):
             gcode.gcode_add(i.copy())
         
         return gcode
-        
+
+
     @property
     def layers(self) -> list['Gcode']:
         """
