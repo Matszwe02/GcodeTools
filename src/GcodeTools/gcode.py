@@ -203,13 +203,24 @@ class Gcode(list[Block]):
             i.unlink()
 
 
+    def __super__(self):
+        return super()
+
+
     def __iter__(self):
         self.ordered = False
         return super().__iter__()
 
-    def __getitem__(self, i):
+    def __getitem__(self, key):
+        """Returns a shallow copy of `Gcode` or `Block`"""
         self.ordered = False
-        return super().__getitem__(i)
+        if isinstance(key, slice):
+            new_gcode = self.new()
+            for block in super().__getitem__(key):
+                new_gcode.__super__().append(block)
+            return new_gcode
+        else:
+            return super().__getitem__(key)
 
 
     def copy(self):
