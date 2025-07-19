@@ -136,11 +136,7 @@ class Gcode(list[Block]):
                 move = Move()
                 if data is None: data = BlockData()
             else:
-                last_index = -1
-                if idx > 0:
-                    last_index = idx-1
-                elif idx == 0:
-                    last_index = 0
+                last_index = idx - 1 * (idx > 0)
                 
                 move = self[last_index].move.duplicate()
                 if data is None: data = self[last_index].block_data
@@ -154,9 +150,9 @@ class Gcode(list[Block]):
                 gcode_objs = parser._parse_line(parser.ParserData(CoordSystem(speed=speed, position=position), Block(None, move, gcode, True, data, meta)))
                 for idx, obj in enumerate(gcode_objs):
                     if idx == -1:
-                        self.append(obj.block)
+                        super().append(obj.block)
                     else:
-                        self.insert(index + idx, obj.block)
+                        super().insert(index + idx, obj.block)
                 return
             gcode_obj = Block(None, move, gcode, True, data, meta)
             
@@ -167,9 +163,9 @@ class Gcode(list[Block]):
             if data is not None:
                 gcode_obj.block_data = data.copy()
         if idx == -1:
-            self.append(gcode_obj)
+            super().append(gcode_obj)
             return
-        self.insert(index, gcode_obj)
+        super().insert(index, gcode_obj)
 
 
     def order(self):
