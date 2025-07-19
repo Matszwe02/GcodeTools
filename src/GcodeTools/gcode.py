@@ -223,35 +223,24 @@ class Gcode(list[Block]):
     def __len__(self):
         return super().__len__()
 
+
     def __add__(self, other):
         new_gcode = self.new()
         new_gcode.extend(self)
         new_gcode.extend(other)
-        new_gcode.ordered = False # Ensure the new combined Gcode is marked as unordered
+        new_gcode.ordered = False
         return new_gcode
 
 
     def insert(self, index: int, value: Block|str):
-        """
-        Inserts a G-code block at the specified index.
-        Uses gcode_add internally.
-        """
         self.gcode_add(value, index)
 
 
     def append(self, value: Block|str):
-        """
-        Appends a G-code block to the end of the Gcode list.
-        Uses gcode_add internally.
-        """
         self.gcode_add(value)
 
 
     def extend(self, iterable: typing.Iterable[Block|str]):
-        """
-        Extends the Gcode list by appending all the items from the iterable.
-        Uses gcode_add internally for each item.
-        """
         for item in iterable:
             self.gcode_add(item)
 
