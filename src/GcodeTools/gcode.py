@@ -115,55 +115,61 @@ class Gcode(list[Block]):
         return new
 
 
-    def __gcode_add__(self, gcode: Block|str, index: int = -1, data:BlockData|None=None, meta: dict|None=None, compile = False):
-        """
-        Appends a G-code block to the `Gcode`. Used in `append` and `extend`.
+    def __add_block__(self, block: Block, index: int):
+        """The same as `Gcode.insert()`"""
 
+        self.ordered = False
+        idx = index if index < len(self) else -1
+        block_obj = block.copy()
+        if idx == -1:
+            super().append(block_obj)
+        else:
+            super().insert(index, block_obj)
+
+
+    def __add_str__(self, gcode: str, index: int = -1, data:BlockData|None=None, meta: dict|None=None, compile = False):
+        """
+        The same as `Gcode.insert()`
+        
         For advanced use - `Block` can be build from its params
 
         Args:
-            gcode: `Block`|`str`
+            gcode: `str`
             index: `int`
                 Default index = `-1` => append to the end of `Gcode`
             data: `BlockData`
             meta: `dict`
-            compile: `bool` - when `gcode` is `str`, it can be compiled into a `Block` instead of being a command
+            compile: `bool` - compile `Block` using `CoordSystem` and `GcodeParser` instead of only putting command into a block.
+                - compilation doesn't propagate forward, i.e. putting `M106` only affects newly created `Block`.
         """
         self.ordered = False
         
         idx = index if index < len(self) else -1
         
-        if type(gcode) == str:
-            if len(self) == 0:
-                move = Move()
-                if data is None: data = BlockData()
-            else:
-                last_index = idx - 1 * (idx > 0)
-                
-                move = self[last_index].move.duplicate()
-                if data is None: data = self[last_index].block_data
-                if meta is None: meta = self[last_index].meta
-            
-            if meta is None: meta = {}
-            if compile:
-                parser = self.__get_parser__()
-                speed = self[max(idx, 0) - 1].move.speed if len(self) else None
-                position = self[max(idx, 0) - 1].move.position if len(self) else Vector()
-                gcode_objs = parser._parse_line(parser.ParserData(CoordSystem(speed=speed, position=position), Block(None, move, gcode, True, data, meta)))
-                for idx, obj in enumerate(gcode_objs):
-                    if idx == -1:
-                        super().append(obj.block)
-                    else:
-                        super().insert(index + idx, obj.block)
-                return
-            gcode_obj = Block(None, move, gcode, True, data, meta)
-            
+        if len(self) == 0:
+            move = Move()
+            if data is None: data = BlockData()
         else:
-            gcode_obj = gcode.copy()
-            if meta is not None:
-                gcode_obj.meta = json.loads(json.dumps(meta))
-            if data is not None:
-                gcode_obj.block_data = data.copy()
+            last_index = idx - 1 * (idx > 0)
+            
+            move = self[last_index].move.duplicate()
+            if data is None: data = self[last_index].block_data
+            if meta is None: meta = self[last_index].meta
+        
+        if meta is None: meta = {}
+        if compile:
+            parser = self.__get_parser__()
+            speed = self[max(idx, 0) - 1].move.speed if len(self) else None
+            position = self[max(idx, 0) - 1].move.position if len(self) else Vector()
+            gcode_objs = parser._parse_line(parser.ParserData(CoordSystem(speed=speed, position=position), Block(None, move, gcode, True, data, meta)))
+            for idx, obj in enumerate(gcode_objs):
+                if idx == -1:
+                    super().append(obj.block)
+                else:
+                    super().insert(index + idx, obj.block)
+            return
+        gcode_obj = Block(None, move, gcode, True, data, meta)
+        
         if idx == -1:
             super().append(gcode_obj)
             return
@@ -235,7 +241,10 @@ class Gcode(list[Block]):
 
 
     def insert(self, index: int, value: Block|str):
-        self.__gcode_add__(value, index, compile = False)
+        if type(value) == str:
+            self.__add_str__(value, index)
+        else:
+            self.__add_block__(value, index)
 
 
     def append(self, value: Block|str):
