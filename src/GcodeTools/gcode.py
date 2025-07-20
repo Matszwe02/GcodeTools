@@ -115,9 +115,11 @@ class Gcode(list[Block]):
         return new
 
 
-    def gcode_add(self, gcode: Block|str, index: int = -1, data:BlockData|None=None, meta: dict|None=None, compile = False):
+    def __gcode_add__(self, gcode: Block|str, index: int = -1, data:BlockData|None=None, meta: dict|None=None, compile = False):
         """
-        Appends a G-code block to the `Gcode`.
+        Appends a G-code block to the `Gcode`. Used in `append` and `extend`.
+
+        For advanced use - `Block` can be build from its params
 
         Args:
             gcode: `Block`|`str`
@@ -184,7 +186,7 @@ class Gcode(list[Block]):
                     travel_block.prev = self[i - 1]
                     block.prev = travel_block
                     travel_block.sync()
-                    self.gcode_add(travel_block, i)
+                    self.insert(travel_block, i)
                     i += 1
             i += 1
             block.sync()
@@ -233,23 +235,23 @@ class Gcode(list[Block]):
 
 
     def insert(self, index: int, value: Block|str):
-        self.gcode_add(value, index)
+        self.__gcode_add__(value, index, compile = False)
 
 
     def append(self, value: Block|str):
-        self.gcode_add(value)
+        self.insert(-1, value)
 
 
     def extend(self, iterable: typing.Iterable[Block|str]):
         for item in iterable:
-            self.gcode_add(item)
+            self.append(item)
 
 
     def copy(self):
         gcode = self.new()
         
         for i in self:
-            gcode.gcode_add(i.copy())
+            gcode.append(i.copy())
         
         return gcode
 
@@ -270,6 +272,6 @@ class Gcode(list[Block]):
             if layer_num is not None:
                 if layer_num not in layer_dict:
                     layer_dict[layer_num] = self.new()
-                layer_dict[layer_num].gcode_add(block.copy())
+                layer_dict[layer_num].append(block.copy())
         
         return [layer_dict[i] for i in sorted(layer_dict.keys())]

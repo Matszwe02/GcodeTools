@@ -249,11 +249,11 @@ class Tools:
             
             if value_check is None:
                 if i_meta == value:
-                    gcode_new.gcode_add(i)
+                    gcode_new.append(i)
                     is_none = False
             else:
                 if value_check(i_meta):
-                    gcode_new.gcode_add(i)
+                    gcode_new.append(i)
                     is_none = False
             
             if len(gcode_new) > 0 and break_on(i_meta):
@@ -434,7 +434,7 @@ class Tools:
             
             if item.meta.get("object") == None:
                 if past_item is None:
-                    out_gcode.gcode_add('G10; retract')
+                    out_gcode.append('G10; retract')
                 past_item = item.copy()
                 e_add += past_item.move.position.E
                 past_item.move.position.E = 0
@@ -445,7 +445,7 @@ class Tools:
                     out_gcode.append(past_item.copy())
                     past_item.move.position.E = e_add
                     out_gcode.append(past_item.copy())
-                    out_gcode.gcode_add('G11; unretract')
+                    out_gcode.append('G11; unretract')
                     e_add = 0
                 past_item = None
                 
@@ -466,8 +466,8 @@ class Tools:
             meta_layer = i.meta.get('layer', -1)
             if meta_layer != -1 and meta_layer != layer and meta_layer == int(meta_layer):
                 layer = meta_layer
-                new_gcode.gcode_add(tag)
-            new_gcode.gcode_add(i)
+                new_gcode.append(tag)
+            new_gcode.append(i)
         return new_gcode
 
 
@@ -481,8 +481,8 @@ class Tools:
             meta_type = i.meta.get('type', '')
             if meta_type != move_type:
                 move_type = meta_type
-                new_gcode.gcode_add(MoveTypes.pprint_type.get(meta_type, MoveTypes.pprint_type['']))
-            new_gcode.gcode_add(i)
+                new_gcode.append(MoveTypes.pprint_type.get(meta_type, MoveTypes.pprint_type['']))
+            new_gcode.append(i)
         return new_gcode
 
 
@@ -543,5 +543,5 @@ class Tools:
 
         thumb = THUMB_BLOCK.format(width, height, len_text, text)
         block = Block(command=thumb, emit_command=True)
-        new.gcode_add(block, 0)
+        new.insert(block, 0)
         return new
