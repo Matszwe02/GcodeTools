@@ -182,7 +182,7 @@ Tested with:
 | Temperature control       |     ✅     |      |                   |                  |        |                   |            |              |
 | Fan control               |     ✅     |      |                   |                  |        |                   |            |              |
 | Spliting Objects          |     ❌     |  ✅  |        ✅1        |        ✅        |   ❌   |        ✅         |     ✅     |     ✅      |
-| Extracting features       |     ❌     |  ➖  |        ✅         |        ✅        |   ❌   |        🔜        |     ✅     |      ✅      |
+| Extracting features       |     ❌     |  ➖  |        ✅         |        ✅        |   ❌   |        ✅        |     ✅     |      ✅      |
 | Arc Moves                 |    🔜2    |      |                   |                  |        |                   |            |              |
 
 

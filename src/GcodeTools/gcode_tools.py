@@ -3,42 +3,53 @@ from GcodeTools.gcode_types import *
 from GcodeTools.gcode import Gcode
 import base64
 import textwrap
+import re
 
 
 meta_initial = {'object': None, 'type': None, 'layer': 0}
 
 class Keywords:
     """
-    Each `keyword` is a list of possible commands. Each `command` is treated as a prefix, so G1 will match any move command, etc.
+    Each `keyword` is a list of `KW` which matches specific command.
+
+    Keywords match slicer-specific scenatios, like object change, feature change...
     """
 
     class KW:
         def __init__(self, command: str, allow_command = None, block_command = None, offset = 0):
             """
-            `Offset` = -1: offset at `allow_command`
+            Keyword class for matching specific types of commands
+            Uses regex for allow_command and block_command
+
+            Args:
+                command: str - string that is going to be matched
+                allow_command: str - match only if following command is found
+                block_command: str - don't match if following command is found
+                offset: int - returning that line number instead
+                    - `offset` = -1: offset at `allow_command`
             """
-            self.command = command
-            self.allow_command = allow_command
-            self.block_command = block_command
+            self.command = re.compile(command)
+            self.allow_command = re.compile(allow_command) if allow_command else None
+            self.block_command = re.compile(block_command) if block_command else None
             self.offset = offset
     
     
-    CONFIG_START = [KW("; CONFIG_BLOCK_START")]
-    CONFIG_END = [KW("; CONFIG_BLOCK_END")]
+    CONFIG_START = [KW("^; CONFIG_BLOCK_START")]
+    CONFIG_END = [KW("^; CONFIG_BLOCK_END")]
     
-    HEADER_START = [KW("; HEADER_BLOCK_START")]
-    HEADER_END = [KW("; HEADER_BLOCK_END")]
+    HEADER_START = [KW("^; HEADER_BLOCK_START")]
+    HEADER_END = [KW("^; HEADER_BLOCK_END")]
     
-    EXECUTABLE_START = [KW("; EXECUTABLE_BLOCK_START"), KW(";TYPE:"), KW(";Generated with Cura_SteamEngine")]
-    EXECUTABLE_END = [KW("; EXECUTABLE_BLOCK_END")]
+    EXECUTABLE_START = [KW("^; EXECUTABLE_BLOCK_START"), KW("^;TYPE:"), KW("^;Generated with Cura_SteamEngine")]
+    EXECUTABLE_END = [KW("^; EXECUTABLE_BLOCK_END")]
     
-    LAYER_CHANGE = [KW(";LAYER_CHANGE"), KW(";LAYER:", ";TYPE:")]
+    LAYER_CHANGE = [KW("^;LAYER_CHANGE"), KW("^;LAYER:", "^;TYPE:")]
     
-    GCODE_START = [KW(";TYPE:"), KW(";Generated with Cura_SteamEngine")]
-    GCODE_END = [KW("EXCLUDE_OBJECT_END", "; EXECUTABLE_BLOCK_END"), KW(";TIME_ELAPSED:", ";End of Gcode", ";TIME_ELAPSED:"), KW(";TYPE:Custom", "; filament used")]
+    GCODE_START = [KW("^;TYPE:"), KW("^;Generated with Cura_SteamEngine")]
+    GCODE_END = [KW("^EXCLUDE_OBJECT_END", "^; EXECUTABLE_BLOCK_END"), KW("^;TIME_ELAPSED:", "^;End of Gcode", "^;TIME_ELAPSED:"), KW("^;TYPE:Custom", "^; filament used")]
     
-    OBJECT_START = [KW("; printing object", None, "EXCLUDE_OBJECT_START NAME="), KW("EXCLUDE_OBJECT_START NAME=", ";WIDTH:", None, -1), KW(";MESH:"), KW("M486 S"), KW("M624")]
-    OBJECT_END = [KW("; stop printing object", None, "EXCLUDE_OBJECT_END"), KW("EXCLUDE_OBJECT_END"), KW(";MESH:NONMESH"), KW("M486 S-1"), KW("M625")]
+    OBJECT_START = [KW("^; printing object", None, "^EXCLUDE_OBJECT_START NAME="), KW("^EXCLUDE_OBJECT_START NAME=", "^;WIDTH:", None, -1), KW("^EXCLUDE_OBJECT_START NAME=", "^G1.*E", None, -1), KW("^;MESH:"), KW("^M486 S"), KW("^M624")]
+    OBJECT_END = [KW("^; stop printing object", None, "^EXCLUDE_OBJECT_END"), KW("^EXCLUDE_OBJECT_END"), KW("^;MESH:NONMESH"), KW("^M486 S-1"), KW("^M625")]
     # FIXME: Edge case scenarios, split travel moves perfectly
     # TODO: travel trimming, recalculation, preserve last travel vector at object
 
@@ -49,25 +60,26 @@ class Keywords:
         pass
     
         for offset in range(seek_limit):
-            line = line_no - offset
+            line_content = gcode[line_no - offset].command
             
             for option in keyword:
                 if option.offset != offset and option.offset != -1:
                     continue
-                if gcode[line].command.startswith(option.command):
-                    
+                
+                match = option.command.search(line_content)
+                if match:
                     if option.allow_command is None and option.block_command is None:
-                            return gcode[line].command.removeprefix(option.command)
+                        return line_content[match.end():]
                     
-                    for id, nextline in enumerate(gcode[line + 1 : line + seek_limit]):
-                        if option.block_command is not None and nextline.command.startswith(option.block_command):
+                    for id, nextline in enumerate(gcode[line_no - offset + 1 : line_no - offset + seek_limit + 1]):
+                        if option.block_command is not None and option.block_command.search(nextline.command):
                             return None
-                        if option.allow_command is not None and nextline.command.startswith(option.allow_command):
+                        if option.allow_command is not None and option.allow_command.search(nextline.command):
                             if option.offset == offset or (option.offset == -1 and offset == id):
-                                return gcode[line].command.removeprefix(option.command)
+                                return line_content[match.end():]
                             
                     if option.allow_command is None:
-                            return gcode[line].command.removeprefix(option.command)
+                        return line_content[match.end():]
                 
         return None
 
