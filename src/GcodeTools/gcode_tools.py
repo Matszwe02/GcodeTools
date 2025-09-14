@@ -171,6 +171,24 @@ class Tools:
 
 
     @staticmethod
+    def get_slicer_name(gcode: Gcode) -> tuple[str, str]:
+        """
+        Get (`slicer_name`, `slicer_version`)
+        """
+        for line in gcode[:20]:
+            cmd = line.command
+            if 'bambustudio' in cmd.lower():
+                slicer = 'BambuStudio'
+                version = cmd.split('BambuStudio')[1].trim()
+                return (slicer, version)
+            if 'generated' in cmd.lower():
+                line = cmd.split('by')[-1].split('with')[-1].replace('Version', '').replace('(R)', '').split()
+                slicer = line[0]
+                version = line[1]
+                return (slicer, version)
+
+
+    @staticmethod
     def read_config(gcode: Gcode):
         """
         Read slicer's config from `Gcode`
