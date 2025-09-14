@@ -34,8 +34,8 @@ class Keywords:
             self.offset = offset
     
     
-    CONFIG_START = [KW("^; CONFIG_BLOCK_START")]
-    CONFIG_END = [KW("^; CONFIG_BLOCK_END")]
+    CONFIG_START = [KW("^; CONFIG_BLOCK_START"), KW("_config = begin"), KW("^; Settings Summary"), KW("^; total filament cost =", None, "_config = begin")]
+    CONFIG_END = [KW("^; CONFIG_BLOCK_END"), KW("_config = end"), KW("^G"), KW("^M")]
     
     HEADER_START = [KW("^; HEADER_BLOCK_START")]
     HEADER_END = [KW("^; HEADER_BLOCK_END")]
@@ -180,14 +180,17 @@ class Tools:
         for id, block in enumerate(gcode):
         
             if start_id == -1 and Keywords.get_keyword_line(id, gcode, Keywords.CONFIG_START): start_id = id
-            if end_id == -1 and Keywords.get_keyword_line(id, gcode, Keywords.CONFIG_END): end_id = id
+            if end_id == -1 and start_id != -1 and Keywords.get_keyword_line(id, gcode, Keywords.CONFIG_END): end_id = id
         
-        if start_id == -1 or end_id == -1: return None
+        if start_id == -1 or end_id - start_id > 1000: return None
+        print(f'{start_id=}, {end_id=}')
         
         for block in gcode[start_id + 1 : end_id]:
             line = block.command
-            key = line[1:line.find('=')].strip()
-            value = line[line.find('=') + 1:].strip()
+            delimeter = line.find('=')
+            if delimeter < 0: delimeter = line.find(',')
+            key = line[1:delimeter].strip()
+            value = line[delimeter + 1:].strip()
             metadata[key] = value
         
         return metadata
