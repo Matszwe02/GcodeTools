@@ -26,9 +26,10 @@ pip install GcodeTools
 | Detect Gcode features                                |   ✅   | `Tools.fill_meta(gcode)`, param `meta_provider` at gcode load  |
 | Split layers                                         |   ✅   |                       `Gcode.layers[n]`                        |
 | Split bodies                                         |  🔜   |                      `Tools.split(gcode)`                      |
-| Insert custom Gcode                                  |   ❌   |                                                                |
+| Insert custom Gcode                                  |   ✅   |           `Gcode.(insert, append, extend, __add__)`            |
 | Read Thumbnails (raw PNG data)                       |   ✅   |                 `Tools.read_thumbnails(gcode)`                 |
 | Write Thumbnails (raw PNG data)                      |   ✅   | `Tools.write_thumbnail(gcode, data, width, height, textwidth)` |
+| Generate configuration files for slicer              |   ✅   |              `Tools.generate_config_files(gcode)`              |
 | Convert from/to Arc Moves                            |   ❌   |        currently auto-translation to G1 in GcodeParser         |
 | Find body bounds                                     |   ✅   |                `Tools.get_bounding_box(gcode)`                 |
 | Trim unused Gcode                                    |  🔜   |                      `Tools.trim(gcode)`                       |
@@ -160,6 +161,18 @@ plt.title(f"Flowrate Distribution for {gcode_file}")
 plt.grid(axis='y', alpha=0.75)
 plt.show()
 plt.close()
+```
+
+
+Generate configuration files for slicer
+
+```py
+gcode = GcodeTools.Gcode('gcode.gcode')
+
+config = Tools.generate_config_files(gcode)
+for key in config.keys():
+    with open(key, 'w') as f:
+        f.write(config[key])
 ```
 
 
