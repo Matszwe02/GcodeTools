@@ -215,6 +215,66 @@ class Tools:
 
 
     @staticmethod
+    def generate_config_files(gcode: Gcode) -> dict[str, str]:
+        """
+        Generate configuration file(s) for slicer which generated the gcode.
+
+        Returns:
+            {`filename`, `contents`}
+        """
+        slicer, version = Tools.get_slicer_name(gcode)
+        config = Tools.read_config(gcode)
+        if slicer.lower() in ['cura']:
+            print(f'{slicer.lower()} doesn\'t generate configuration')
+            return {}
+        elif slicer.lower() in ['orcaslicer', 'bambustudio']:
+            filament = config.copy()
+            machine = config.copy()
+            process = config.copy()
+
+            try:
+                inherit_groups = config['inherits_group'].split(';')
+                if inherit_groups[0]:
+                    process['inherits'] = inherit_groups[0]
+                if inherit_groups[1]:
+                    filament['inherits'] = inherit_groups[1]
+                if inherit_groups[2]:
+                    machine['inherits'] = inherit_groups[2]
+                    filament['compatible_printers'] = [inherit_groups[2]]
+            except KeyError:
+                pass
+
+            filament['from'] = 'User'
+            filament['is_custom_defined'] = '0'
+            filament['version'] = version
+            filament['name'] = config['filament_settings_id']
+
+            machine['from'] = 'User'
+            machine['is_custom_defined'] = '0'
+            machine['version'] = version
+            machine['name'] = config['printer_settings_id']
+
+            process['from'] = 'User'
+            process['is_custom_defined'] = '0'
+            process['version'] = version
+            process['name'] = config['print_settings_id']
+
+            filament_str = json.dumps(filament, indent=4)
+            machine_str = json.dumps(machine, indent=4)
+            process_str = json.dumps(process, indent=4)
+
+            return {'filament.json': filament_str, 'machine.json': machine_str, 'process.json': process_str}
+
+        else:
+            if slicer.lower() not in ['prusaslicer', 'slic3r', 'superslicer']:
+                print('Unsupported slicer: trying generating slic3r config')
+            output = ''
+            for key in config.keys():
+                output += key + ' = ' + config[key] + '\n'
+            return {'config.ini': output}
+
+
+    @staticmethod
     def fill_meta(gcode: Gcode, progress_callback: typing.Callable|None = None):
         """
         Args:
