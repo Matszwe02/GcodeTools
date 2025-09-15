@@ -322,7 +322,7 @@ class CoordSystem:
             else:
                 self.position.E = 0
         else:
-            self.position.set(pos.e())
+            self.position.E = pos.E or 0
         
         return self.position.copy()
 
