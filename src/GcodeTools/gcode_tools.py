@@ -228,9 +228,14 @@ class Tools:
             print(f'{slicer.lower()} doesn\'t generate configuration')
             return {}
         elif slicer.lower() in ['orcaslicer', 'bambustudio']:
-            filament = config.copy()
             machine = config.copy()
             process = config.copy()
+            filament = {}
+
+            filament_fields = ['filament', 'fan_', 'temp', 'nozzle', 'slow', 'air_']
+            for key in config.keys():
+                if any(field in key for field in filament_fields):
+                    filament[key] = config[key]
 
             try:
                 inherit_groups = config['inherits_group'].split(';')
@@ -240,21 +245,25 @@ class Tools:
                     filament['inherits'] = inherit_groups[1]
                 if inherit_groups[2]:
                     machine['inherits'] = inherit_groups[2]
+                    process['compatible_printers'] = [inherit_groups[2]]
                     filament['compatible_printers'] = [inherit_groups[2]]
             except KeyError:
                 pass
 
             filament['from'] = 'User'
+            filament['type'] = 'filament'
             filament['is_custom_defined'] = '0'
             filament['version'] = version
             filament['name'] = config['filament_settings_id']
 
             machine['from'] = 'User'
+            machine['type'] = 'machine'
             machine['is_custom_defined'] = '0'
             machine['version'] = version
             machine['name'] = config['printer_settings_id']
 
             process['from'] = 'User'
+            process['type'] = 'process'
             process['is_custom_defined'] = '0'
             process['version'] = version
             process['name'] = config['print_settings_id']
