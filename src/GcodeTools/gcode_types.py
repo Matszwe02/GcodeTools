@@ -102,6 +102,11 @@ class Vector:
         """Vector(0, 0, 0, 0)"""
         return Vector(0, 0, 0, 0)
 
+    @staticmethod
+    def one(with_e = False):
+        """Vector(0, 0, 0, 0)"""
+        return Vector(1, 1, 1, 1 if with_e else None)
+
 
     def __init__(self, X: float | None = None, Y: float | None = None, Z: float | None = None, E: float | None = None):
         """Vector(None, None, None, None)"""
