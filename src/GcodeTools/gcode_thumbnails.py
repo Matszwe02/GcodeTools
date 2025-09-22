@@ -40,7 +40,7 @@ class Thumbnails:
 
         for block in gcode:
             if not block.move.position.is_none(False):
-                new_position = np.array(block.move.position[0:2])
+                new_position = np.array([block.move.position.X, block.move.position.Y, block.move.position.Z])
                 if current_position is None:
                     current_position = new_position
                     continue
