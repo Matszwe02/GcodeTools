@@ -272,6 +272,9 @@ class Vector:
         z = self.Z or 0.0
         return math.sqrt(x**2 + y**2 + z**2)
 
+    def __getitem__(self, key):
+        data = [self.X, self.Y, self.Z, self.E]
+        return data[key]
 
 
 class CoordSystem:
