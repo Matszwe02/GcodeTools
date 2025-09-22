@@ -19,7 +19,7 @@ class Thumbnails:
     }
 
     @staticmethod
-    def generate_thumbnail(gcode: Gcode, *, resolution = 500, e_scale = 1, draw_bounding_box = False):
+    def generate_thumbnail(gcode: Gcode, *, resolution = 500, e_scale = 1, draw_bounding_box = False, color: tuple[int, int, int]|None = None):
         fov_deg = 45.0
         ps.init('openGL3_egl')
         ps.set_window_size(resolution, resolution)
@@ -38,6 +38,9 @@ class Thumbnails:
 
         current_position = None
 
+        if color:
+            draw_color = np.array([color[0] / 255, color[1] / 255, color[2] / 255])
+
         for block in gcode:
             if not block.move.position.is_none(False):
                 new_position = np.array([block.move.position.X, block.move.position.Y, block.move.position.Z])
@@ -50,10 +53,11 @@ class Thumbnails:
                 flowrate = 0.01 if block.meta.get('type') == MoveTypes.NO_OBJECT else .4
                 flowrate *= e_scale
                 colors_arr = Thumbnails.MOVE_TYPE_COLORS.get(block.meta.get('type'), [127, 127, 127])
-                color = np.array([colors_arr[0]/255, colors_arr[1]/255, colors_arr[2]/255])
+                if color is None:
+                    draw_color = np.array([colors_arr[0]/255, colors_arr[1]/255, colors_arr[2]/255])
                 sizes.append(flowrate)
                 sizes.append(flowrate)
-                colors.append(color)
+                colors.append(draw_color)
                 current_position = new_position
 
         nodes = np.array(nodes)
