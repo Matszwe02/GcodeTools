@@ -633,5 +633,5 @@ class Tools:
 
         thumb = THUMB_BLOCK.format(width, height, len_text, text)
         block = Block(command=thumb, emit_command=True)
-        new.insert(block, 0)
+        new.insert(0, block)
         return new
