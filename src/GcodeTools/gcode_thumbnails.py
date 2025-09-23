@@ -2,7 +2,7 @@ from GcodeTools.gcode_types import *
 from GcodeTools.gcode import Gcode
 from GcodeTools.gcode_tools import MoveTypes, Tools
 import numpy as np
-import polyscope as ps
+from PIL import Image
 
 
 class Thumbnails:
@@ -20,8 +20,26 @@ class Thumbnails:
 
     @staticmethod
     def generate_thumbnail(gcode: Gcode, *, resolution = 500, e_scale = 1, draw_bounding_box = False, color: tuple[int, int, int]|None = None):
+        ps = Thumbnails._generate_scene(gcode, True, resolution, e_scale, draw_bounding_box, color)
+        buf = ps.screenshot_to_buffer()
+        image = Image.fromarray(buf)
+        return image
+
+
+    @staticmethod
+    def interactive(gcode: Gcode, resolution = 500, e_scale = 1, draw_bounding_box = False, color = None):
+        ps = Thumbnails._generate_scene(gcode, False, resolution, e_scale, draw_bounding_box, color)
+        ps.show()
+
+
+    @staticmethod
+    def _generate_scene(gcode: Gcode, backend = None, resolution = 500, e_scale = 1, draw_bounding_box = False, color = None):
+        import polyscope as ps
         fov_deg = 45.0
-        ps.init('openGL3_egl')
+        if backend:
+            ps.init('openGL3_egl')
+        else:
+            ps.init()
         ps.set_window_size(resolution, resolution)
         ps.set_up_dir("z_up")
         ps.set_SSAA_factor(1)
@@ -37,6 +55,7 @@ class Thumbnails:
         colors = []
 
         current_position = None
+        continuous = False
 
         if color:
             draw_color = np.array([color[0] / 255, color[1] / 255, color[2] / 255])
@@ -46,24 +65,34 @@ class Thumbnails:
                 new_position = np.array([block.move.position.X, block.move.position.Y, block.move.position.Z])
                 if current_position is None:
                     current_position = new_position
+                    continuous = False
                     continue
-                nodes.append(current_position)
-                nodes.append(new_position)
-                edges.append([len(nodes) - 2, len(nodes) - 1])
+                if block.move.position.E <= 0:
+                    current_position = new_position
+                    continuous = False
+                    continue
                 flowrate = 0.01 if block.meta.get('type') == MoveTypes.NO_OBJECT else .4
                 flowrate *= e_scale
+                if not continuous:
+                    nodes.append(current_position)
+                    sizes.append(flowrate)
+                nodes.append(new_position)
+                edges.append([len(nodes) - 2, len(nodes) - 1])
                 colors_arr = Thumbnails.MOVE_TYPE_COLORS.get(block.meta.get('type'), [127, 127, 127])
                 if color is None:
                     draw_color = np.array([colors_arr[0]/255, colors_arr[1]/255, colors_arr[2]/255])
                 sizes.append(flowrate)
-                sizes.append(flowrate)
                 colors.append(draw_color)
                 current_position = new_position
+                continuous = True
 
         nodes = np.array(nodes)
         edges = np.array(edges)
         sizes = np.array(sizes)
         colors = np.array(colors)
+
+        print(len(nodes))
+        print(len(edges))
 
 
         bounding_box = Tools.get_bounding_box(gcode)
@@ -109,5 +138,6 @@ class Thumbnails:
                 ps_bbox_net.set_radius(0.0005)
 
         ps.look_at((camera_pos.X, camera_pos.Y, camera_pos.Z), (middle.X, middle.Y, middle.Z))
+        ps.set_view_center((middle.X, middle.Y, middle.Z))
         ps.set_ground_plane_mode("none")
-        ps.screenshot('thumb.png', True, False)
+        return ps
