@@ -19,23 +19,22 @@ class Thumbnails:
     }
 
     @staticmethod
-    def generate_thumbnail(gcode: Gcode, *, resolution = 500, e_scale = 1, draw_bounding_box = False, color: tuple[int, int, int]|None = None):
-        ps = Thumbnails._generate_scene(gcode, True, resolution, e_scale, draw_bounding_box, color)
+    def generate_thumbnail(gcode: Gcode, *, resolution = 500, e_scale = 1, draw_bounding_box = False, color: tuple[int, int, int]|None = None, camera_pos = Vector.one(), orthographic = False, fov = 45):
+        ps = Thumbnails._generate_scene(gcode, True, resolution, e_scale, draw_bounding_box, color, camera_pos, orthographic, fov)
         buf = ps.screenshot_to_buffer()
         image = Image.fromarray(buf)
         return image
 
 
     @staticmethod
-    def interactive(gcode: Gcode, resolution = 500, e_scale = 1, draw_bounding_box = False, color = None):
-        ps = Thumbnails._generate_scene(gcode, False, resolution, e_scale, draw_bounding_box, color)
+    def interactive(gcode: Gcode, resolution = 500, e_scale = 1, draw_bounding_box = False, color = None, camera_pos = Vector.one(), orthographic = False, fov = 45):
+        ps = Thumbnails._generate_scene(gcode, False, resolution, e_scale, draw_bounding_box, color, camera_pos, orthographic, fov)
         ps.show()
 
 
     @staticmethod
-    def _generate_scene(gcode: Gcode, backend = None, resolution = 500, e_scale = 1, draw_bounding_box = False, color = None):
+    def _generate_scene(gcode: Gcode, backend, resolution: int, e_scale: float, draw_bounding_box: bool, color: tuple[int, int, int], camera_pos: Vector, orthographic: bool, fov: float):
         import polyscope as ps
-        fov_deg = 45.0
         if backend:
             ps.init('openGL3_egl')
         else:
@@ -43,8 +42,8 @@ class Thumbnails:
         ps.set_window_size(resolution, resolution)
         ps.set_up_dir("z_up")
         ps.set_SSAA_factor(1)
-        ps.set_view_projection_mode("perspective")
-        intrinsics = ps.CameraIntrinsics(fov_vertical_deg=fov_deg, aspect=1.)
+        ps.set_view_projection_mode("orthographic" if orthographic else "perspective")
+        intrinsics = ps.CameraIntrinsics(fov_vertical_deg=fov, aspect=1.)
         extrinsics = ps.CameraExtrinsics(root=(2., 2., 2.), look_dir=(-1., 0., 0.), up_dir=(0.,1.,0.))
         new_params = ps.CameraParameters(intrinsics, extrinsics)
         ps.set_view_camera_parameters(new_params)
@@ -100,7 +99,7 @@ class Thumbnails:
         middle = (bounding_box[0] + bounding_box[1]) / 2
         size = bounding_box[1] - bounding_box[0]
         size_max = max(size.X, max(size.Y, size.Z))
-        camera_pos = middle + Vector(1, 1, 1) * (size_max * 1)
+        camera_pos_abs = middle + camera_pos * (size_max * 1)
 
         if len(nodes) > 0:
             ps_net = ps.register_curve_network("Gcode Path", nodes, edges, material="clay")
@@ -137,7 +136,7 @@ class Thumbnails:
                 ps_bbox_net.set_color((1, 0, 0))
                 ps_bbox_net.set_radius(0.0005)
 
-        ps.look_at((camera_pos.X, camera_pos.Y, camera_pos.Z), (middle.X, middle.Y, middle.Z))
+        ps.look_at((camera_pos_abs.X, camera_pos_abs.Y, camera_pos_abs.Z), (middle.X, middle.Y, middle.Z))
         ps.set_view_center((middle.X, middle.Y, middle.Z))
         ps.set_ground_plane_mode("none")
         return ps
