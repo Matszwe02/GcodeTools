@@ -1,9 +1,11 @@
+from typing import List
 from GcodeTools.gcode_types import *
 from GcodeTools.gcode import Gcode
 from GcodeTools.gcode_tools import MoveTypes, Tools
 import numpy as np
 from PIL import Image
 import polyscope as ps
+from polyscope import polyscope
 
 
 class Thumbnails:
@@ -21,20 +23,26 @@ class Thumbnails:
 
     @staticmethod
     def generate_thumbnail(gcode: Gcode, *, e_scale = 1, color: tuple[int, int, int]|None = None, yaw = 45, pitch = 45, fov = 45, resolution = 500):
-        ps = Thumbnails._generate_scene(gcode, resolution, e_scale, True, color, yaw, pitch, fov)
+        ps = Thumbnails._generate_scene(gcode, False, yaw, pitch, fov, resolution)
+        Thumbnails._create_gcode_object(gcode, e_scale, color)
         buf = ps.screenshot_to_buffer()
         image = Image.fromarray(buf)
         return image
 
 
     @staticmethod
-    def interactive(gcode: Gcode, e_scale = 1, color = None, yaw = 45, pitch = 45, fov = 45, resolution = 500):
-        ps = Thumbnails._generate_scene(gcode, resolution, e_scale, True, color, yaw, pitch, fov)
+    def interactive(gcode: Gcode = None, gcodes: List[Gcode] = None, e_scale = 1, color_moves = False):
+        if not gcodes:
+            gcodes = [gcode]
+        colors = [(255,0,0),(255,255,0),(0,255,0),(0,255,255),(0,0,255),(255,0,255)]
+        ps: polyscope = Thumbnails._generate_scene(gcodes[0], len(gcodes) < 2, 45, 45, 45, 300)
+        for idx, g in enumerate(gcodes):
+            Thumbnails._create_gcode_object(g, e_scale, None if color_moves else colors[idx % len(colors)], idx)
         ps.show()
 
 
     @staticmethod
-    def _create_gcode_object(gcode: Gcode, e_scale = 1, color: tuple[int, int, int]|None = None):
+    def _create_gcode_object(gcode: Gcode, e_scale = 1, color: tuple[int, int, int]|None = None, id = 0):
         nodes = []
         edges = []
         sizes = []
@@ -75,7 +83,7 @@ class Thumbnails:
         sizes = np.array(sizes)
         colors = np.array(colors)
         if len(nodes) > 0:
-            ps_net = ps.register_curve_network("Gcode Path", nodes, edges, material="clay")
+            ps_net = ps.register_curve_network(f"Gcode {id} Path", nodes, edges, material="clay")
             try:
                 ps_net.add_scalar_quantity("radius", sizes, enabled=True)
                 ps_net.set_node_radius_quantity("radius", False)
@@ -110,7 +118,7 @@ class Thumbnails:
 
 
     @staticmethod
-    def _generate_scene(gcode: Gcode, resolution, e_scale: float, draw_bounding_box: bool, color: tuple[int, int, int], yaw: float, pitch: float, fov: float):
+    def _generate_scene(gcode: Gcode, draw_bounding_box: bool, yaw: float, pitch: float, fov: float, resolution: int) -> polyscope:
 
         bounding_box = Tools.get_bounding_box(gcode)
 
@@ -129,10 +137,6 @@ class Thumbnails:
         camera_pos.Y = math.cos(math.radians(yaw)) * h_dist
         camera_pos *= camera_dist
         camera_pos += middle
-
-        # camera_pos_abs = middle + camera_pos * (size_max * 1)
-
-        # import polyscope as ps
         
         ps.set_window_size(resolution, resolution)
         try:
@@ -141,12 +145,12 @@ class Thumbnails:
             print('Warning: some features are not supported with this python version')
         ps.set_verbosity(6)
 
-        try:
-            ps.init('openGL3_egl')
-        except:
-            ps.init()
+        # try:
+        #     ps.init('openGL3_egl')
+        # except:
+        ps.init()
         ps.set_use_prefs_file(False)
-        ps.set_always_redraw(True)
+        # ps.set_always_redraw(True)
         ps.set_up_dir("z_up")
         ps.set_view_projection_mode("orthographic" if fov < 5 else "perspective")
         intrinsics = ps.CameraIntrinsics(fov_vertical_deg=fov if fov >= 5 else 35, aspect=1.)
@@ -155,7 +159,6 @@ class Thumbnails:
         ps.set_view_camera_parameters(new_params)
         ps.look_at((camera_pos.X, camera_pos.Y, camera_pos.Z), (middle.X, middle.Y, middle.Z))
 
-        Thumbnails._create_gcode_object(gcode, e_scale, color)
         if draw_bounding_box:
             Thumbnails._create_bounding_box_object(bounding_box[0], bounding_box[1])
 
