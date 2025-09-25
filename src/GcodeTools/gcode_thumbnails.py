@@ -3,6 +3,7 @@ from GcodeTools.gcode import Gcode
 from GcodeTools.gcode_tools import MoveTypes, Tools
 import numpy as np
 from PIL import Image
+import polyscope as ps
 
 
 class Thumbnails:
@@ -19,43 +20,27 @@ class Thumbnails:
     }
 
     @staticmethod
-    def generate_thumbnail(gcode: Gcode, *, resolution = 500, e_scale = 1, draw_bounding_box = False, color: tuple[int, int, int]|None = None, camera_pos = Vector.one(), orthographic = False, fov = 45):
-        ps = Thumbnails._generate_scene(gcode, True, resolution, e_scale, draw_bounding_box, color, camera_pos, orthographic, fov)
+    def generate_thumbnail(gcode: Gcode, *, e_scale = 1, color: tuple[int, int, int]|None = None, yaw = 45, pitch = 45, fov = 45, resolution = 500):
+        ps = Thumbnails._generate_scene(gcode, resolution, e_scale, True, color, yaw, pitch, fov)
         buf = ps.screenshot_to_buffer()
         image = Image.fromarray(buf)
         return image
 
 
     @staticmethod
-    def interactive(gcode: Gcode, resolution = 500, e_scale = 1, draw_bounding_box = False, color = None, camera_pos = Vector.one(), orthographic = False, fov = 45):
-        ps = Thumbnails._generate_scene(gcode, False, resolution, e_scale, draw_bounding_box, color, camera_pos, orthographic, fov)
+    def interactive(gcode: Gcode, e_scale = 1, color = None, yaw = 45, pitch = 45, fov = 45, resolution = 500):
+        ps = Thumbnails._generate_scene(gcode, resolution, e_scale, True, color, yaw, pitch, fov)
         ps.show()
 
 
     @staticmethod
-    def _generate_scene(gcode: Gcode, backend, resolution: int, e_scale: float, draw_bounding_box: bool, color: tuple[int, int, int], camera_pos: Vector, orthographic: bool, fov: float):
-        import polyscope as ps
-        if backend:
-            ps.init('openGL3_egl')
-        else:
-            ps.init()
-        ps.set_window_size(resolution, resolution)
-        ps.set_up_dir("z_up")
-        ps.set_SSAA_factor(1)
-        ps.set_view_projection_mode("orthographic" if orthographic else "perspective")
-        intrinsics = ps.CameraIntrinsics(fov_vertical_deg=fov, aspect=1.)
-        extrinsics = ps.CameraExtrinsics(root=(2., 2., 2.), look_dir=(-1., 0., 0.), up_dir=(0.,1.,0.))
-        new_params = ps.CameraParameters(intrinsics, extrinsics)
-        ps.set_view_camera_parameters(new_params)
-
+    def _create_gcode_object(gcode: Gcode, e_scale = 1, color: tuple[int, int, int]|None = None):
         nodes = []
         edges = []
         sizes = []
         colors = []
-
         current_position = None
         continuous = False
-
         if color:
             draw_color = np.array([color[0] / 255, color[1] / 255, color[2] / 255])
 
@@ -89,54 +74,95 @@ class Thumbnails:
         edges = np.array(edges)
         sizes = np.array(sizes)
         colors = np.array(colors)
+        if len(nodes) > 0:
+            ps_net = ps.register_curve_network("Gcode Path", nodes, edges, material="clay")
+            try:
+                ps_net.add_scalar_quantity("radius", sizes, enabled=True)
+                ps_net.set_node_radius_quantity("radius", False)
+            except:
+                print('Warning: some features are not supported with this python version')
+            ps_net.add_color_quantity("colors", colors, defined_on='edges', enabled=True)
+            return ps_net
 
-        print(len(nodes))
-        print(len(edges))
 
+    @staticmethod
+    def _create_bounding_box_object(min: Vector, max: Vector):
+
+        bbox_nodes = np.array([
+            [min.X, min.Y, min.Z],
+            [max.X, min.Y, min.Z],
+            [min.X, max.Y, min.Z],
+            [max.X, max.Y, min.Z],
+            [min.X, min.Y, max.Z],
+            [max.X, min.Y, max.Z],
+            [min.X, max.Y, max.Z],
+            [max.X, max.Y, max.Z],
+        ])
+        bbox_edges = np.array([
+            [0, 1], [1, 3], [3, 2], [2, 0],  # Bottom rectangle
+            [4, 5], [5, 7], [7, 6], [6, 4],  # Top rectangle
+            [0, 4], [1, 5], [2, 6], [3, 7],  # Vertical edges
+        ])
+        ps_bbox_net = ps.register_curve_network("Bounding Box", bbox_nodes, bbox_edges, material="flat")
+        ps_bbox_net.set_color((1, 0, 0))
+        ps_bbox_net.set_radius(0.001)
+        return ps_bbox_net
+
+
+    @staticmethod
+    def _generate_scene(gcode: Gcode, resolution, e_scale: float, draw_bounding_box: bool, color: tuple[int, int, int], yaw: float, pitch: float, fov: float):
 
         bounding_box = Tools.get_bounding_box(gcode)
 
         middle = (bounding_box[0] + bounding_box[1]) / 2
-        size = bounding_box[1] - bounding_box[0]
-        size_max = max(size.X, max(size.Y, size.Z))
-        camera_pos_abs = middle + camera_pos * (size_max * 1)
+        size = (bounding_box[1] - bounding_box[0]) / 2
+        radius = math.sqrt(size.X**2 + size.Y**2 + size.Z**2)
+        if fov >= 5:
+            camera_dist = 1 / (math.sin(math.radians(fov / 2))) * radius
+        else:
+            camera_dist = radius
+        camera_pos = Vector()
+        pitch = max(min(pitch, 89.999), -89.999)
+        camera_pos.Z = math.sin(math.radians(pitch))
+        h_dist = math.cos(math.radians(pitch))
+        camera_pos.X = math.sin(math.radians(yaw)) * h_dist
+        camera_pos.Y = math.cos(math.radians(yaw)) * h_dist
+        camera_pos *= camera_dist
+        camera_pos += middle
 
-        if len(nodes) > 0:
-            ps_net = ps.register_curve_network("Gcode Path", nodes, edges, material="clay")
-            ps_net.add_scalar_quantity("radius", sizes, enabled=True)
-            ps_net.set_node_radius_quantity("radius", False)
-            ps_net.add_color_quantity("colors", colors, defined_on='edges', enabled=True)
+        # camera_pos_abs = middle + camera_pos * (size_max * 1)
+
+        # import polyscope as ps
+        
+        ps.set_window_size(resolution, resolution)
+        try:
+            ps.set_allow_headless_backends(True) 
+        except:
+            print('Warning: some features are not supported with this python version')
+        ps.set_verbosity(6)
+
+        try:
+            ps.init('openGL3_egl')
+        except:
+            ps.init()
+        ps.set_use_prefs_file(False)
+        ps.set_always_redraw(True)
+        ps.set_up_dir("z_up")
+        ps.set_view_projection_mode("orthographic" if fov < 5 else "perspective")
+        intrinsics = ps.CameraIntrinsics(fov_vertical_deg=fov if fov >= 5 else 35, aspect=1.)
+        extrinsics = ps.CameraExtrinsics(root=(2., 2., 2.), look_dir=(-1., 0., 0.), up_dir=(0.,1.,0.))
+        new_params = ps.CameraParameters(intrinsics, extrinsics)
+        ps.set_view_camera_parameters(new_params)
+        ps.look_at((camera_pos.X, camera_pos.Y, camera_pos.Z), (middle.X, middle.Y, middle.Z))
+
+        Thumbnails._create_gcode_object(gcode, e_scale, color)
         if draw_bounding_box:
-            min_x = bounding_box[0].X
-            min_y = bounding_box[0].Y
-            min_z = bounding_box[0].Z
-            max_x = bounding_box[1].X
-            max_y = bounding_box[1].Y
-            max_z = bounding_box[1].Z
+            Thumbnails._create_bounding_box_object(bounding_box[0], bounding_box[1])
 
-            bbox_nodes = np.array([
-                [min_x, min_y, min_z],
-                [max_x, min_y, min_z],
-                [min_x, max_y, min_z],
-                [max_x, max_y, min_z],
-                [min_x, min_y, max_z],
-                [max_x, min_y, max_z],
-                [min_x, max_y, max_z],
-                [max_x, max_y, max_z],
-            ])
-
-            bbox_edges = np.array([
-                [0, 1], [1, 3], [3, 2], [2, 0],  # Bottom rectangle
-                [4, 5], [5, 7], [7, 6], [6, 4],  # Top rectangle
-                [0, 4], [1, 5], [2, 6], [3, 7],  # Vertical edges
-            ])
-
-            if len(bbox_nodes) > 0:
-                ps_bbox_net = ps.register_curve_network("Bounding Box", bbox_nodes, bbox_edges, material="flat")
-                ps_bbox_net.set_color((1, 0, 0))
-                ps_bbox_net.set_radius(0.0005)
-
-        ps.look_at((camera_pos_abs.X, camera_pos_abs.Y, camera_pos_abs.Z), (middle.X, middle.Y, middle.Z))
-        ps.set_view_center((middle.X, middle.Y, middle.Z))
+        try:
+            ps.set_view_center((middle.X, middle.Y, middle.Z))
+        except:
+            pass
         ps.set_ground_plane_mode("none")
+        ps.set_window_size(resolution, resolution)
         return ps
