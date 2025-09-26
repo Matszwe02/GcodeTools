@@ -5,7 +5,6 @@ from GcodeTools.gcode_tools import MoveTypes, Tools
 import numpy as np
 from PIL import Image
 import polyscope as ps
-from polyscope import polyscope
 
 
 class Thumbnails:
@@ -35,7 +34,7 @@ class Thumbnails:
         if not gcodes:
             gcodes = [gcode]
         colors = [(255,0,0),(255,255,0),(0,255,0),(0,255,255),(0,0,255),(255,0,255)]
-        ps: polyscope = Thumbnails._generate_scene(gcodes[0], len(gcodes) < 2, 45, 45, 45, 300)
+        ps = Thumbnails._generate_scene(gcodes[0], len(gcodes) < 2, 45, 45, 45, 300)
         for idx, g in enumerate(gcodes):
             Thumbnails._create_gcode_object(g, e_scale, None if color_moves else colors[idx % len(colors)], idx)
         ps.show()
@@ -89,6 +88,8 @@ class Thumbnails:
                 ps_net.set_node_radius_quantity("radius", False)
             except:
                 print('Warning: some features are not supported with this python version')
+                size = np.mean(sizes)
+                ps_net.set_radius(size)
             ps_net.add_color_quantity("colors", colors, defined_on='edges', enabled=True)
             return ps_net
 
@@ -118,7 +119,7 @@ class Thumbnails:
 
 
     @staticmethod
-    def _generate_scene(gcode: Gcode, draw_bounding_box: bool, yaw: float, pitch: float, fov: float, resolution: int) -> polyscope:
+    def _generate_scene(gcode: Gcode, draw_bounding_box: bool, yaw: float, pitch: float, fov: float, resolution: int):
 
         bounding_box = Tools.get_bounding_box(gcode)
 
@@ -138,7 +139,11 @@ class Thumbnails:
         camera_pos *= camera_dist
         camera_pos += middle
         
-        ps.set_window_size(resolution, resolution)
+
+        w, h = ps.get_window_size()
+        if w != resolution or h != resolution:
+            ps.set_window_size(resolution, resolution)
+
         try:
             ps.set_allow_headless_backends(True) 
         except:
@@ -146,10 +151,10 @@ class Thumbnails:
         ps.set_verbosity(6)
 
         # try:
-        #     ps.init('openGL3_egl')
         # except:
-        ps.init()
+        # ps.init('openGL3_egl')
         ps.set_use_prefs_file(False)
+        ps.init()
         # ps.set_always_redraw(True)
         ps.set_up_dir("z_up")
         ps.set_view_projection_mode("orthographic" if fov < 5 else "perspective")
@@ -167,5 +172,7 @@ class Thumbnails:
         except:
             pass
         ps.set_ground_plane_mode("none")
-        ps.set_window_size(resolution, resolution)
+        w, h = ps.get_window_size()
+        if w != resolution or h != resolution:
+            ps.set_window_size(resolution, resolution)
         return ps
