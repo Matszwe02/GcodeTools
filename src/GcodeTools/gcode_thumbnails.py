@@ -88,8 +88,8 @@ class Thumbnails:
                 ps_net.set_node_radius_quantity("radius", False)
             except:
                 print('Warning: some features are not supported with this python version')
-                size = np.mean(sizes)
-                ps_net.set_radius(size)
+                size = np.median(sizes)
+                ps_net.set_radius(size, False)
             ps_net.add_color_quantity("colors", colors, defined_on='edges', enabled=True)
             return ps_net
 
