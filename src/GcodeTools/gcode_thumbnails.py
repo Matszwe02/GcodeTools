@@ -22,11 +22,13 @@ class Thumbnails:
     }
 
     @staticmethod
-    def generate_thumbnail(gcode: Gcode, *, e_scale = 1, color: tuple[int, int, int]|None = None, yaw = 45, pitch = 45, fov = 45, resolution = 500):
-        ps = Thumbnails._generate_scene(gcode, False, yaw, pitch, fov, resolution)
+    def generate_thumbnail(gcode: Gcode, *, e_scale = 1, color: tuple[int, int, int]|None = None, yaw = 45, pitch = 45, fov = 45, resolution = 500, render_scale = 1):
+        ps = Thumbnails._generate_scene(gcode, False, yaw, pitch, fov, resolution * render_scale)
         Thumbnails._create_gcode_object(gcode, e_scale, color)
         buf = ps.screenshot_to_buffer()
         image = Image.fromarray(buf)
+        if render_scale != 1:
+            image = image.resize((resolution, resolution))
         return image
 
 
