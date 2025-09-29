@@ -22,13 +22,14 @@ class Thumbnails:
     }
 
     @staticmethod
-    def generate_thumbnail(gcode: Gcode, *, e_scale = 1, color: tuple[int, int, int]|None = None, yaw = 45, pitch = 45, fov = 45, resolution = 500, render_scale = 1):
+    def generate_thumbnail(gcode: Gcode, *, e_scale = 1, color: tuple[int, int, int]|None = None, yaw = 45, pitch = 45, fov = 45, resolution = 500, render_scale = 1, fit_in_viewport = True):
         ps = Thumbnails._generate_scene(gcode, False, yaw, pitch, fov, resolution * render_scale)
         Thumbnails._create_gcode_object(gcode, e_scale, color)
         buf = ps.screenshot_to_buffer()
         image = Image.fromarray(buf)
-        if render_scale != 1:
-            image = image.resize((resolution, resolution))
+        if fit_in_viewport and render_scale > 1.5:
+            image = Thumbnails.crop(image)
+        image = image.resize((resolution, resolution))
         return image
 
 
@@ -41,6 +42,21 @@ class Thumbnails:
         for idx, g in enumerate(gcodes):
             Thumbnails._create_gcode_object(g, e_scale, None if color_moves else colors[idx % len(colors)], idx)
         ps.show()
+
+
+    @staticmethod
+    def crop(image: Image.Image):
+        image_data = np.asarray(image.quantize().convert('RGB'))
+        image_data_bw = image_data.max(axis=2)
+        non_empty_columns = np.where(image_data_bw.min(axis=0)<255)[0]
+        non_empty_rows = np.where(image_data_bw.min(axis=1)<255)[0]
+        cropBox = (min(non_empty_columns), min(non_empty_rows), max(non_empty_columns), max(non_empty_rows))
+        w = cropBox[2] - cropBox[0]
+        h = cropBox[3] - cropBox[1]
+        size = max(w, h) / 2
+        middle = ((cropBox[0] + cropBox[2]) / 2, (cropBox[1] + cropBox[3]) / 2)
+        print(f'{cropBox=}')
+        return image.crop((middle[0] - size, middle[1] - size, middle[0] + size, middle[1] + size))
 
 
     @staticmethod
