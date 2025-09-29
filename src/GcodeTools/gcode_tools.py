@@ -577,6 +577,25 @@ class Tools:
 
 
     @staticmethod
+    def remove_thumbnails(gcode: Gcode) -> Gcode:
+        """
+        Remove embedded thumbnails from gcode
+        """
+        new_gcode = gcode.new()
+        start = -1
+        for idx, i in enumerate(gcode):
+            if start > -1:
+                if i.command == '; THUMBNAIL_BLOCK_END':
+                    start = -1
+            elif i.command == '; THUMBNAIL_BLOCK_START':
+                start = idx
+            else:
+                new_gcode.append(i)
+        
+        return new_gcode
+
+
+    @staticmethod
     def read_thumbnails(gcode: Gcode) -> list[bytes]:
         """
         Get all thumbnails from `Gcode`, ordered as appearing in `Gcode`. For now only `png` format is supported
