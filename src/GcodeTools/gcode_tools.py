@@ -628,14 +628,14 @@ class Tools:
 
 
     @staticmethod
-    def write_thumbnail(gcode: Gcode, data: bytes, width: int, height: int, textwidth = 80) -> Gcode:
+    def write_thumbnail(gcode: Gcode, data: bytes, width: int, height: int, textwidth = None) -> Gcode:
         """
         Args:
             data: `bytes` - raw png data
             width: `int` - width in pixels
             height: `int` - height in pixels
             textwidth: `int` - custom wrapping width of thumbnail text
-                Recommended to set `>=160` on large thumbnails
+                Defaults to 80 below 10kB, otherwise 160
         """
         new = gcode.copy()
         
@@ -648,6 +648,7 @@ class Tools:
         
         text = base64.b64encode(data)
         len_text = len(text)
+        if not textwidth: textwidth = 80 if len_text < 10000 else 160
         text = textwrap.indent(textwrap.fill(text.decode('utf-8'), textwidth - 2), '; ')
 
         thumb = THUMB_BLOCK.format(width, height, len_text, text)
