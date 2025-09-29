@@ -577,6 +577,25 @@ class Tools:
 
 
     @staticmethod
+    def remove_thumbnails(gcode: Gcode) -> Gcode:
+        """
+        Remove embedded thumbnails from gcode
+        """
+        new_gcode = gcode.new()
+        start = -1
+        for idx, i in enumerate(gcode):
+            if start > -1:
+                if i.command == '; THUMBNAIL_BLOCK_END':
+                    start = -1
+            elif i.command == '; THUMBNAIL_BLOCK_START':
+                start = idx
+            else:
+                new_gcode.append(i)
+        
+        return new_gcode
+
+
+    @staticmethod
     def read_thumbnails(gcode: Gcode) -> list[bytes]:
         """
         Get all thumbnails from `Gcode`, ordered as appearing in `Gcode`. For now only `png` format is supported
@@ -609,14 +628,14 @@ class Tools:
 
 
     @staticmethod
-    def write_thumbnail(gcode: Gcode, data: bytes, width: int, height: int, textwidth = 80) -> Gcode:
+    def write_thumbnail(gcode: Gcode, data: bytes, width: int, height: int, textwidth = None) -> Gcode:
         """
         Args:
             data: `bytes` - raw png data
             width: `int` - width in pixels
             height: `int` - height in pixels
             textwidth: `int` - custom wrapping width of thumbnail text
-                Recommended to set `>=160` on large thumbnails
+                Defaults to 80 below 10kB, otherwise 160
         """
         new = gcode.copy()
         
@@ -629,9 +648,10 @@ class Tools:
         
         text = base64.b64encode(data)
         len_text = len(text)
+        if not textwidth: textwidth = 80 if len_text < 10000 else 160
         text = textwrap.indent(textwrap.fill(text.decode('utf-8'), textwidth - 2), '; ')
 
         thumb = THUMB_BLOCK.format(width, height, len_text, text)
         block = Block(command=thumb, emit_command=True)
-        new.insert(block, 0)
+        new.insert(0, block)
         return new
