@@ -5,6 +5,7 @@ from GcodeTools.gcode_tools import MoveTypes, Tools
 import numpy as np
 from PIL import Image
 import polyscope as ps
+import io
 
 
 class Thumbnails:
@@ -176,3 +177,22 @@ class Thumbnails:
         if w != resolution or h != resolution:
             ps.set_window_size(resolution, resolution)
         return ps
+
+
+    @staticmethod
+    def write_image_thumbnail(gcode: Gcode, image: Image.Image):
+        img_data = io.BytesIO()
+        image.save(img_data, 'png')
+        w, h = image.size
+        return Tools.write_thumbnail(gcode, img_data.getvalue(), w, h)
+
+
+    @staticmethod
+    def set_thumbnail(gcode: Gcode, image: Image.Image):
+        """
+        Replaces thumbnails with a selected image. Adds a small 48x48 thumbnail.
+        """
+        gcode = Tools.remove_thumbnails(gcode)
+        gcode = Thumbnails.write_image_thumbnail(gcode, image)
+        gcode = Thumbnails.write_image_thumbnail(gcode, image.resize((48, 48)))
+        return gcode
