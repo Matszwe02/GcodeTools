@@ -57,8 +57,6 @@ class Keywords:
     @staticmethod
     def get_keyword_arg(line_no: int, gcode: Gcode, keyword: list[KW], seek_limit = 20):
         
-        pass
-    
         for offset in range(seek_limit):
             line_content = gcode[line_no - offset].command
             
@@ -69,24 +67,30 @@ class Keywords:
                 match = option.command.search(line_content)
                 if match:
                     if option.allow_command is None and option.block_command is None:
-                        return line_content[match.end():]
+                        return (line_no - offset, line_content[match.end():])
                     
                     for id, nextline in enumerate(gcode[line_no - offset + 1 : line_no - offset + seek_limit + 1]):
                         if option.block_command is not None and option.block_command.search(nextline.command):
-                            return None
+                            return (None, None)
                         if option.allow_command is not None and option.allow_command.search(nextline.command):
                             if option.offset == offset or (option.offset == -1 and offset == id):
-                                return line_content[match.end():]
+                                return (line_no - offset, line_content[match.end():])
                             
                     if option.allow_command is None:
-                        return line_content[match.end():]
+                        return (line_no - offset, line_content[match.end():])
                 
-        return None
+        return (None, None)
+
+
+    @staticmethod
+    def get_keyword_lineno(line_no: int, gcode: Gcode, keyword: list[KW], seek_limit = 20) -> bool:
+        line_no, _ = Keywords.get_keyword_arg(line_no, gcode, keyword, seek_limit)
+        return _
 
 
     @staticmethod
     def get_keyword_line(line_no: int, gcode: Gcode, keyword: list[KW], seek_limit = 20) -> bool:
-        expr = Keywords.get_keyword_arg(line_no, gcode, keyword, seek_limit)
+        _, expr = Keywords.get_keyword_arg(line_no, gcode, keyword, seek_limit)
         return expr is not None
 
 
@@ -159,7 +163,7 @@ class MoveTypes:
         if is_end:
             return MoveTypes.NO_OBJECT
         
-        name = Keywords.get_keyword_arg(id, gcode, Keywords.OBJECT_START)
+        _, name = Keywords.get_keyword_arg(id, gcode, Keywords.OBJECT_START)
         if name is not None:
             return sanitize(name)
 
