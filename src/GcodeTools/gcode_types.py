@@ -183,6 +183,25 @@ class Vector:
         return self.vector_op(Vector.zero(), subtr, on_a_none=None)
 
 
+    def cross(self, other: 'Vector') -> 'Vector':
+        return Vector(
+            self.Y * other.Z - self.Z * other.Y,
+            self.Z * other.X - self.X * other.Z,
+            self.X * other.Y - self.Y * other.X
+        )
+
+
+    def dot(self, other: 'Vector') -> 'Vector':
+        return self.X * other.X + self.Y * other.Y + self.Z * other.Z
+
+
+    def normalized(self) -> 'Vector':
+        len = float(self)
+        if len == 0:
+            return Vector()
+        return self * (1.0 / len)
+    
+
     def valid(self, other: 'Vector') -> 'Vector':
         """Return `Vector` with non-null dimensions from `other` vector"""
         valid = lambda a, b: a
