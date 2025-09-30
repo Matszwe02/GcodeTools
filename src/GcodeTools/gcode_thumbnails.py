@@ -200,7 +200,7 @@ class Thumbnails:
     @staticmethod
     def write_image_thumbnail(gcode: Gcode, image: Image.Image):
         img_data = io.BytesIO()
-        image.save(img_data, 'png')
+        image.save(img_data, 'webp', optimize = True, quality = 70)
         w, h = image.size
         return Tools.write_thumbnail(gcode, img_data.getvalue(), w, h)
 
