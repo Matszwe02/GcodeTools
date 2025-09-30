@@ -644,11 +644,9 @@ class Tools:
         new = gcode.copy()
         
         THUMB_BLOCK = '\n'\
-        '; THUMBNAIL_BLOCK_START\n'\
         '; thumbnail begin {0}x{1} {2}\n'\
         '{3}\n'\
         '; thumbnail end\n'\
-        '; THUMBNAIL_BLOCK_END\n'
         
         text = base64.b64encode(data)
         len_text = len(text)
@@ -656,6 +654,13 @@ class Tools:
         text = textwrap.indent(textwrap.fill(text.decode('utf-8'), textwidth - 2), '; ')
 
         thumb = THUMB_BLOCK.format(width, height, len_text, text)
-        block = Block(command=thumb, emit_command=True)
-        new.insert(0, block)
+        header_line = Keywords.get_keyword_lineno(20, new, Keywords.KW(r'Slicer\s(.*)\son'))
+        if header_line is None:
+            new = Tools.write_slicer_header(new)
+        new.insert(header_line or 0, thumb)
         return new
+
+
+    @staticmethod
+    def write_slicer_header(gcode: Gcode):
+        gcode.insert(0, '; Moonraker requires typing PrusaSlicer - on here')
