@@ -156,60 +156,60 @@ class Vector:
         return Vector(X, Y, Z, E)
 
 
-    def __add__(self, other: 'Vector'):
+    def __add__(self, other: 'Vector') -> 'Vector':
         add = lambda x, y: x + y
         return self.vector_op(other, add)
 
 
-    def __sub__(self, other: 'Vector'):
+    def __sub__(self, other: 'Vector') -> 'Vector':
         subtr = lambda x, y: x - y
         return self.vector_op(other, subtr)
 
 
-    def __mul__(self, other: 'Vector|float'):
+    def __mul__(self, other: 'Vector|float') -> 'Vector':
         if not isinstance(other, Vector): other = Vector(other, other, other, other)
         scale = lambda a,b: a * b
         return self.vector_op(other, scale, on_a_none='a', on_b_none='a')
 
 
-    def __truediv__(self, other: 'Vector|float'):
+    def __truediv__(self, other: 'Vector|float') -> 'Vector':
         if not isinstance(other, Vector): other = Vector(other, other, other, other)
         scale = lambda a,b: a / b
         return self.vector_op(other, scale, on_a_none='a', on_b_none='a')
 
 
-    def __neg__(self):
+    def __neg__(self) -> 'Vector':
         subtr = lambda x, y: y - x
         return self.vector_op(Vector.zero(), subtr, on_a_none=None)
 
 
-    def valid(self, other: 'Vector'):
+    def valid(self, other: 'Vector') -> 'Vector':
         """Return `Vector` with non-null dimensions from `other` vector"""
         valid = lambda a, b: a
         return self.vector_op(other, valid, on_a_none=None, on_b_none=None)
 
 
-    def x(self):
+    def x(self) -> 'Vector':
         return Vector(X = self.X)
 
 
-    def y(self):
+    def y(self) -> 'Vector':
         return Vector(Y = self.Y)
 
 
-    def z(self):
+    def z(self) -> 'Vector':
         return Vector(Z = self.Z)
 
 
-    def xy(self):
+    def xy(self) -> 'Vector':
         return Vector(self.X, self.Y)
 
 
-    def xyz(self):
+    def xyz(self) -> 'Vector':
         return Vector(self.X, self.Y, self.Z)
 
 
-    def e(self):
+    def e(self) -> 'Vector':
         return Vector(E=self.E)
 
 
