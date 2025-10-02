@@ -159,9 +159,8 @@ class Gcode(list[Block]):
         if meta is None: meta = {}
         if compile:
             parser = self.__get_parser__()
-            speed = self[max(idx, 0) - 1].move.speed if len(self) else None
             position = self[max(idx, 0) - 1].move.position if len(self) else Vector()
-            gcode_objs = parser._parse_line(parser.ParserData(CoordSystem(speed=speed, position=position), Block(None, move, gcode, True, data, meta)))
+            gcode_objs = parser._parse_line(parser.ParserData(CoordSystem(position=position), Block(None, move, gcode, True, data, meta)))
             for idx, obj in enumerate(gcode_objs):
                 if idx == -1:
                     super().append(obj.block)

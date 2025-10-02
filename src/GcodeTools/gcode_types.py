@@ -108,12 +108,13 @@ class Vector:
         return Vector(1, 1, 1, 1 if with_e else None)
 
 
-    def __init__(self, X: float | None = None, Y: float | None = None, Z: float | None = None, E: float | None = None):
+    def __init__(self, X: float | None = None, Y: float | None = None, Z: float | None = None, E: float | None = None, F: float | None = None):
         """Vector(None, None, None, None)"""
         self.X = X
         self.Y = Y
         self.Z = Z
         self.E = E
+        self.F = F
 
 
     def from_params(self, params: dict[str, str]):
@@ -121,6 +122,7 @@ class Vector:
         self.Y = float_nullable(params.get('Y', self.Y))
         self.Z = float_nullable(params.get('Z', self.Z))
         self.E = float_nullable(params.get('E', self.E))
+        self.F = float_nullable(params.get('F', self.E))
         return self
 
 
@@ -153,7 +155,7 @@ class Vector:
         Y = nullable_op(self.Y, other.Y)
         Z = nullable_op(self.Z, other.Z)
         E = nullable_op(self.E, other.E)
-        return Vector(X, Y, Z, E)
+        return Vector(X, Y, Z, E, self.F)
 
 
     def __add__(self, other: 'Vector') -> 'Vector':
@@ -232,6 +234,10 @@ class Vector:
         return Vector(E=self.E)
 
 
+    def f(self) -> 'Vector':
+        return Vector(F=self.F)
+
+
     def add(self, other: 'Vector'):
         """Adds `Vector`'s dimensions to `other`'s that are not None"""
         check_null_except(other, Vector, Exception, 'Can only add {0} to {0}, not {1}')
@@ -247,35 +253,32 @@ class Vector:
         if other.Y is not None: self.Y = other.Y
         if other.Z is not None: self.Z = other.Z
         if other.E is not None: self.E = other.E
+        if other.F is not None: self.F = other.F
 
 
-    def add_value(self, X = None, Y = None, Z = None, E = None):
+    def add_value(self, X = None, Y = None, Z = None, E = None, F = None):
         if X: self.X += X
         if Y: self.Y += Y
         if Z: self.Z += Z
         if E: self.E += E
+        if F: self.F += F
 
 
-    def set_value(self, X = None, Y = None, Z = None, E = None):
+    def set_value(self, X = None, Y = None, Z = None, E = None, F = None):
         if X: self.X = X
         if Y: self.Y = Y
         if Z: self.Z = Z
         if E: self.E = E
+        if F: self.F = F
 
 
     def copy(self):
         """Create a deep copy"""
-        return Vector(self.X, self.Y, self.Z, self.E)
+        return Vector(self.X, self.Y, self.Z, self.E, self.F)
 
 
     def __str__(self):
-        if self.E is None:
-            if self.Z is None:
-                if self.Y is None and self.X is None:
-                    return f'XYZE={None}'
-                return f'X={self.X}, Y={self.Y}'
-            return f'X={self.X}, Y={self.Y}, Z={self.Z}'
-        return f'X={self.X}, Y={self.Y}, Z={self.Z}, E={self.E}'
+        return f'X={self.X}, Y={self.Y}, Z={self.Z}, E={self.E}, F={self.F}'
 
 
     def is_none(self, with_e = True):
@@ -286,7 +289,7 @@ class Vector:
 
 
     def to_dict(self):
-        return {'X': self.X, 'Y': self.Y, 'Z': self.Z, 'E': self.E}
+        return {'X': self.X, 'Y': self.Y, 'Z': self.Z, 'E': self.E, 'F': self.F}
 
 
     def __bool__(self):
@@ -311,19 +314,18 @@ class Vector:
         return math.sqrt(x**2 + y**2 + z**2)
 
     def __getitem__(self, key):
-        data = [self.X, self.Y, self.Z, self.E]
+        data = [self.X, self.Y, self.Z, self.E, self.F]
         return data[key]
 
 
 class CoordSystem:
-    def __init__(self, abs_xyz = True, abs_e = True, speed = None, arc_plane = Static.ARC_PLANES['XY'], position = Vector(), offset = Vector.zero(), abs_position_e = 0.0):
-        if speed is None:
+    def __init__(self, abs_xyz = True, abs_e = True, arc_plane = Static.ARC_PLANES['XY'], position = Vector(), offset = Vector.zero(), abs_position_e = 0.0):
+        if position.F is None:
             print('Warning: speed parameter is unset! Defaultnig to 1200 mm/min')
-            speed = 1200
+            position.set_value(F=1200)
         
         self.abs_xyz = abs_xyz
         self.abs_e = abs_e
-        self.speed = speed
         self.arc_plane = arc_plane
         self.position = position
         self.offset = offset
@@ -347,8 +349,9 @@ class CoordSystem:
 
 
     def apply_move(self, params: dict[str, str]):
-        self.speed = float_nullable(params.get('F', self.speed))
         pos = Vector().from_params(params)
+
+        self.position.set_value(F = pos.F)
         
         if self.abs_xyz:
             self.position.set(pos.xyz())
@@ -395,22 +398,21 @@ class CoordSystem:
 
 
     def to_dict(self):
-        return {'abs_xyz' : self.abs_xyz, "abs_e" : self.abs_e, "speed" : self.speed, "position": self.position, "offset": self.offset}
+        return {'abs_xyz' : self.abs_xyz, "abs_e" : self.abs_e, "position": self.position, "offset": self.offset}
 
 
     def copy(self):
-        return CoordSystem(self.abs_xyz, self.abs_e, self.speed, self.arc_plane, self.position.copy(), self.offset.copy(), self.abs_position_e)
+        return CoordSystem(self.abs_xyz, self.abs_e, self.arc_plane, self.position.copy(), self.offset.copy(), self.abs_position_e)
 
 
 
 class Move:
 
-    def __init__(self, block_ref:'Block|None' = None, config = Config(), position = Vector(), speed: float|None = None):
+    def __init__(self, block_ref:'Block|None' = None, config = Config(), position = Vector()):
         
         self.block_ref = block_ref
         self.position = position.copy()
         """The end vector of Move\n\n`XYZ` is always absolute\n\n`E` is always relative\n\nEvery logic is performend regarding to that"""
-        self.speed = speed
         self.config = config
         self.origin = Vector()
 
@@ -422,11 +424,6 @@ class Move:
         move = self.copy()
         move.position.E = 0
         return move
-
-
-    def from_params(self, params: dict[str, str]):
-        self.speed = float_nullable(params.get('F', self.speed))
-        return self
 
 
     def translate(self, vec: Vector):
@@ -513,7 +510,7 @@ class Move:
     def duration(self):
         dist = self.float_distance()
         if dist == 0: dist = abs(self.position.E or 0)
-        return dist * 60 / (self.speed or self.config.speed)
+        return dist * 60 / (self.position.F or self.config.speed)
 
 
     def get_prev(self) -> 'Move':
@@ -536,7 +533,7 @@ class Move:
         if self.position.Y != self.origin.Y: out += nullable('Y', self.position.Y)
         if self.position.Z != self.origin.Z: out += nullable('Z', self.position.Z)
         if self.position.E != 0: out += nullable('E', self.position.E)
-        if self.speed != prev.speed: out += nullable('F', self.speed)
+        if self.position.F != prev.position.F: out += nullable('F', self.position.F)
         
         if out != '': out = 'G1' + out + '\n'
         
@@ -546,12 +543,12 @@ class Move:
 
 
     def to_dict(self):
-        return {'Pos' : self.position.to_dict(), 'Speed' : self.speed}
+        return self.position.to_dict()
 
 
     def copy(self):
         """Create a deep copy"""
-        return Move(None, self.config, self.position.copy(), self.speed)
+        return Move(None, self.config, self.position.copy())
 
     def __str__(self):
         return dict_to_pretty_str(self.to_dict())
@@ -559,7 +556,6 @@ class Move:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Move): return False
         if self.position != other.position: return False
-        if self.speed != other.speed: return False
         return True
 
 
@@ -628,7 +624,7 @@ class Arc:
             else:
                 z = self.move.position.Z + t * (next.position.Z - self.move.position.Z)
 
-            new_move = Move(None, self.move.config, Vector(x, y, z, e), self.move.speed)
+            new_move = Move(None, self.move.config, Vector(x, y, z, e, self.move.position.F))
             moves.append(new_move)
 
         return moves
@@ -751,9 +747,9 @@ class Block:
         """
         new = Block(None, self.move.copy(), block_data=self.block_data.copy(), meta=self.meta)
         new.move.position.E = 0
-        new.move.speed = 0
+        new.move.position.F = 0
         return new
-    
+
 
     def sync(self):
         """

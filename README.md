@@ -58,8 +58,7 @@ Gcode (list[Block])
 ├─ single Gcode instruction: Block
 │  │
 │  ├─ Object handling everything move-related: Move
-│  │  ├─ Position: Vector
-│  │  └─ speed: float
+│  │  └─ Position: Vector
 │  │
 │  ├─ Every other standard G-code: BlockData
 │  ├─ Slicer-specific features (meta) (non-standarized, one may set their own custom meta provider method): dict

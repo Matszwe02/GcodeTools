@@ -55,7 +55,7 @@ class GcodeParser:
         Returns:
             str
         """
-        coords = CoordSystem(speed=gcode.config.speed, abs_e=False)
+        coords = CoordSystem(position=Vector(F=gcode.config.speed), abs_e=False)
         out_str = coords.to_str()
 
         len_blocks = len(gcode)
@@ -84,7 +84,7 @@ class GcodeParser:
             verbose: `bool` - include Block's metadata for each line. Warning: takes up much more time and space
             progress_callback: `Callable(current: int, total: int)`
         """
-        coords = CoordSystem(speed=gcode.config.speed, abs_e=False)
+        coords = CoordSystem(position=Vector(F=gcode.config.speed), abs_e=False)
         
         with open(filename, 'w') as f:
             f.write(coords.to_str())
@@ -147,7 +147,6 @@ class GcodeParser:
                 arc = Arc(move.copy(), int(command[1])).from_params(line_dict)
                 
             move.position = pd.coord_system.apply_move(line_dict)
-            move.from_params(line_dict)
         
         elif command in [Static.ABSOLUTE_COORDS, Static.RELATIVE_COORDS]:
             pd.coord_system.set_abs_xyz(command == Static.ABSOLUTE_COORDS)
@@ -200,7 +199,7 @@ class GcodeParser:
     @staticmethod
     def _generate_moves(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback = None) -> Gcode:
 
-        coord_system = CoordSystem(speed = gcode.config.speed)
+        coord_system = CoordSystem(position=Vector(F=gcode.config.speed))
         move = Move(config = gcode.config, position = coord_system.position)
         
         gcode_lines = list(filter(str.strip, gcode_str.split('\n')))

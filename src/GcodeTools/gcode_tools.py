@@ -535,7 +535,7 @@ class Tools:
             else:
                 if past_item is not None:
                     if move_speed > 0:
-                        past_item.move.speed = move_speed
+                        past_item.move.position.F = move_speed
                     out_gcode.append(past_item.copy())
                     past_item.move.position.E = e_add
                     out_gcode.append(past_item.copy())
