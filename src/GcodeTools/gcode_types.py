@@ -249,6 +249,20 @@ class Vector:
         if other.E is not None: self.E = other.E
 
 
+    def add_value(self, X = None, Y = None, Z = None, E = None):
+        if X: self.X += X
+        if Y: self.Y += Y
+        if Z: self.Z += Z
+        if E: self.E += E
+
+
+    def set_value(self, X = None, Y = None, Z = None, E = None):
+        if X: self.X = X
+        if Y: self.Y = Y
+        if Z: self.Z = Z
+        if E: self.E = E
+
+
     def copy(self):
         """Create a deep copy"""
         return Vector(self.X, self.Y, self.Z, self.E)
