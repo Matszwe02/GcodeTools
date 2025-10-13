@@ -3,7 +3,7 @@ import json
 import typing
 
 
-def float_nullable(input):
+def float_or_none(input):
     if input is not None: return float(input)
     return input
 
@@ -118,11 +118,11 @@ class Vector:
 
 
     def from_params(self, params: dict[str, str]):
-        self.X = float_nullable(params.get('X', self.X))
-        self.Y = float_nullable(params.get('Y', self.Y))
-        self.Z = float_nullable(params.get('Z', self.Z))
-        self.E = float_nullable(params.get('E', self.E))
-        self.F = float_nullable(params.get('F', self.E))
+        self.X = float_or_none(params.get('X', self.X))
+        self.Y = float_or_none(params.get('Y', self.Y))
+        self.Z = float_or_none(params.get('Z', self.Z))
+        self.E = float_or_none(params.get('E', self.E))
+        self.F = float_or_none(params.get('F', self.E))
         return self
 
 
@@ -576,9 +576,9 @@ class Arc:
 
 
     def from_params(self, params: dict[str, str]):
-        self.ijk.X = float_nullable(params.get('I', self.ijk.X))
-        self.ijk.Y = float_nullable(params.get('J', self.ijk.Y))
-        self.ijk.Z = float_nullable(params.get('K', self.ijk.Z))
+        self.ijk.X = float_or_none(params.get('I', self.ijk.X))
+        self.ijk.Y = float_or_none(params.get('J', self.ijk.Y))
+        self.ijk.Z = float_or_none(params.get('K', self.ijk.Z))
         if params.get('R', None) is not None: raise NotImplementedError('"R" arc moves are not supported!')
         
         if params['0'] == 'G2': self.dir=2
