@@ -118,11 +118,11 @@ class Vector:
 
 
     def from_params(self, params: dict[str, str]):
-        self.X = float_or_none(params.get('X', self.X))
-        self.Y = float_or_none(params.get('Y', self.Y))
-        self.Z = float_or_none(params.get('Z', self.Z))
-        self.E = float_or_none(params.get('E', self.E))
-        self.F = float_or_none(params.get('F', self.E))
+        self.X = float_or_none(params.get('X')) or self.X
+        self.Y = float_or_none(params.get('Y')) or self.Y
+        self.Z = float_or_none(params.get('Z')) or self.Z
+        self.E = float_or_none(params.get('E')) or self.E
+        self.F = float_or_none(params.get('F')) or self.E
         return self
 
 
@@ -576,9 +576,9 @@ class Arc:
 
 
     def from_params(self, params: dict[str, str]):
-        self.ijk.X = float_or_none(params.get('I', self.ijk.X))
-        self.ijk.Y = float_or_none(params.get('J', self.ijk.Y))
-        self.ijk.Z = float_or_none(params.get('K', self.ijk.Z))
+        self.ijk.X = float_or_none(params.get('I')) or self.ijk.X
+        self.ijk.Y = float_or_none(params.get('J')) or self.ijk.Y
+        self.ijk.Z = float_or_none(params.get('K')) or self.ijk.Z
         if params.get('R', None) is not None: raise NotImplementedError('"R" arc moves are not supported!')
         
         if params['0'] == 'G2': self.dir=2
