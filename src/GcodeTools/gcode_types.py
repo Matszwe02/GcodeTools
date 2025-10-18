@@ -122,7 +122,7 @@ class Vector:
         self.Y = float_or_none(params.get('Y')) or self.Y
         self.Z = float_or_none(params.get('Z')) or self.Z
         self.E = float_or_none(params.get('E')) or self.E
-        self.F = float_or_none(params.get('F')) or self.E
+        self.F = float_or_none(params.get('F')) or self.F
         return self
 
 
