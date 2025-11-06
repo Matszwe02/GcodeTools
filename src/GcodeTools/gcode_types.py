@@ -104,7 +104,7 @@ class Vector:
 
     @staticmethod
     def one(with_e = False):
-        """Vector(0, 0, 0, 0)"""
+        """Vector(1, 1, 1, 1)"""
         return Vector(1, 1, 1, 1 if with_e else None)
 
 
