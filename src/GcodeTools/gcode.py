@@ -191,7 +191,7 @@ class Gcode(list[Block]):
                     travel_block.prev = self[i - 1]
                     block.prev = travel_block
                     travel_block.sync()
-                    self.insert(travel_block, i)
+                    self.insert(i, travel_block)
                     i += 1
             i += 1
             block.sync()
