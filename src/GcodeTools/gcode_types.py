@@ -230,6 +230,10 @@ class Vector:
         return Vector(self.X, self.Y, self.Z)
 
 
+    def xyze(self) -> 'Vector':
+        return Vector(self.X, self.Y, self.Z, self.E)
+
+
     def e(self) -> 'Vector':
         return Vector(E=self.E)
 
