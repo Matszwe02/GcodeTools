@@ -25,9 +25,13 @@ class Gcode(list[Block]):
         from GcodeTools.gcode_parser import GcodeParser
         return GcodeParser
 
+    def __get_meta_parser__(self):
+        from GcodeTools.gcode_parser import MetaParser
+        return MetaParser
+
 
     def __fill_meta__(self):
-        self.__get_parser__().fill_meta(self)
+        self.__get_meta_parser__().fill_meta(self)
 
 
     def try_order(self):

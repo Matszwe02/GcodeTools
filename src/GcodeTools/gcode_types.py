@@ -1,7 +1,7 @@
 import math
 import json
 import typing
-from GcodeTools.gcode_parser import MoveTypes
+
 
 
 def float_or_none(input):
@@ -102,6 +102,20 @@ class Static:
     TOOL_CHANGE_DESC = 'T{0}; Change Tool'
     
     ARC_PLANES_DESC = {17: 'G17; Arc Plane XY', 18: 'G18; Arc Plane XZ', 19: 'G19; Arc Plane YZ'}
+
+    PRINT_START = 0
+    PRINT_END = 1
+    SKIRT = 2
+    EXTERNAL_PERIMETER = 3
+    INTERNAL_PERIMETER = 4
+    OVERHANG_PERIMETER = 5
+    SOLID_INFILL = 6
+    TOP_SOLID_INFILL = 7
+    SPARSE_INFILL = 8
+    BRIDGE = 9
+    NO_OBJECT = -1
+
+    MOVE_TYPES = {4: ';TYPE:Perimeter', 3: ';TYPE:External perimeter', 2: ';TYPE:Skirt/Brim', 6: ';TYPE:Solid infill', 8: ';TYPE:Internal infill', 9: ';TYPE:Bridge infill', 7: ';TYPE:Top solid infill', 5: ';TYPE:Overhang perimeter', -1: ';TYPE:Custom'}
 
 
 
@@ -662,7 +676,7 @@ class BlockData:
         if self.layer != prev.layer:
             out += ';LAYER_CHANGE\n'
         if self.move_type != prev.move_type:
-            out += f';TYPE:{MoveTypes.pprint_type[self.move_type]}\n'
+            out += f';TYPE:{Static.MOVE_TYPES.get(self.move_type, Static.MOVE_TYPES[-1])}\n'
         
         if self.e_temp != prev.e_temp and self.e_temp is not None:
             out += f'{Static.E_TEMP_DESC.format(self.e_temp)}\n'

@@ -3,7 +3,7 @@ from GcodeTools.gcode_types import *
 from GcodeTools.gcode import Gcode
 import base64
 import textwrap
-from GcodeTools.gcode_parser import Keywords, MoveTypes
+from GcodeTools.gcode_parser import MetaParser
 
 
 class Tools:
@@ -36,8 +36,8 @@ class Tools:
         start_id, end_id = -1, -1
         for id, block in enumerate(gcode):
         
-            if start_id == -1 and Keywords.get_keyword_line(id, gcode, Keywords.CONFIG_START): start_id = id
-            if end_id == -1 and start_id != -1 and Keywords.get_keyword_line(id, gcode, Keywords.CONFIG_END): end_id = id
+            if start_id == -1 and MetaParser.get_keyword_line(id, gcode, MetaParser.CONFIG_START): start_id = id
+            if end_id == -1 and start_id != -1 and MetaParser.get_keyword_line(id, gcode, MetaParser.CONFIG_END): end_id = id
         
         if start_id == -1 or end_id - start_id > 1000: return None
         print(f'{start_id=}, {end_id=}')
@@ -140,9 +140,9 @@ class Tools:
         
         for block in gcode:
             
-            if block.block_data.move_type == MoveTypes.PRINT_START:
+            if block.block_data.move_type == Static.PRINT_START:
                 start_gcode.append(block)
-            elif block.block_data.move_type == MoveTypes.PRINT_END:
+            elif block.block_data.move_type == Static.PRINT_END:
                 end_gcode.append(block)
             else:
                 object_gcode.append(block)
@@ -387,7 +387,7 @@ class Tools:
         text = textwrap.indent(textwrap.fill(text.decode('utf-8'), textwidth - 2), '; ')
 
         thumb = THUMB_BLOCK.format(width, height, len_text, text)
-        header_line = Keywords.get_keyword_lineno(20, new, Keywords.KW(r'Slicer\s(.*)\son'))
+        header_line = MetaParser.get_keyword_lineno(20, new, MetaParser.KW(r'Slicer\s(.*)\son'))
         if header_line is None:
             new = Tools.write_slicer_header(new)
         new.insert(header_line or 0, thumb)

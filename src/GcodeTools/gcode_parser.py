@@ -4,7 +4,7 @@ import re
 
 
 
-class Keywords:
+class MetaParser:
     """
     Each `keyword` is a list of `KW` which matches specific command.
 
@@ -80,64 +80,36 @@ class Keywords:
 
     @staticmethod
     def get_keyword_lineno(line_no: int, gcode: Gcode, keyword: list[KW], seek_limit = 20) -> bool:
-        line_no, _ = Keywords.get_keyword_arg(line_no, gcode, keyword, seek_limit)
+        line_no, _ = MetaParser.get_keyword_arg(line_no, gcode, keyword, seek_limit)
         return _
 
 
     @staticmethod
     def get_keyword_line(line_no: int, gcode: Gcode, keyword: list[KW], seek_limit = 20) -> bool:
-        _, expr = Keywords.get_keyword_arg(line_no, gcode, keyword, seek_limit)
+        _, expr = MetaParser.get_keyword_arg(line_no, gcode, keyword, seek_limit)
         return expr is not None
-
-
-
-class MoveTypes:
-
-    PRINT_START = 'start'
-    PRINT_END = 'end'
-    SKIRT = 'skirt'
-    EXTERNAL_PERIMETER = 'outer'
-    INTERNAL_PERIMETER = 'inner'
-    OVERHANG_PERIMETER = 'overhang'
-    SOLID_INFILL = 'solid'
-    TOP_SOLID_INFILL = 'top'
-    SPARSE_INFILL = 'sparse'
-    BRIDGE = 'bridge'
-    NO_OBJECT = -1
-
-    pprint_type = {
-        'inner' : ';TYPE:Perimeter',
-        'outer' : ';TYPE:External perimeter',
-        'skirt' : ';TYPE:Skirt/Brim',
-        'solid' : ';TYPE:Solid infill',
-        'sparse' : ';TYPE:Internal infill',
-        'bridge' : ';TYPE:Bridge infill',
-        'top' : ';TYPE:Top solid infill',
-        'overhang' : ';TYPE:Overhang perimeter',
-        '': ';TYPE:Custom'
-        }
 
 
     @staticmethod
     def get_type(line: str):
         string = line.lower()
         if not string.startswith(';'): return None
-        
+
         type_assign = {
-            'skirt': MoveTypes.SKIRT,
-            'external': MoveTypes.EXTERNAL_PERIMETER,
-            'overhang': MoveTypes.OVERHANG_PERIMETER,
-            'outer': MoveTypes.EXTERNAL_PERIMETER,
-            'perimeter': MoveTypes.INTERNAL_PERIMETER,
-            'inner': MoveTypes.INTERNAL_PERIMETER,
-            'bridge': MoveTypes.BRIDGE,
-            'top': MoveTypes.TOP_SOLID_INFILL,
-            'solid': MoveTypes.SOLID_INFILL,
-            'internal': MoveTypes.SPARSE_INFILL,
-            'sparse': MoveTypes.SPARSE_INFILL,
-            'fill': MoveTypes.SPARSE_INFILL,
-            'skin': MoveTypes.SOLID_INFILL,
-            'bottom': MoveTypes.SOLID_INFILL,
+            'skirt': Static.SKIRT,
+            'external': Static.EXTERNAL_PERIMETER,
+            'overhang': Static.OVERHANG_PERIMETER,
+            'outer': Static.EXTERNAL_PERIMETER,
+            'perimeter': Static.INTERNAL_PERIMETER,
+            'inner': Static.INTERNAL_PERIMETER,
+            'bridge': Static.BRIDGE,
+            'top': Static.TOP_SOLID_INFILL,
+            'solid': Static.SOLID_INFILL,
+            'internal': Static.SPARSE_INFILL,
+            'sparse': Static.SPARSE_INFILL,
+            'fill': Static.SPARSE_INFILL,
+            'skin': Static.SOLID_INFILL,
+            'bottom': Static.SOLID_INFILL,
             }
         
         for test in type_assign.keys():
@@ -151,19 +123,15 @@ class MoveTypes:
         def sanitize(name: str):
             return ''.join(c if c.isalnum() else '_' for c in name).strip('_')
         
-        is_end = Keywords.get_keyword_line(id, gcode, Keywords.OBJECT_END)
+        is_end = MetaParser.get_keyword_line(id, gcode, MetaParser.OBJECT_END)
         if is_end:
-            return MoveTypes.NO_OBJECT
+            return Static.NO_OBJECT
         
-        _, name = Keywords.get_keyword_arg(id, gcode, Keywords.OBJECT_START)
+        _, name = MetaParser.get_keyword_arg(id, gcode, MetaParser.OBJECT_START)
         if name is not None:
             return sanitize(name)
 
         return None
-
-
-
-class GcodeParser:
 
 
     @staticmethod
@@ -181,24 +149,28 @@ class GcodeParser:
             
             line = block.command
             
-            move_type = MoveTypes.get_type(line)
+            move_type = MetaParser.get_type(line)
             if move_type is not None: block.block_data.move_type = move_type
             
-            move_object = MoveTypes.get_object(id, gcode)
-            if move_object == MoveTypes.NO_OBJECT: block.block_data.object = None
+            move_object = MetaParser.get_object(id, gcode)
+            if move_object == Static.NO_OBJECT: block.block_data.object = None
             elif move_object is not None: block.block_data.object = move_object
             
-            if Keywords.get_keyword_line(id, gcode, Keywords.LAYER_CHANGE):
+            if MetaParser.get_keyword_line(id, gcode, MetaParser.LAYER_CHANGE):
                 block.block_data.layer += 1
             
-            if not was_start and Keywords.get_keyword_line(id, gcode, Keywords.GCODE_START):
-                block.block_data.move_type = MoveTypes.PRINT_START
+            if not was_start and MetaParser.get_keyword_line(id, gcode, MetaParser.GCODE_START):
+                block.block_data.move_type = Static.PRINT_START
                 was_start = True
-            if Keywords.get_keyword_line(id, gcode, Keywords.GCODE_END):
-                block.block_data.move_type = MoveTypes.PRINT_END
-                        
+            if MetaParser.get_keyword_line(id, gcode, MetaParser.GCODE_END):
+                block.block_data.move_type = Static.PRINT_END
+            
             if progress_callback:
                 progress_callback(id, len_gcode)
+
+
+
+class GcodeParser:
 
 
     class ParserData:
