@@ -65,6 +65,8 @@ class Config:
         self.step = 0.1
         """Step over which maths iterate"""
 
+        self.enable_exclude_object = True
+
 
 
 class Static:
@@ -616,7 +618,7 @@ class BlockData:
         return BlockData(None, 0, False, 0, False, 0, 0)
 
 
-    def __init__(self, block_ref: 'Block|None'=None, e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None, object=None, move_type=None, layer=None):
+    def __init__(self, block_ref: 'Block|None'=None, e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None, object='', move_type=None, layer=0):
         
         self.block_ref = block_ref
         self.e_temp = e_temp
@@ -677,6 +679,13 @@ class BlockData:
             out += ';LAYER_CHANGE\n'
         if self.move_type != prev.move_type:
             out += f';TYPE:{Static.MOVE_TYPES.get(self.move_type, Static.MOVE_TYPES[-1])}\n'
+        if self.object != prev.object:
+            if prev.object:
+                if not self.block_ref.move.config.enable_exclude_object: out += ';'
+                out += f'EXCLUDE_OBJECT_END NAME={prev.object.replace(" ", "_")}\n'
+            if self.object:
+                if not self.block_ref.move.config.enable_exclude_object: out += ';'
+                out += f'EXCLUDE_OBJECT_START NAME={self.object.replace(" ", "_")}\n'
         
         if self.e_temp != prev.e_temp and self.e_temp is not None:
             out += f'{Static.E_TEMP_DESC.format(self.e_temp)}\n'
