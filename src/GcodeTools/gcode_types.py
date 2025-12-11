@@ -1,6 +1,7 @@
 import math
 import json
 import typing
+from GcodeTools.gcode_parser import MoveTypes
 
 
 def float_or_none(input):
@@ -601,7 +602,7 @@ class BlockData:
         return BlockData(None, 0, False, 0, False, 0, 0)
 
 
-    def __init__(self, block_ref: 'Block|None' = None, e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None):
+    def __init__(self, block_ref: 'Block|None'=None, e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None, object=None, move_type=None, layer=None):
         
         self.block_ref = block_ref
         self.e_temp = e_temp
@@ -610,6 +611,9 @@ class BlockData:
         self.bed_wait = bed_wait
         self.fan = fan
         self.T = T
+        self.object = object
+        self.move_type = move_type
+        self.layer = layer
     
     
     def set_fan(self, fan: int):
@@ -655,6 +659,11 @@ class BlockData:
         prev = self.get_prev()
         
         out = ''
+        if self.layer != prev.layer:
+            out += ';LAYER_CHANGE\n'
+        if self.move_type != prev.move_type:
+            out += f';TYPE:{MoveTypes.pprint_type[self.move_type]}\n'
+        
         if self.e_temp != prev.e_temp and self.e_temp is not None:
             out += f'{Static.E_TEMP_DESC.format(self.e_temp)}\n'
         if self.bed_temp != prev.bed_temp and self.bed_temp is not None:
@@ -678,12 +687,15 @@ class BlockData:
                 'e_temp': self.e_temp,
                 'bed_temp': self.bed_temp,
                 'fan': self.fan,
-                'T': self.T
+                'T': self.T,
+                'object': self.object,
+                'move_type': self.move_type,
+                'layer': self.layer
             }
 
 
     def copy(self):
-        return BlockData(self.block_ref, self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T)
+        return BlockData(self.block_ref, self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T, self.object, self.move_type, self.layer)
 
     def __str__(self):
         return dict_to_pretty_str(self.to_dict())
@@ -692,14 +704,13 @@ class BlockData:
 
 class Block:
     
-    def __init__(self, prev:'Block|None' = None, move: Move = Move(), command: str | None = None, emit_command = True, block_data = BlockData(), meta: dict = {}):
+    def __init__(self, prev:'Block|None' = None, move: Move = Move(), command: str | None = None, emit_command = True, block_data = BlockData()):
         
         self.prev = prev
         self.move = move.copy()
         self.command = command
         self.emit_command = emit_command
         self.block_data = block_data.copy()
-        self.meta: dict = json.loads(json.dumps(meta))
 
 
     def as_origin(self):
@@ -708,7 +719,7 @@ class Block:
         
         Used to ensure that move path is deterministic, when splitting `Gcode`
         """
-        new = Block(None, self.move.copy(), block_data=self.block_data.copy(), meta=self.meta)
+        new = Block(None, self.move.copy(), block_data=self.block_data.copy())
         new.move.position.E = 0
         new.move.position.F = 0
         return new
@@ -741,7 +752,6 @@ class Block:
                 'move': self.move.to_dict(),
                 'emit_command': self.emit_command,
                 'data': self.block_data.to_dict(),
-                'meta': self.meta
             }
 
 
@@ -759,8 +769,6 @@ class Block:
         if line_str != '':
             if verbose:
                 line_str += '; '
-                if self.meta is not None and self.meta != {}:
-                    line_str += remove_chars(json.dumps(self.meta), '{} "').replace(",", " ") + ', '
                 line_str += remove_chars(json.dumps(self.block_data.to_dict()), '{} \"').replace(",", " ")
                 line_str += f', duration:{self.move.duration():.3f}s\n'
         
@@ -768,7 +776,7 @@ class Block:
 
 
     def copy(self):
-        return Block(self.prev, self.move, self.command, self.emit_command, self.block_data, self.meta)
+        return Block(self.prev, self.move, self.command, self.emit_command, self.block_data)
 
     def __str__(self):
         return dict_to_pretty_str(self.to_dict())

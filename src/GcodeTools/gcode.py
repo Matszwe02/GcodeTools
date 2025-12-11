@@ -26,20 +26,8 @@ class Gcode(list[Block]):
         return GcodeParser
 
 
-    def __get_meta_provider__(self):
-        from GcodeTools.gcode_tools import Tools
-        meta_provider = Tools.fill_meta
-        return meta_provider
-
-
-    def __fill_meta__(self, meta_provider: typing.Callable = None):
-        """
-            meta_provider: `Callable` - method to fill in meta
-                Default `None` = `Tools.fill_meta()`
-        """
-        if meta_provider is None:
-            meta_provider = self.__get_meta_provider__()
-        meta_provider(self)
+    def __fill_meta__(self):
+        self.__get_parser__().fill_meta(self)
 
 
     def try_order(self):
@@ -48,34 +36,30 @@ class Gcode(list[Block]):
             self.ordered = True
 
 
-    def from_str(self, gcode_str: str, data = BlockData(), progress_callback: typing.Callable|None = None, meta_provider: typing.Callable = None) -> 'Gcode':
+    def from_str(self, gcode_str: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> 'Gcode':
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
             gcode_str: `str` - string that will be parsed into `Gcode`
             data: `BlockData` - initial printer state
             progress_callback: `Callable(current: int, total: int)`
-            meta_provider: `Callable` - method to fill in meta
-                Default `None` = `Tools.fill_meta()`
         """
         self: Gcode = self.__get_parser__().from_str(self, gcode_str, data, progress_callback)
         self.order()
-        self.__fill_meta__(meta_provider)
+        self.__fill_meta__()
         return self
 
-    def from_file(self, filename: str, data = BlockData(), progress_callback: typing.Callable|None = None, meta_provider: typing.Callable = None) -> 'Gcode':
+    def from_file(self, filename: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> 'Gcode':
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
             filename: `str` - filename containing g-code to be parsed
             data: `BlockData` - initial printer state
             progress_callback: `Callable(current: int, total: int)`
-            meta_provider: `Callable` - method to fill in meta
-                Default `None` = `Tools.fill_meta()`
         """
         self: Gcode = self.__get_parser__().from_file(self, filename, data, progress_callback)
         self.order()
-        self.__fill_meta__(meta_provider)
+        self.__fill_meta__()
         return self
 
     def write_str(self, verbose = False, progress_callback: typing.Callable|None = None):
@@ -127,7 +111,7 @@ class Gcode(list[Block]):
             super().insert(index, block_obj)
 
 
-    def __add_str__(self, gcode: str, index: int = -1, data:BlockData|None=None, meta: dict|None=None, compile = False):
+    def __add_str__(self, gcode: str, index: int = -1, data:BlockData|None=None, compile = False):
         """
         The same as `Gcode.insert()`
         
@@ -138,7 +122,6 @@ class Gcode(list[Block]):
             index: `int`
                 Default index = `-1` => append to the end of `Gcode`
             data: `BlockData`
-            meta: `dict`
             compile: `bool` - compile `Block` using `CoordSystem` and `GcodeParser` instead of only putting command into a block.
                 - compilation doesn't propagate forward, i.e. putting `M106` only affects newly created `Block`.
         """
@@ -154,20 +137,18 @@ class Gcode(list[Block]):
             
             move = self[last_index].move.duplicate()
             if data is None: data = self[last_index].block_data
-            if meta is None: meta = self[last_index].meta
         
-        if meta is None: meta = {}
         if compile:
             parser = self.__get_parser__()
             position = self[max(idx, 0) - 1].move.position if len(self) else Vector()
-            gcode_objs = parser._parse_line(parser.ParserData(CoordSystem(position=position), Block(None, move, gcode, True, data, meta)))
+            gcode_objs = parser._parse_line(parser.ParserData(CoordSystem(position=position), Block(None, move, gcode, True, data)))
             for idx, obj in enumerate(gcode_objs):
                 if idx == -1:
                     super().append(obj.block)
                 else:
                     super().insert(index + idx, obj.block)
             return
-        gcode_obj = Block(None, move, gcode, True, data, meta)
+        gcode_obj = Block(None, move, gcode, True, data)
         
         if idx == -1:
             super().append(gcode_obj)
@@ -276,7 +257,7 @@ class Gcode(list[Block]):
         layer_dict = {}
         
         for block in self:
-            layer_num = block.meta.get('layer', None)
+            layer_num = block.block_data.layer
             if layer_num is not None:
                 if layer_num not in layer_dict:
                     layer_dict[layer_num] = self.new()

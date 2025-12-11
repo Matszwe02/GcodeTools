@@ -3,172 +3,7 @@ from GcodeTools.gcode_types import *
 from GcodeTools.gcode import Gcode
 import base64
 import textwrap
-import re
-
-
-meta_initial = {'object': None, 'type': None, 'layer': 0}
-
-class Keywords:
-    """
-    Each `keyword` is a list of `KW` which matches specific command.
-
-    Keywords match slicer-specific scenatios, like object change, feature change...
-    """
-
-    class KW:
-        def __init__(self, command: str, allow_command = None, block_command = None, offset = 0):
-            """
-            Keyword class for matching specific types of commands
-            Uses regex for allow_command and block_command
-
-            Args:
-                command: str - string that is going to be matched
-                allow_command: str - match only if following command is found
-                block_command: str - don't match if following command is found
-                offset: int - returning that line number instead
-                    - `offset` = -1: offset at `allow_command`
-            """
-            self.command = re.compile(command)
-            self.allow_command = re.compile(allow_command) if allow_command else None
-            self.block_command = re.compile(block_command) if block_command else None
-            self.offset = offset
-    
-    
-    CONFIG_START = [KW("^; CONFIG_BLOCK_START"), KW("_config = begin"), KW("^; Settings Summary"), KW("^; total filament cost =", None, "_config = begin")]
-    CONFIG_END = [KW("^; CONFIG_BLOCK_END"), KW("_config = end"), KW("^G"), KW("^M")]
-    
-    HEADER_START = [KW("^; HEADER_BLOCK_START")]
-    HEADER_END = [KW("^; HEADER_BLOCK_END")]
-    
-    EXECUTABLE_START = [KW("^; EXECUTABLE_BLOCK_START"), KW("^;TYPE:"), KW("^;Generated with Cura_SteamEngine")]
-    EXECUTABLE_END = [KW("^; EXECUTABLE_BLOCK_END")]
-    
-    LAYER_CHANGE = [KW("^;LAYER_CHANGE"), KW("^;LAYER:", "^;TYPE:")]
-    
-    GCODE_START = [KW("^;TYPE:"), KW("^;Generated with Cura_SteamEngine")]
-    GCODE_END = [KW("^EXCLUDE_OBJECT_END", "^; EXECUTABLE_BLOCK_END"), KW("^;TIME_ELAPSED:", "^;End of Gcode", "^;TIME_ELAPSED:"), KW("^;TYPE:Custom", "^; filament used")]
-    
-    OBJECT_START = [KW("^; printing object", None, "^EXCLUDE_OBJECT_START NAME="), KW("^EXCLUDE_OBJECT_START NAME=", "^;WIDTH:", None, -1), KW("^EXCLUDE_OBJECT_START NAME=", "^G1.*E", None, -1), KW("^;MESH:"), KW("^M486 S"), KW("^M624")]
-    OBJECT_END = [KW("^; stop printing object", None, "^EXCLUDE_OBJECT_END"), KW("^EXCLUDE_OBJECT_END"), KW("^;MESH:NONMESH"), KW("^M486 S-1"), KW("^M625")]
-    # FIXME: Edge case scenarios, split travel moves perfectly
-    # TODO: travel trimming, recalculation, preserve last travel vector at object
-
-
-    @staticmethod
-    def get_keyword_arg(line_no: int, gcode: Gcode, keyword: list[KW], seek_limit = 20):
-        
-        for offset in range(seek_limit):
-            line_content = gcode[line_no - offset].command
-            
-            for option in keyword:
-                if option.offset != offset and option.offset != -1:
-                    continue
-                
-                match = option.command.search(line_content)
-                if match:
-                    if option.allow_command is None and option.block_command is None:
-                        return (line_no - offset, line_content[match.end():])
-                    
-                    for id, nextline in enumerate(gcode[line_no - offset + 1 : line_no - offset + seek_limit + 1]):
-                        if option.block_command is not None and option.block_command.search(nextline.command):
-                            return (None, None)
-                        if option.allow_command is not None and option.allow_command.search(nextline.command):
-                            if option.offset == offset or (option.offset == -1 and offset == id):
-                                return (line_no - offset, line_content[match.end():])
-                            
-                    if option.allow_command is None:
-                        return (line_no - offset, line_content[match.end():])
-                
-        return (None, None)
-
-
-    @staticmethod
-    def get_keyword_lineno(line_no: int, gcode: Gcode, keyword: list[KW], seek_limit = 20) -> bool:
-        line_no, _ = Keywords.get_keyword_arg(line_no, gcode, keyword, seek_limit)
-        return _
-
-
-    @staticmethod
-    def get_keyword_line(line_no: int, gcode: Gcode, keyword: list[KW], seek_limit = 20) -> bool:
-        _, expr = Keywords.get_keyword_arg(line_no, gcode, keyword, seek_limit)
-        return expr is not None
-
-
-
-class MoveTypes:
-
-    PRINT_START = 'start'
-    PRINT_END = 'end'
-    
-    SKIRT = 'skirt'
-    EXTERNAL_PERIMETER = 'outer'
-    INTERNAL_PERIMETER = 'inner'
-    OVERHANG_PERIMETER = 'overhang'
-    
-    SOLID_INFILL = 'solid'
-    TOP_SOLID_INFILL = 'top'
-    SPARSE_INFILL = 'sparse'
-    
-    BRIDGE = 'bridge'
-    
-    NO_OBJECT = -1
-    
-    pprint_type = {
-        'inner' : ';TYPE:Perimeter',
-        'outer' : ';TYPE:External perimeter',
-        'skirt' : ';TYPE:Skirt/Brim',
-        'solid' : ';TYPE:Solid infill',
-        'sparse' : ';TYPE:Internal infill',
-        'bridge' : ';TYPE:Bridge infill',
-        'top' : ';TYPE:Top solid infill',
-        'overhang' : ';TYPE:Overhang perimeter',
-        '': ';TYPE:Custom'
-        }
-    
-
-    @staticmethod
-    def get_type(line: str):
-        string = line.lower()
-        if not string.startswith(';'): return None
-        
-        type_assign = {
-            'skirt': MoveTypes.SKIRT,
-            'external': MoveTypes.EXTERNAL_PERIMETER,
-            'overhang': MoveTypes.OVERHANG_PERIMETER,
-            'outer': MoveTypes.EXTERNAL_PERIMETER,
-            'perimeter': MoveTypes.INTERNAL_PERIMETER,
-            'inner': MoveTypes.INTERNAL_PERIMETER,
-            'bridge': MoveTypes.BRIDGE,
-            'top': MoveTypes.TOP_SOLID_INFILL,
-            'solid': MoveTypes.SOLID_INFILL,
-            'internal': MoveTypes.SPARSE_INFILL,
-            'sparse': MoveTypes.SPARSE_INFILL,
-            'fill': MoveTypes.SPARSE_INFILL,
-            'skin': MoveTypes.SOLID_INFILL,
-            'bottom': MoveTypes.SOLID_INFILL,
-            }
-        
-        for test in type_assign.keys():
-            if test in string: return type_assign[test]
-        return None
-
-
-    @staticmethod
-    def get_object(id: int, gcode: Gcode):
-        
-        def sanitize(name: str):
-            return ''.join(c if c.isalnum() else '_' for c in name).strip('_')
-        
-        is_end = Keywords.get_keyword_line(id, gcode, Keywords.OBJECT_END)
-        if is_end:
-            return MoveTypes.NO_OBJECT
-        
-        _, name = Keywords.get_keyword_arg(id, gcode, Keywords.OBJECT_START)
-        if name is not None:
-            return sanitize(name)
-
-        return None
-
+from GcodeTools.gcode_parser import Keywords, MoveTypes
 
 
 class Tools:
@@ -288,77 +123,6 @@ class Tools:
 
 
     @staticmethod
-    def fill_meta(gcode: Gcode, progress_callback: typing.Callable|None = None):
-        """
-        Args:
-            progress_callback: `Callable(current: int, total: int)`
-        passed `Gcode` gets modified so meta is added into it
-        """
-        meta = meta_initial.copy()
-        was_start = False
-        
-        len_gcode = len(gcode)
-        
-        for id, block in enumerate(gcode):
-            
-            line = block.command
-            
-            move_type = MoveTypes.get_type(line)
-            if move_type is not None: meta['type'] = move_type
-            
-            move_object = MoveTypes.get_object(id, gcode)
-            if move_object == MoveTypes.NO_OBJECT: meta["object"] = None
-            elif move_object is not None: meta['object'] = move_object
-            
-            if Keywords.get_keyword_line(id, gcode, Keywords.LAYER_CHANGE):
-                meta['layer'] += 1
-            
-            if not was_start and Keywords.get_keyword_line(id, gcode, Keywords.GCODE_START):
-                meta['type'] = MoveTypes.PRINT_START
-                was_start = True
-            if Keywords.get_keyword_line(id, gcode, Keywords.GCODE_END):
-                meta['type'] = MoveTypes.PRINT_END
-            
-            block.meta = json.loads(json.dumps(meta))
-            
-            if progress_callback:
-                progress_callback(id, len_gcode)
-
-
-    @staticmethod
-    def get_by_meta(gcode: Gcode, meta: str, value = None, value_check: typing.Callable[[typing.Any], bool]|None = None, break_on = lambda x: False):
-        """
-        Args:
-            meta: `str` - meta's key which needs to be compared
-            value: `Any` - the value that is compared
-            value_check: `Callable` - comparison method
-                for example `lambda x: x == 'inner'`
-            break_on: `Callable` - stop further checking
-                inactive until first `Block` is added
-        """
-        gcode_new = gcode.new()
-        is_none = True
-        for i in gcode:
-            i_meta = i.meta.get(meta, None)
-            
-            if value_check is None:
-                if i_meta == value:
-                    gcode_new.append(i)
-                    is_none = False
-            else:
-                if value_check(i_meta):
-                    gcode_new.append(i)
-                    is_none = False
-            
-            if len(gcode_new) > 0 and break_on(i_meta):
-                break
-        
-        if is_none:
-            return None
-        return gcode_new
-
-
-    @staticmethod
     def split(gcode: Gcode) -> tuple[Gcode, Gcode, Gcode, dict[Gcode]]:
         """
         Splits `Gcode` into:
@@ -376,14 +140,14 @@ class Tools:
         
         for block in gcode:
             
-            if block.meta.get('type') == MoveTypes.PRINT_START:
+            if block.block_data.move_type == MoveTypes.PRINT_START:
                 start_gcode.append(block)
-            elif block.meta.get('type') == MoveTypes.PRINT_END:
+            elif block.block_data.move_type == MoveTypes.PRINT_END:
                 end_gcode.append(block)
             else:
                 object_gcode.append(block)
             
-            object = block.meta.get('object')
+            object = block.block_data.object
             if object not in objects.keys():
                 objects[object] = gcode.new()
             
@@ -522,11 +286,11 @@ class Tools:
         for item in gcode:
             if is_first:
                 out_gcode.append(item.copy())
-                if item.meta.get("object") != None:
+                if item.block_data.object != None:
                     is_first = False
                 continue
             
-            if item.meta.get("object") == None:
+            if item.block_data.object == None:
                 if past_item is None:
                     out_gcode.append('G10; retract')
                 past_item = item.copy()
@@ -547,37 +311,6 @@ class Tools:
         if is_first:
             print('Cannot regenerate travels: no objects present in metadata')
         return out_gcode
-
-
-    @staticmethod
-    def add_layer_tags(gcode: Gcode) -> Gcode:
-        
-        new_gcode = gcode.new()
-        
-        tag = ';LAYER_CHANGE'
-        layer = 0
-        for i in gcode:
-            meta_layer = i.meta.get('layer', -1)
-            if meta_layer != -1 and meta_layer != layer and meta_layer == int(meta_layer):
-                layer = meta_layer
-                new_gcode.append(tag)
-            new_gcode.append(i)
-        return new_gcode
-
-
-    @staticmethod
-    def add_move_type_tags(gcode: Gcode) -> Gcode:
-                
-        new_gcode = gcode.new()
-        
-        move_type = ''
-        for i in gcode:
-            meta_type = i.meta.get('type', '')
-            if meta_type != move_type:
-                move_type = meta_type
-                new_gcode.append(MoveTypes.pprint_type.get(meta_type, MoveTypes.pprint_type['']))
-            new_gcode.append(i)
-        return new_gcode
 
 
     @staticmethod
@@ -663,4 +396,4 @@ class Tools:
 
     @staticmethod
     def write_slicer_header(gcode: Gcode):
-        gcode.insert(0, '; Moonraker requires typing PrusaSlicer - on here')
+        gcode.insert(0, '; old Moonraker versions required typing PrusaSlicer - on here')
