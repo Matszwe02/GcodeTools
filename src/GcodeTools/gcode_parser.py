@@ -92,8 +92,12 @@ class MetaParser:
 
     @staticmethod
     def get_type(line: str):
+        if not line.startswith(';'): return None
         string = line.lower()
-        if not string.startswith(';'): return None
+        if 'object' in string: return None
+        if 'fan' in string: return None
+        if 'start' in string: return None
+        if 'stop' in string: return None
 
         type_assign = {
             'support': Static.SUPPORT,
