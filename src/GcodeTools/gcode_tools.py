@@ -471,8 +471,8 @@ class Tools:
             `tuple` of (low_corner, high_corner)
         """
         
-        low_corner = Vector(None, None, None)
-        high_corner = Vector(None, None, None)
+        low_corner = gcode[0].move.position.xyz()
+        high_corner = gcode[0].move.position.xyz()
         
         lower_bound = lambda a,b: a if a < b else b
         upper_bound = lambda a,b: a if a > b else b
@@ -491,7 +491,7 @@ class Tools:
         """
         
         total_volume = 0
-        sum = Vector.zero()
+        sum = Vector()
         sum_e = 0
         
         for block in gcode:

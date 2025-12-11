@@ -8,6 +8,15 @@ def float_or_none(input):
     return input
 
 
+def get_coords(params: dict[str, str]):
+    X = float_or_none(params.get('X'))
+    Y = float_or_none(params.get('Y'))
+    Z = float_or_none(params.get('Z'))
+    E = float_or_none(params.get('E'))
+    F = float_or_none(params.get('F'))
+    return (X, Y, Z, E, F)
+
+
 def remove_chars(string: str, chars: str)->str:
     outstr = string
     for char in chars:
@@ -98,18 +107,13 @@ class Static:
 class Vector:
 
     @staticmethod
-    def zero():
-        """Vector(0, 0, 0, 0)"""
-        return Vector(0, 0, 0, 0)
-
-    @staticmethod
     def one(with_e = False):
         """Vector(1, 1, 1, 1)"""
-        return Vector(1, 1, 1, 1 if with_e else None)
+        return Vector(1, 1, 1, 1 if with_e else 0)
 
 
-    def __init__(self, X: float | None = None, Y: float | None = None, Z: float | None = None, E: float | None = None, F: float | None = None):
-        """Vector(None, None, None, None)"""
+    def __init__(self, X: float = 0, Y: float = 0, Z: float = 0, E: float = 0, F: float = 0):
+        """Vector(0, 0, 0, 0)"""
         self.X = X
         self.Y = Y
         self.Z = Z
@@ -126,63 +130,44 @@ class Vector:
         return self
 
 
-    def vector_op(self, other: 'Vector', operation = lambda x, y: x + y, on_a_none: str|float|None = 'b', on_b_none: str|float|None = 'a', on_none: float|None = None):
+    def vector_op(self, other: 'Vector', operation = lambda x, y: x + y):
         """
         Returns a new `Vector` object, does not affect `self` or `other`
         
         Args:
-            `operation`: lambda
-            `on_a_none`, `on_b_none`: `''` to skip None checking ; `'a'`, `'b'`, `None`, `float` to return that value
-            `on_none`: float|None if both `a` and `b` are none
+            `operation`: Callable
         """
-        
-        def nullable_op(a: float | None, b: float | None):
-            if a is None and b is None: return on_none
-            if a is None and on_a_none != '':
-                if on_a_none == 'a': return a
-                if on_a_none == 'b': return b
-                return on_a_none
-            if b is None and on_b_none != '':
-                if on_b_none == 'a': return a
-                if on_b_none == 'b': return b
-                return on_b_none
-            
-            return operation(a, b)
-        
+
         check_null_except(other, Vector, Exception, 'Can only operate on {0}, not {1}')
-        
-        X = nullable_op(self.X, other.X)
-        Y = nullable_op(self.Y, other.Y)
-        Z = nullable_op(self.Z, other.Z)
-        E = nullable_op(self.E, other.E)
-        return Vector(X, Y, Z, E, self.F)
+
+        X = operation(self.X, other.X)
+        Y = operation(self.Y, other.Y)
+        Z = operation(self.Z, other.Z)
+        E = operation(self.E, other.E)
+        F = operation(self.F, other.F)
+        return Vector(X, Y, Z, E, F)
 
 
     def __add__(self, other: 'Vector') -> 'Vector':
-        add = lambda x, y: x + y
-        return self.vector_op(other, add)
+        return self.vector_op(other, lambda x, y: x + y)
 
 
     def __sub__(self, other: 'Vector') -> 'Vector':
-        subtr = lambda x, y: x - y
-        return self.vector_op(other, subtr)
+        return self.vector_op(other, lambda x, y: x - y)
 
 
     def __mul__(self, other: 'Vector|float') -> 'Vector':
         if not isinstance(other, Vector): other = Vector(other, other, other, other)
-        scale = lambda a,b: a * b
-        return self.vector_op(other, scale, on_a_none='a', on_b_none='a')
+        return self.vector_op(other, lambda a,b: a * b)
 
 
     def __truediv__(self, other: 'Vector|float') -> 'Vector':
         if not isinstance(other, Vector): other = Vector(other, other, other, other)
-        scale = lambda a,b: a / b
-        return self.vector_op(other, scale, on_a_none='a', on_b_none='a')
+        return self.vector_op(other, lambda a,b: a / b)
 
 
     def __neg__(self) -> 'Vector':
-        subtr = lambda x, y: y - x
-        return self.vector_op(Vector.zero(), subtr, on_a_none=None)
+        return self.vector_op(Vector(), lambda x, y: y - x)
 
 
     def cross(self, other: 'Vector') -> 'Vector':
@@ -202,12 +187,6 @@ class Vector:
         if len == 0:
             return Vector()
         return self * (1.0 / len)
-    
-
-    def valid(self, other: 'Vector') -> 'Vector':
-        """Return `Vector` with non-null dimensions from `other` vector"""
-        valid = lambda a, b: a
-        return self.vector_op(other, valid, on_a_none=None, on_b_none=None)
 
 
     def x(self) -> 'Vector':
@@ -242,24 +221,6 @@ class Vector:
         return Vector(F=self.F)
 
 
-    def add(self, other: 'Vector'):
-        """Adds `Vector`'s dimensions to `other`'s that are not None"""
-        check_null_except(other, Vector, Exception, 'Can only add {0} to {0}, not {1}')
-        add_op = lambda a, b: a + b
-        new_vec = self.vector_op(other, add_op, None, 'a')
-        self.set(new_vec)
-
-
-    def set(self, other: 'Vector'):
-        """Sets `Vector`'s dimensions to `other`'s that are not None"""
-        check_null_except(other, Vector, Exception, 'Can only set {0} to {0}, not {1}')
-        if other.X is not None: self.X = other.X
-        if other.Y is not None: self.Y = other.Y
-        if other.Z is not None: self.Z = other.Z
-        if other.E is not None: self.E = other.E
-        if other.F is not None: self.F = other.F
-
-
     def add_value(self, X = None, Y = None, Z = None, E = None, F = None):
         if X: self.X += X
         if Y: self.Y += Y
@@ -283,13 +244,6 @@ class Vector:
 
     def __str__(self):
         return f'X={self.X}, Y={self.Y}, Z={self.Z}, E={self.E}, F={self.F}'
-
-
-    def is_none(self, with_e = True):
-        """Returns `True` when any of `Vector`'s coordinates is `None`"""
-        if with_e:
-            return any(coord is None for coord in [self.X, self.Y, self.Z, self.E])
-        return any(coord is None for coord in [self.X, self.Y, self.Z])
 
 
     def to_dict(self):
@@ -323,7 +277,7 @@ class Vector:
 
 
 class CoordSystem:
-    def __init__(self, abs_xyz = True, abs_e = True, arc_plane = Static.ARC_PLANES['XY'], position = Vector(), offset = Vector.zero(), abs_position_e = 0.0):
+    def __init__(self, abs_xyz = True, abs_e = True, arc_plane = Static.ARC_PLANES['XY'], position = Vector(), offset = Vector(), abs_position_e = 0.0):
         if position.F is None:
             print('Warning: speed parameter is unset! Defaultnig to 1200 mm/min')
             position.set_value(F=1200)
@@ -353,32 +307,37 @@ class CoordSystem:
 
 
     def apply_move(self, params: dict[str, str]):
-        pos = Vector().from_params(params)
+        X, Y, Z, E, F = get_coords(params)
 
-        self.position.set_value(F = pos.F)
+        self.position.set_value(F = F)
         
         if self.abs_xyz:
-            self.position.set(pos.xyz())
-            self.position.add(self.offset.xyz().valid(pos))
+            if X: X += self.offset.X
+            if Y: Y += self.offset.Y
+            if Z: Z += self.offset.Z
+            self.position.set_value(X, Y, Z)
         else:
-            self.position.add(pos.xyz())
+            self.position.add_value(X, Y, Z)
         
         if self.abs_e:
-            if pos.E is not None:
-                self.position.E = (pos.E - self.abs_position_e)
-                self.abs_position_e = pos.E
+            if E is not None:
+                self.position.E = (E - self.abs_position_e)
+                self.abs_position_e = E
             else:
                 self.position.E = 0
         else:
-            self.position.E = pos.E or 0
+            self.position.E = E or 0
         
         return self.position.copy()
 
 
-    def set_offset(self, pos: Vector):
-        self.offset.set((self.position - pos).valid(pos))
+    def set_offset(self, X = None, Y = None, Z = None, E = None):
+        if X: self.offset.X = self.position.X - X
+        if Y: self.offset.Y = self.position.Y - Y
+        if Z: self.offset.Z = self.position.Z - Z
+        if E: self.offset.E = self.position.E - E
         if self.abs_e:
-            self.abs_position_e += (self.offset.E or 0)
+            self.abs_position_e += self.offset.E
 
 
     def to_str(self, last_coords: 'CoordSystem|None' = None):
@@ -436,8 +395,8 @@ class Move:
         `Gcode.order()` will add travel moves for these translations\n
         Use `Gcode.unlink()` to cancel travel move generation on `order`
         """
-        self.position.add(vec)
-        self.origin.add(vec.xyz())
+        self.position += vec
+        self.origin += vec.xyz()
         return self
 
 
@@ -447,7 +406,7 @@ class Move:
         x = self.position.X * math.cos(angle_rad) - self.position.Y * math.sin(angle_rad)
         y = self.position.X * math.sin(angle_rad) + self.position.Y * math.cos(angle_rad)
         
-        self.position.set(Vector(x, y))
+        self.position.set_value(x, y)
         return self 
 
 
@@ -460,7 +419,7 @@ class Move:
         prev = self.get_prev()
         
         distance = lambda x, y: x - y
-        return self.position.vector_op(prev.position, distance, on_a_none=0, on_b_none=0, on_none=0)
+        return self.position.vector_op(prev.position, distance)
 
 
     def float_distance(self, distance: Vector|None = None):
@@ -576,7 +535,7 @@ class Arc:
         """
         self.move = move
         self.dir = dir
-        self.ijk = ijk.vector_op(Vector.zero(), on_a_none='b')
+        self.ijk = ijk.vector_op(Vector())
 
 
     def from_params(self, params: dict[str, str]):

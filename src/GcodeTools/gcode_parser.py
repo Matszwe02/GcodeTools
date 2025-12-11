@@ -155,8 +155,8 @@ class GcodeParser:
             pd.coord_system.set_abs_e(command == Static.ABSOLUTE_EXTRUDER)
 
         elif command == Static.SET_POSITION:
-            vec = Vector().from_params(line_dict)
-            pd.coord_system.set_offset(vec)
+            X, Y, Z, E, F = get_coords(line_dict)
+            pd.coord_system.set_offset(X, Y, Z, E)
         
         elif command == Static.FAN_SPEED:
             pd.block.block_data.set_fan(line_dict.get('S', None))
@@ -177,7 +177,7 @@ class GcodeParser:
             pd.coord_system.arc_plane = Static.ARC_PLANES[command]
         
         elif command == Static.HOME:
-            pd.coord_system.position = Vector.zero()
+            pd.coord_system.position = Vector()
         
         else:
             emit_command = True

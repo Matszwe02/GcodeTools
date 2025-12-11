@@ -185,7 +185,7 @@ class Gcode(list[Block]):
             block.prev = self[i - 1] if i > 0 else None
             if prev := block.prev:
                 prev: Block
-                if prev.move.position != block.move.origin and block.move.origin:
+                if prev.move.position != block.move.origin and block.move.origin != Vector():
                     travel_block: Block = block.as_origin()
                     travel_block.move.position = block.move.origin
                     travel_block.prev = self[i - 1]
