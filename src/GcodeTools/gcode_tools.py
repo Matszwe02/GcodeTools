@@ -387,13 +387,13 @@ class Tools:
         text = textwrap.indent(textwrap.fill(text.decode('utf-8'), textwidth - 2), '; ')
 
         thumb = THUMB_BLOCK.format(width, height, len_text, text)
-        header_line = MetaParser.get_keyword_lineno(20, new, MetaParser.KW(r'Slicer\s(.*)\son'))
-        if header_line is None:
-            new = Tools.write_slicer_header(new)
-        new.insert(header_line or 0, thumb)
+        
+        Tools.write_slicer_header(new)
+        new.header += thumb
         return new
 
 
     @staticmethod
     def write_slicer_header(gcode: Gcode):
-        gcode.insert(0, '; old Moonraker versions required typing PrusaSlicer - on here')
+        if 'Slicer' not in gcode.header.splitlines()[0]:
+            gcode.header = '; old Moonraker versions required typing PrusaSlicer - on here\n' + gcode.header

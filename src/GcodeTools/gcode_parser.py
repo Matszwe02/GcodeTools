@@ -229,7 +229,7 @@ class GcodeParser:
             str
         """
         coords = CoordSystem(position=Vector(F=gcode.config.speed), abs_e=False)
-        out_str = coords.to_str()
+        out_str = gcode.header + '\n' + coords.to_str()
 
         len_blocks = len(gcode)
 
@@ -243,7 +243,7 @@ class GcodeParser:
                 progress_callback(i, len_blocks)
         
         
-        return out_str
+        return out_str + '\n' + gcode.footer
 
 
     @staticmethod

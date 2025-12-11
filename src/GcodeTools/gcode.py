@@ -14,6 +14,8 @@ class Gcode(list[Block]):
         """
         self.config = config
         self.ordered = False
+        self.header = ''
+        self.footer = ''
         super().__init__()
         if filename:
             self.from_file(filename)
