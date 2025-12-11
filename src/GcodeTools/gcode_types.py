@@ -115,9 +115,10 @@ class Static:
     TOP_SOLID_INFILL = 7
     SPARSE_INFILL = 8
     BRIDGE = 9
+    SUPPORT = 10
     NO_OBJECT = -1
 
-    MOVE_TYPES = {4: ';TYPE:Perimeter', 3: ';TYPE:External perimeter', 2: ';TYPE:Skirt/Brim', 6: ';TYPE:Solid infill', 8: ';TYPE:Internal infill', 9: ';TYPE:Bridge infill', 7: ';TYPE:Top solid infill', 5: ';TYPE:Overhang perimeter', -1: ';TYPE:Custom'}
+    MOVE_TYPES = {4: 'Perimeter', 3: 'External perimeter', 2: 'Skirt/Brim', 6: 'Solid infill', 8: 'Internal infill', 9: 'Bridge infill', 7: 'Top solid infill', 5: 'Overhang perimeter', 10: 'Support material', -1: 'Custom'}
 
 
 

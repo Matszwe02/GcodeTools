@@ -96,6 +96,7 @@ class MetaParser:
         if not string.startswith(';'): return None
 
         type_assign = {
+            'support': Static.SUPPORT,
             'skirt': Static.SKIRT,
             'external': Static.EXTERNAL_PERIMETER,
             'overhang': Static.OVERHANG_PERIMETER,
