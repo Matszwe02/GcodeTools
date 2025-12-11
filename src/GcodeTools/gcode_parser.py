@@ -142,28 +142,28 @@ class MetaParser:
         passed `Gcode` gets modified so meta is added into it
         """
         was_start = False
-        
+        layer = 0
+        move_type = -1
+        move_object = ''
         len_gcode = len(gcode)
         
         for id, block in enumerate(gcode):
-            
-            line = block.command
-            
-            move_type = MetaParser.get_type(line)
-            if move_type is not None: block.block_data.move_type = move_type
-            
-            move_object = MetaParser.get_object(id, gcode)
-            if move_object == Static.NO_OBJECT: block.block_data.object = None
-            elif move_object is not None: block.block_data.object = move_object
+                        
+            move_type = MetaParser.get_type(block.command) or move_type
+            move_object = MetaParser.get_object(id, gcode) or move_object
             
             if MetaParser.get_keyword_line(id, gcode, MetaParser.LAYER_CHANGE):
-                block.block_data.layer += 1
+                layer += 1
             
             if not was_start and MetaParser.get_keyword_line(id, gcode, MetaParser.GCODE_START):
-                block.block_data.move_type = Static.PRINT_START
+                move_type = Static.PRINT_START
                 was_start = True
             if MetaParser.get_keyword_line(id, gcode, MetaParser.GCODE_END):
-                block.block_data.move_type = Static.PRINT_END
+                move_type = Static.PRINT_END
+            
+            block.block_data.move_type = move_type
+            block.block_data.object = move_object if move_object != -1 else ''
+            block.block_data.layer = layer
             
             if progress_callback:
                 progress_callback(id, len_gcode)
