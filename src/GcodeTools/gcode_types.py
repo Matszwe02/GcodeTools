@@ -175,12 +175,12 @@ class Vector:
 
 
     def __mul__(self, other: 'Vector|float') -> 'Vector':
-        if not isinstance(other, Vector): other = Vector(other, other, other, other)
+        if not isinstance(other, Vector): other = Vector(other, other, other, other, other)
         return self.vector_op(other, lambda a,b: a * b)
 
 
     def __truediv__(self, other: 'Vector|float') -> 'Vector':
-        if not isinstance(other, Vector): other = Vector(other, other, other, other)
+        if not isinstance(other, Vector): other = Vector(other, other, other, other, other)
         return self.vector_op(other, lambda a,b: a / b)
 
 
