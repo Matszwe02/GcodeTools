@@ -308,7 +308,6 @@ class GcodeParser:
         command = None
         arc = None
         emit_command = False
-        move = pd.block.move.duplicate()
         
         pd.block.block_data.clear_wait()
         
@@ -317,9 +316,10 @@ class GcodeParser:
         
         if command in ['G0', 'G1', 'G2', 'G3']:
             if command in ['G2', 'G3']:
-                arc = Arc(move.copy(), int(command[1])).from_params(line_dict)
+                arc = Arc(pd.block.block_data.position.copy(), int(command[1])).from_params(line_dict)
+                pass
                 
-            move.position = pd.coord_system.apply_move(line_dict)
+            pd.block.block_data.position = pd.coord_system.apply_move(line_dict)
         
         elif command in [Static.ABSOLUTE_COORDS, Static.RELATIVE_COORDS]:
             pd.coord_system.set_abs_xyz(command == Static.ABSOLUTE_COORDS)
@@ -328,8 +328,8 @@ class GcodeParser:
             pd.coord_system.set_abs_e(command == Static.ABSOLUTE_EXTRUDER)
 
         elif command == Static.SET_POSITION:
-            X, Y, Z, E, F = get_coords(line_dict)
-            pd.coord_system.set_offset(X, Y, Z, E)
+            c = Coords(line_dict)
+            pd.coord_system.set_offset(c.X, c.Y, c.Z, c.E)
         
         elif command == Static.FAN_SPEED:
             pd.block.block_data.set_fan(line_dict.get('S', None))
@@ -358,14 +358,15 @@ class GcodeParser:
         if arc is not None:
             listdata = []
             pd_new = pd.copy()
-            for section in arc.subdivide(move):
-                block = Block(None, section, pd.block.command.strip(), emit_command, pd.block.block_data)
+            for section in arc.subdivide(pd.block.block_data.position, pd.block.config.step):
+                block = Block(None, pd.block.command.strip(), emit_command, pd.block.block_data)
+                block.block_data.position = section
                 pd_new.block = block
                 listdata.append(pd_new.copy())
             return listdata
         
         else:
-            pd.block = Block(None, move, pd.block.command.strip(), emit_command, pd.block.block_data)
+            pd.block = Block(None, pd.block.command.strip(), emit_command, pd.block.block_data)
             return [pd]
 
 
@@ -373,13 +374,14 @@ class GcodeParser:
     def _generate_moves(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback = None) -> Gcode:
 
         coord_system = CoordSystem(position=Vector(F=gcode.config.speed))
-        move = Move(config = gcode.config, position = coord_system.position)
+        block_data = data.copy()
+        block_data.position = coord_system.position
         
         gcode_lines = list(filter(str.strip, gcode_str.split('\n')))
         
         len_gcode_lines = len(gcode_lines)
         
-        pd = GcodeParser.ParserData(coord_system, Block(move=move))
+        pd = GcodeParser.ParserData(coord_system, Block(block_data=block_data))
         
         for i, line in enumerate(gcode_lines):
             
@@ -387,6 +389,7 @@ class GcodeParser:
             list_pd:list[GcodeParser.ParserData] = GcodeParser._parse_line(pd)
             
             for num in list_pd:
+                num.block.config = gcode.config
                 gcode.append(num.block)
             pd = list_pd[-1]
             

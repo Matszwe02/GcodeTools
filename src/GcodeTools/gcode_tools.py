@@ -165,10 +165,10 @@ class Tools:
         """
         
         gcode_new = gcode.new()
-        pos = gcode[0].move
+        pos = gcode[0].block_data.position
         for item in gcode:
-            if item.move != pos:
-                pos = item.move
+            if item.block_data.position != pos:
+                pos = item.block_data.position
                 it = item.copy()
                 it.emit_command = False
                 it.command = ''
@@ -187,8 +187,9 @@ class Tools:
         """
         gcode_new = gcode.copy()
         for i in gcode_new:
-            if force_extrusion or (i.move.position.E and i.move.position.E > 0):
-                i.move.set_flowrate(flowrate)
+            if force_extrusion or (i.block_data.position.E and i.block_data.position.E > 0):
+                # i.move.set_flowrate(flowrate)
+                pass
         return gcode_new
 
 
@@ -196,7 +197,7 @@ class Tools:
     def translate(gcode: Gcode, vector: Vector) -> Gcode:
         gcode_new = gcode.copy()
         for i in gcode_new:
-            i.move.translate(vector)
+            i.block_data.position += vector
         gcode_new.order()
         return gcode_new
 
@@ -205,7 +206,7 @@ class Tools:
     def rotate(gcode: Gcode, deg: int) -> Gcode:
         gcode_new = gcode.copy()
         for i in gcode_new:
-            i.move.rotate(deg)
+            i.block_data.position.rotate(deg)
         return gcode_new
 
 
@@ -213,7 +214,7 @@ class Tools:
     def scale(gcode: Gcode, scale: int|Vector) -> Gcode:
         gcode_new = gcode.copy()
         for i in gcode_new:
-            i.move.scale(scale)
+            i.block_data.position *= scale
         return gcode_new
 
 
@@ -234,16 +235,15 @@ class Tools:
         Returns:
             `tuple` of (low_corner, high_corner)
         """
-        
-        low_corner = gcode[0].move.position.xyz()
-        high_corner = gcode[0].move.position.xyz()
+        low_corner: Vector = gcode[0].block_data.position.xyz()
+        high_corner: Vector = gcode[0].block_data.position.xyz()
         
         lower_bound = lambda a,b: a if a < b else b
         upper_bound = lambda a,b: a if a > b else b
         
         for item in gcode:
-            high_corner = high_corner.vector_op(item.move.position, upper_bound)
-            low_corner = low_corner.vector_op(item.move.position, lower_bound)
+            high_corner = high_corner.vector_op(item.block_data.position, upper_bound)
+            low_corner = low_corner.vector_op(item.block_data.position, lower_bound)
             
         return (low_corner.xyz(), high_corner.xyz())
 
@@ -253,19 +253,18 @@ class Tools:
         """
         Calculate the center of mass of the model
         """
-        
         total_volume = 0
         sum = Vector()
         sum_e = 0
         
         for block in gcode:
-            move = block.move
-            sum_e += move.position.E or 0
+            pos = block.block_data.position
+            sum_e += pos.E or 0
             if sum_e > 0:
-                volume = (move.position.E or 0) + sum_e
+                volume = (pos.E or 0) + sum_e
                 total_volume += volume
                 
-                sum += move.position * volume
+                sum += pos * volume
         
         if total_volume < gcode.config.step:
             return Vector()
@@ -278,7 +277,6 @@ class Tools:
     # FIXME: correct travel begin/end
     @staticmethod
     def regenerate_travels(gcode: Gcode, move_speed = 0):
-        
         out_gcode = gcode.new()
         past_item = None
         is_first = True
@@ -294,14 +292,14 @@ class Tools:
                 if past_item is None:
                     out_gcode.append('G10; retract')
                 past_item = item.copy()
-                e_add += past_item.move.position.E
-                past_item.move.position.E = 0
+                e_add += past_item.block_data.position.E
+                past_item.block_data.position.E = 0
             else:
                 if past_item is not None:
                     if move_speed > 0:
-                        past_item.move.position.F = move_speed
+                        past_item.block_data.position.F = move_speed
                     out_gcode.append(past_item.copy())
-                    past_item.move.position.E = e_add
+                    past_item.block_data.position.E = e_add
                     out_gcode.append(past_item.copy())
                     out_gcode.append('G11; unretract')
                     e_add = 0

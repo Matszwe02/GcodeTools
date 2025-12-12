@@ -136,25 +136,23 @@ class Gcode(list[Block]):
         idx = index if index < len(self) else -1
         
         if len(self) == 0:
-            move = Move()
-            if data is None: data = BlockData()
+            if data is None: data = BlockData(config=self.config)
         else:
             last_index = idx - 1 * (idx > 0)
             
-            move = self[last_index].move.duplicate()
             if data is None: data = self[last_index].block_data
         
         if compile:
             parser = self.__get_parser__()
-            position = self[max(idx, 0) - 1].move.position if len(self) else Vector()
-            gcode_objs = parser._parse_line(parser.ParserData(CoordSystem(position=position), Block(None, move, gcode, True, data)))
+            position = self[max(idx, 0) - 1].block_data.position if len(self) else Vector()
+            gcode_objs = parser._parse_line(parser.ParserData(CoordSystem(position=position), Block(None, gcode, True, data, self.config)))
             for idx, obj in enumerate(gcode_objs):
                 if idx == -1:
                     super().append(obj.block)
                 else:
                     super().insert(index + idx, obj.block)
             return
-        gcode_obj = Block(None, move, gcode, True, data)
+        gcode_obj = Block(None, gcode, True, data, self.config)
         
         if idx == -1:
             super().append(gcode_obj)
@@ -170,16 +168,6 @@ class Gcode(list[Block]):
         while i < len(self):
             block: Block = self[i].unlink()
             block.prev = self[i - 1] if i > 0 else None
-            if prev := block.prev:
-                prev: Block
-                if prev.move.position != block.move.origin and block.move.origin != Vector():
-                    travel_block: Block = block.as_origin()
-                    travel_block.move.position = block.move.origin
-                    travel_block.prev = self[i - 1]
-                    block.prev = travel_block
-                    travel_block.sync()
-                    self.insert(i, travel_block)
-                    i += 1
             i += 1
             block.sync()
 

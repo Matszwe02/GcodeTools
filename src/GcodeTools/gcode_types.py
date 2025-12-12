@@ -9,13 +9,16 @@ def float_or_none(input):
     return input
 
 
-def get_coords(params: dict[str, str]):
-    X = float_or_none(params.get('X'))
-    Y = float_or_none(params.get('Y'))
-    Z = float_or_none(params.get('Z'))
-    E = float_or_none(params.get('E'))
-    F = float_or_none(params.get('F'))
-    return (X, Y, Z, E, F)
+class Coords:
+    def __init__(self, params: dict[str, str]):
+        self.X = float_or_none(params.get('X'))
+        self.Y = float_or_none(params.get('Y'))
+        self.Z = float_or_none(params.get('Z'))
+        self.E = float_or_none(params.get('E'))
+        self.F = float_or_none(params.get('F'))
+        self.I = float_or_none(params.get('I'))
+        self.J = float_or_none(params.get('J'))
+        self.K = float_or_none(params.get('K'))
 
 
 def remove_chars(string: str, chars: str)->str:
@@ -140,11 +143,8 @@ class Vector:
 
 
     def from_params(self, params: dict[str, str]):
-        self.X = float_or_none(params.get('X')) or self.X
-        self.Y = float_or_none(params.get('Y')) or self.Y
-        self.Z = float_or_none(params.get('Z')) or self.Z
-        self.E = float_or_none(params.get('E')) or self.E
-        self.F = float_or_none(params.get('F')) or self.F
+        c = Coords(params)
+        self.set_value(c.X, c.Y, c.Z, c.E, c.F)
         return self
 
 
@@ -207,6 +207,46 @@ class Vector:
         return self * (1.0 / len)
 
 
+    def rotate(self, deg: int):
+        """Rotate around Z axis with a given angle"""
+        angle_rad = math.radians(deg)
+        if not (self.X and self.Y): return self
+        x = self.X * math.cos(angle_rad) - self.Y * math.sin(angle_rad)
+        y = self.X * math.sin(angle_rad) + self.Y * math.cos(angle_rad)
+        
+        self.set_value(x, y)
+        return self 
+
+
+    def get_flowrate(self, config: Config, filament_offset = 0.0):
+        """
+        Returns flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement
+        
+        Args:
+            filament_offset: `float` - amount of filament already extruding or that's retracted
+        """
+        
+        distance = float(self)
+        if distance < config.step: return None
+        return (self.E - filament_offset) / distance
+
+
+    def set_flowrate(self, config: Config, flowrate: float):
+        """Sets flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement, otherwise returns E mm"""
+        
+        distance = float(self)
+        if distance < config.step: return None
+        flow = distance * flowrate
+        self.E = flow
+        return flow
+
+
+    def duration(self):
+        dist = float(self)
+        if dist == 0: dist = abs(self.E)
+        return dist * 60 / self.F
+
+
     def x(self) -> 'Vector':
         return Vector(X = self.X)
 
@@ -260,6 +300,15 @@ class Vector:
         return Vector(self.X, self.Y, self.Z, self.E, self.F)
 
 
+    def __float__(self):
+        """Returns the magnitude of `Vector`"""
+        return math.sqrt(math.pow(self.X, 2) + math.pow(self.Y, 2) + math.pow(self.Z, 2))
+
+
+    def __list__(self):
+        return [ self.X, self.Y, self.Z, self.E, self.F ]
+
+
     def __str__(self):
         return f'X={self.X}, Y={self.Y}, Z={self.Z}, E={self.E}, F={self.F}'
 
@@ -270,20 +319,8 @@ class Vector:
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Vector): return False
-        return all(coord == coord2 for coord, coord2 in zip([self.X, self.Y, self.Z, self.E or 0], [other.X, other.Y, other.Z, other.E or 0]))
+        return self.to_dict() == other.to_dict()
 
-    def to_list(self, with_e = True):
-        """Returns the vector as a list [X, Y, Z] or [X, Y, Z, E], defaulting None to 0.0"""
-        if with_e:
-            return [ self.X or 0.0, self.Y or 0.0, self.Z or 0.0, self.E or 0.0 ]
-        return [ self.X or 0.0, self.Y or 0.0, self.Z or 0.0 ]
-
-    def __float__(self):
-        """Returns the magnitude of `Vector`"""
-        x = self.X or 0.0
-        y = self.Y or 0.0
-        z = self.Z or 0.0
-        return math.sqrt(x**2 + y**2 + z**2)
 
     def __getitem__(self, key):
         data = [self.X, self.Y, self.Z, self.E, self.F]
@@ -321,26 +358,26 @@ class CoordSystem:
 
 
     def apply_move(self, params: dict[str, str]):
-        X, Y, Z, E, F = get_coords(params)
+        c = Coords(params)
 
-        self.position.set_value(F = F)
+        self.position.set_value(F = c.F)
         
         if self.abs_xyz:
-            if X: X += self.offset.X
-            if Y: Y += self.offset.Y
-            if Z: Z += self.offset.Z
-            self.position.set_value(X, Y, Z)
+            if c.X: c.X += self.offset.X
+            if c.Y: c.Y += self.offset.Y
+            if c.Z: c.Z += self.offset.Z
+            self.position.set_value(c.X, c.Y, c.Z)
         else:
-            self.position.add_value(X, Y, Z)
+            self.position.add_value(c.X, c.Y, c.Z)
         
         if self.abs_e:
-            if E is not None:
-                self.position.E = (E - self.abs_position_e)
-                self.abs_position_e = E
+            if c.E is not None:
+                self.position.E = (c.E - self.abs_position_e)
+                self.abs_position_e = c.E
             else:
                 self.position.E = 0
         else:
-            self.position.E = E or 0
+            self.position.E = c.E or 0
         
         return self.position.copy()
 
@@ -383,163 +420,10 @@ class CoordSystem:
 
 
 
-class Move:
-
-    def __init__(self, block_ref:'Block|None' = None, config = Config(), position = Vector()):
-        
-        self.block_ref = block_ref
-        self.position = position.copy()
-        """The end vector of Move\n\n`XYZ` is always absolute\n\n`E` is always relative\n\nEvery logic is performend regarding to that"""
-        self.config = config
-        self.origin = Vector()
-
-
-    def duplicate(self):
-        """
-        Use in consecutive `Block`. Used to duplicate `Block`
-        """
-        move = self.copy()
-        move.position.E = 0
-        return move
-
-
-    def translate(self, vec: Vector):
-        """
-        Translates `Move` with `Vector`\n
-        `Gcode.order()` will add travel moves for these translations\n
-        Use `Gcode.unlink()` to cancel travel move generation on `order`
-        """
-        self.position += vec
-        self.origin += vec.xyz()
-        return self
-
-
-    def rotate(self, deg: int):        
-        angle_rad = math.radians(deg)
-        if not (self.position.X and self.position.Y): return self
-        x = self.position.X * math.cos(angle_rad) - self.position.Y * math.sin(angle_rad)
-        y = self.position.X * math.sin(angle_rad) + self.position.Y * math.cos(angle_rad)
-        
-        self.position.set_value(x, y)
-        return self 
-
-
-    def scale(self, scale: int|Vector):
-        self.position *= scale
-        return self
-
-
-    def distance(self):
-        prev = self.get_prev()
-        
-        distance = lambda x, y: x - y
-        return self.position.vector_op(prev.position, distance)
-
-
-    def float_distance(self, distance: Vector|None = None):
-        """
-        Float distance of current move or between self and a Vector
-        """
-        
-        if isinstance(distance, Vector):
-            return math.sqrt(math.pow(distance.X or 0, 2) + math.pow(distance.Y or 0, 2) + math.pow(distance.Z or 0, 2))
-        
-        return self.float_distance(distance = self.distance())
-
-
-    def subdivide(self, step = None) -> list[Vector]:
-        prev = self.get_prev()
-        step = step or self.config.step
-        
-        dist = self.float_distance()
-        pos_list = []
-        if dist <= step: return [self]
-        stop = round(dist / step)
-        for i in range(stop):
-            i_normal = i / stop
-            pos_list.append(prev.position * (1 - i_normal) + self.position * i_normal)
-        return pos_list
-
-
-    def get_flowrate(self, filament_offset = 0.0):
-        """
-        Returns flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement
-        
-        Args:
-            filament_offset: `float` - amount of filament already extruding or that's retracted
-        """
-        
-        distance = self.float_distance()
-        if distance < self.config.step: return None
-        return (self.position.E - filament_offset) / distance
-
-
-    def set_flowrate(self, flowrate: float):
-        """Sets flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement, otherwise returns E mm"""
-        
-        distance = self.float_distance()
-        if distance < self.config.step: return None
-        flow = distance * flowrate
-        self.position.E = flow
-        return flow
-
-
-    def duration(self):
-        dist = self.float_distance()
-        if dist == 0: dist = abs(self.position.E or 0)
-        return dist * 60 / (self.position.F or self.config.speed)
-
-
-    def get_prev(self) -> 'Move':
-        return getattr(getattr(self.block_ref, 'prev', None), 'move', Move())
-
-
-    def update_origin(self):
-        self.origin = self.get_prev().position.xyz()
-
-
-    def to_str(self):
-        """Returns gcode string of `Move`"""
-        
-        prev = self.get_prev()
-        nullable = lambda param, a: '' if a is None else f' {param}{a:.{self.config.precision}f}'.rstrip('0').rstrip('.')
-        
-        out = ''
-        
-        if self.position.X != self.origin.X: out += nullable('X', self.position.X)
-        if self.position.Y != self.origin.Y: out += nullable('Y', self.position.Y)
-        if self.position.Z != self.origin.Z: out += nullable('Z', self.position.Z)
-        if self.position.E != 0: out += nullable('E', self.position.E)
-        if self.position.F != prev.position.F: out += nullable('F', self.position.F)
-        
-        if out != '': out = 'G1' + out + '\n'
-        
-        if self.position != Vector() and self.origin == Vector(): out = Static.HOME_DESC + '\n' + out
-        
-        return out
-
-
-    def to_dict(self):
-        return self.position.to_dict()
-
-
-    def copy(self):
-        """Create a deep copy"""
-        return Move(None, self.config, self.position.copy())
-
-    def __str__(self):
-        return dict_to_pretty_str(self.to_dict())
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Move): return False
-        if self.position != other.position: return False
-        return True
-
-
 
 class Arc:
     
-    def __init__(self, move = Move(), dir = 0, ijk = Vector()):
+    def __init__(self, position: Vector, dir = 0, ijk = Vector()):
         """
         Args:
             dir: `int` - 2=CW, 3=CCW
@@ -547,16 +431,15 @@ class Arc:
             ijk: `Vector` with respectful dimensions
         It is not possible to perform any operations on arc moves, only subdivision is possible
         """
-        self.move = move
+        self.position = position
         self.dir = dir
         self.ijk = ijk.vector_op(Vector())
 
 
     def from_params(self, params: dict[str, str]):
-        self.ijk.X = float_or_none(params.get('I')) or self.ijk.X
-        self.ijk.Y = float_or_none(params.get('J')) or self.ijk.Y
-        self.ijk.Z = float_or_none(params.get('K')) or self.ijk.Z
-        if params.get('R', None) is not None: raise NotImplementedError('"R" arc moves are not supported!')
+        c = Coords(params)
+        self.ijk.set_value(c.I, c.J, c.K)
+        if params.get('R') is not None: raise NotImplementedError('"R" arc moves are not supported!')
         
         if params['0'] == 'G2': self.dir=2
         if params['0'] == 'G3': self.dir=3
@@ -564,14 +447,13 @@ class Arc:
         return self
 
 
-    def subdivide(self, next: Move, step: float|None=None) -> list[Move]:
-        if step is None: step = self.move.config.step
+    def subdivide(self, next: Vector, step: float) -> list[Vector]:
         
-        center = self.ijk + self.move.position.xyz()
+        center = self.ijk + self.position.xyz()
         radius = math.sqrt((self.ijk.X or 0)**2 + (self.ijk.Y or 0)**2)
 
         start_angle = math.atan2(-(self.ijk.Y or 0), -(self.ijk.X or 0))
-        end_angle = math.atan2(next.position.Y - center.Y, next.position.X - center.X)
+        end_angle = math.atan2(next.Y - center.Y, next.X - center.X)
 
         if self.dir == 3:
             if end_angle < start_angle:
@@ -585,26 +467,20 @@ class Arc:
 
         num_steps = max(math.ceil(min(max(8, (abs(total_angle) * radius / step)), 360 * total_angle_normal)), 1)
 
-        moves = []
-        e = (next.position.E) / num_steps
+        vectors = []
+        e = (next.E) / num_steps
 
         for i in range(num_steps):
             t = i / (num_steps - 1) if num_steps > 1 else 0
             angle = start_angle + t * total_angle
             x = center.X + radius * math.cos(angle)
             y = center.Y + radius * math.sin(angle)
+            z = self.position.Z + t * (next.Z - self.position.Z)
 
-            if next.position.Z is None:
-                z = None
-            elif self.move.position.Z is None:
-                z = next.position.Z
-            else:
-                z = self.move.position.Z + t * (next.position.Z - self.move.position.Z)
+            new_vector = Vector(x, y, z, e, self.position.F)
+            vectors.append(new_vector)
 
-            new_move = Move(None, self.move.config, Vector(x, y, z, e, self.move.position.F))
-            moves.append(new_move)
-
-        return moves
+        return vectors
 
 
 
@@ -615,7 +491,7 @@ class BlockData:
         return BlockData(None, 0, False, 0, False, 0, 0)
 
 
-    def __init__(self, block_ref: 'Block|None'=None, e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None, object='', move_type=None, layer=0):
+    def __init__(self, block_ref: 'Block|None'=None, position=Vector(), e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None, object='', move_type=None, layer=0):
         
         self.block_ref = block_ref
         self.e_temp = e_temp
@@ -627,6 +503,7 @@ class BlockData:
         self.object = object
         self.move_type = move_type
         self.layer = layer
+        self.position = position
     
     
     def set_fan(self, fan: int):
@@ -678,10 +555,10 @@ class BlockData:
             out += f';TYPE:{Static.MOVE_TYPES.get(self.move_type, Static.MOVE_TYPES[-1])}\n'
         if self.object != prev.object:
             if prev.object:
-                if not self.block_ref.move.config.enable_exclude_object: out += ';'
+                if not self.block_ref.config.enable_exclude_object: out += ';'
                 out += f'EXCLUDE_OBJECT_END NAME={prev.object.replace(" ", "_")}\n'
             if self.object:
-                if not self.block_ref.move.config.enable_exclude_object: out += ';'
+                if not self.block_ref.config.enable_exclude_object: out += ';'
                 out += f'EXCLUDE_OBJECT_START NAME={self.object.replace(" ", "_")}\n'
         
         if self.e_temp != prev.e_temp and self.e_temp is not None:
@@ -699,11 +576,25 @@ class BlockData:
         if self.T != prev.T and self.T is not None:
             out += f'{Static.TOOL_CHANGE_DESC.format(self.T)}\n'
         
+        nullable = lambda param, a: '' if a is None else f' {param}{a:.{self.block_ref.config.precision}f}'.rstrip('0').rstrip('.')
+        move = ''
+
+        if self.position.X != prev.position.X: move += nullable('X', self.position.X)
+        if self.position.Y != prev.position.Y: move += nullable('Y', self.position.Y)
+        if self.position.Z != prev.position.Z: move += nullable('Z', self.position.Z)
+        if self.position.E != 0: move += nullable('E', self.position.E)
+        if self.position.F != prev.position.F: move += nullable('F', self.position.F)
+        
+        if move != '': out += 'G1' + move + '\n'
+        
+        if self.position != Vector() and prev.position == Vector(): out = Static.HOME_DESC + '\n' + out
+        
         return out
 
 
     def to_dict(self):
         return {
+                'position': self.position.to_dict(),
                 'e_temp': self.e_temp,
                 'bed_temp': self.bed_temp,
                 'fan': self.fan,
@@ -715,22 +606,25 @@ class BlockData:
 
 
     def copy(self):
-        return BlockData(self.block_ref, self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T, self.object, self.move_type, self.layer)
+        return BlockData(self.block_ref, self.position, self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T, self.object, self.move_type, self.layer)
 
     def __str__(self):
         return dict_to_pretty_str(self.to_dict())
+    
+    def __eq__(self, other: 'BlockData') -> bool:
+        return self.to_dict() == other.to_dict()
 
 
 
 class Block:
     
-    def __init__(self, prev:'Block|None' = None, move: Move = Move(), command: str | None = None, emit_command = True, block_data = BlockData()):
+    def __init__(self, prev:'Block|None' = None, command: str | None = None, emit_command = True, block_data = BlockData(), config: Config = None):
         
         self.prev = prev
-        self.move = move.copy()
         self.command = command
         self.emit_command = emit_command
         self.block_data = block_data.copy()
+        self.config = config
 
 
     def as_origin(self):
@@ -739,9 +633,9 @@ class Block:
         
         Used to ensure that move path is deterministic, when splitting `Gcode`
         """
-        new = Block(None, self.move.copy(), block_data=self.block_data.copy())
-        new.move.position.E = 0
-        new.move.position.F = 0
+        new = Block(None, self.block_data.position.copy(), block_data=self.block_data.copy())
+        new.block_data.position.E = 0
+        new.block_data.position.F = 0
         return new
 
 
@@ -749,9 +643,7 @@ class Block:
         """
         Sync objects inside `Block` to refer to it
         """
-        self.move.block_ref = self
         self.block_data.block_ref = self
-        self.move.update_origin()
         return self
 
 
@@ -759,8 +651,6 @@ class Block:
         """
         Inverse of `sync`. Used to make object serializable
         """
-        self.move.block_ref = None
-        self.move.origin = Vector()
         self.block_data.block_ref = None
         self.prev = None
         return self
@@ -769,7 +659,6 @@ class Block:
     def to_dict(self):
         return {
                 'command': self.command,
-                'move': self.move.to_dict(),
                 'emit_command': self.emit_command,
                 'data': self.block_data.to_dict(),
             }
@@ -781,7 +670,6 @@ class Block:
         line_str = ''
         
         line_str += self.block_data.to_str()
-        line_str += self.move.to_str()
         
         if self.emit_command and self.command:
             line_str += self.command + '\n'
@@ -790,13 +678,12 @@ class Block:
             if verbose:
                 line_str += '; '
                 line_str += remove_chars(json.dumps(self.block_data.to_dict()), '{} \"').replace(",", " ")
-                line_str += f', duration:{self.move.duration():.3f}s\n'
         
         return line_str
 
 
     def copy(self):
-        return Block(self.prev, self.move, self.command, self.emit_command, self.block_data)
+        return Block(self.prev, self.command, self.emit_command, self.block_data, self.config)
 
     def __str__(self):
         return dict_to_pretty_str(self.to_dict())
