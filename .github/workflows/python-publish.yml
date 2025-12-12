@@ -33,7 +33,7 @@ jobs:
                 if [[ -z "$VERSION" ]]; then
                   exit 1
                 fi
-                sed -i -E "s/^version\s*=\s*[\'\"][^\'\"]*[\'\"]/version = \"$VERSION\"/" pyproject.toml
+                sed -i -E "s/0.0.0/$VERSION/" pyproject.toml
 
             - name: Build release distributions
               run: |

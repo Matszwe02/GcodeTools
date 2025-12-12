@@ -1,7 +1,7 @@
 from typing import List
 from GcodeTools.gcode_types import *
 from GcodeTools.gcode import Gcode
-from GcodeTools.gcode_tools import MoveTypes, Tools
+from GcodeTools.gcode_tools import Tools
 import numpy as np
 from PIL import Image
 import polyscope as ps
@@ -11,14 +11,15 @@ import io
 class Thumbnails:
 
     MOVE_TYPE_COLORS = {
-        'inner' : [255, 255, 0],
-        'outer' : [255, 55, 0],
-        'skirt' : [0, 31, 7],
-        'solid' : [63, 0, 127],
-        'sparse' : [127, 0, 0],
-        'bridge' : [0, 127, 255],
-        'top' : [192, 0, 0],
-        'overhang' : [0, 0, 255],
+        Static.INTERNAL_PERIMETER : [255, 255, 0],
+        Static.EXTERNAL_PERIMETER : [255, 55, 0],
+        Static.SKIRT : [0, 31, 7],
+        Static.SOLID_INFILL : [63, 0, 127],
+        Static.SPARSE_INFILL : [127, 0, 0],
+        Static.BRIDGE : [0, 127, 255],
+        Static.TOP_SOLID_INFILL : [192, 0, 0],
+        Static.OVERHANG_PERIMETER : [0, 0, 255],
+        Static.SUPPORT : [0, 255, 0],
     }
 
     @staticmethod
@@ -71,30 +72,29 @@ class Thumbnails:
             draw_color = np.array([color[0] / 255, color[1] / 255, color[2] / 255])
 
         for block in gcode:
-            if not block.move.position.is_none(False):
-                new_position = np.array([block.move.position.X, block.move.position.Y, block.move.position.Z])
-                if current_position is None:
-                    current_position = new_position
-                    continuous = False
-                    continue
-                if block.move.position.E <= 0:
-                    current_position = new_position
-                    continuous = False
-                    continue
-                flowrate = 0.01 if block.meta.get('type') == MoveTypes.NO_OBJECT else .4
-                flowrate *= e_scale
-                if not continuous:
-                    nodes.append(current_position)
-                    sizes.append(flowrate)
-                nodes.append(new_position)
-                edges.append([len(nodes) - 2, len(nodes) - 1])
-                colors_arr = Thumbnails.MOVE_TYPE_COLORS.get(block.meta.get('type'), [127, 127, 127])
-                if color is None:
-                    draw_color = np.array([colors_arr[0]/255, colors_arr[1]/255, colors_arr[2]/255])
-                sizes.append(flowrate)
-                colors.append(draw_color)
+            new_position = np.array([block.block_data.position.X, block.block_data.position.Y, block.block_data.position.Z])
+            if current_position is None:
                 current_position = new_position
-                continuous = True
+                continuous = False
+                continue
+            if block.block_data.position.E <= 0:
+                current_position = new_position
+                continuous = False
+                continue
+            flowrate = 0.01 if block.block_data.move_type == Static.NO_OBJECT else .4
+            flowrate *= e_scale
+            if not continuous:
+                nodes.append(current_position)
+                sizes.append(flowrate)
+            nodes.append(new_position)
+            edges.append([len(nodes) - 2, len(nodes) - 1])
+            colors_arr = Thumbnails.MOVE_TYPE_COLORS.get(block.block_data.move_type, [127, 127, 127])
+            if color is None:
+                draw_color = np.array([colors_arr[0]/255, colors_arr[1]/255, colors_arr[2]/255])
+            sizes.append(flowrate)
+            colors.append(draw_color)
+            current_position = new_position
+            continuous = True
 
         nodes = np.array(nodes)
         edges = np.array(edges)
@@ -169,12 +169,8 @@ class Thumbnails:
             print('Warning: some features are not supported with this python version')
         ps.set_verbosity(6)
 
-        # try:
-        # except:
-        # ps.init('openGL3_egl')
         ps.set_use_prefs_file(False)
         ps.init()
-        # ps.set_always_redraw(True)
         ps.set_up_dir("z_up")
         ps.set_view_projection_mode("orthographic" if fov < 5 else "perspective")
         intrinsics = ps.CameraIntrinsics(fov_vertical_deg=fov if fov >= 5 else 35, aspect=1.)
