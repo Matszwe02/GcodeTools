@@ -20,7 +20,7 @@ license-files = ["LICENSE*"]
 keywords = ["gcode", "g-code", "printing", "3d"]
 
 [project.optional-dependencies]
-Thumbnails = ["GcodeTools==0.0.0"]
+Thumbnails = ["GcodeTools==0.0.0", "pillow==11.3.0", "polyscope==2.5.0", "numpy==2.3.3"]
 
 
 [project.urls]
