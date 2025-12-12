@@ -268,10 +268,6 @@ class Vector:
         return {'X': self.X, 'Y': self.Y, 'Z': self.Z, 'E': self.E, 'F': self.F}
 
 
-    def __bool__(self):
-        return any(coord is not None for coord in [self.X, self.Y, self.Z, self.E])
-
-
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Vector): return False
         return all(coord == coord2 for coord, coord2 in zip([self.X, self.Y, self.Z, self.E or 0], [other.X, other.Y, other.Z, other.E or 0]))
