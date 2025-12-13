@@ -260,7 +260,7 @@ class GcodeParser:
         coords = CoordSystem(position=Vector(F=gcode.config.speed), abs_e=False)
         
         with open(filename, 'w') as f:
-            f.write(coords.to_str())
+            f.write(gcode.header + '\n' + coords.to_str())
 
             len_blocks = len(gcode)
 
@@ -272,6 +272,8 @@ class GcodeParser:
                 
                 if progress_callback:
                     progress_callback(i, len_blocks)
+
+            f.write('\n' + gcode.footer)
 
 
     @staticmethod
