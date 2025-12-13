@@ -576,14 +576,14 @@ class BlockData:
         if self.T != prev.T and self.T is not None:
             out += f'{Static.TOOL_CHANGE_DESC.format(self.T)}\n'
         
-        nullable = lambda param, a: '' if a is None else f' {param}{a:.{self.block_ref.config.precision}f}'.rstrip('0').rstrip('.')
+        print_coord = lambda param, a: '' f' {param}{a:.{self.block_ref.config.precision}f}'.rstrip('0').rstrip('.')
         move = ''
 
-        if self.position.X != prev.position.X: move += nullable('X', self.position.X)
-        if self.position.Y != prev.position.Y: move += nullable('Y', self.position.Y)
-        if self.position.Z != prev.position.Z: move += nullable('Z', self.position.Z)
-        if self.position.E != 0: move += nullable('E', self.position.E)
-        if self.position.F != prev.position.F: move += nullable('F', self.position.F)
+        if self.position.X != prev.position.X: move += print_coord('X', self.position.X)
+        if self.position.Y != prev.position.Y: move += print_coord('Y', self.position.Y)
+        if self.position.Z != prev.position.Z: move += print_coord('Z', self.position.Z)
+        if self.position.E != 0: move += print_coord('E', self.position.E)
+        if self.position.F != prev.position.F: move += print_coord('F', self.position.F)
         
         if move != '': out += 'G1' + move + '\n'
         
@@ -678,6 +678,7 @@ class Block:
             if verbose:
                 line_str += '; '
                 line_str += remove_chars(json.dumps(self.block_data.to_dict()), '{} \"').replace(",", " ")
+                line_str += '\n'
         
         return line_str
 
