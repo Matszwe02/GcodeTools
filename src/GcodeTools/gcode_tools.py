@@ -393,5 +393,5 @@ class Tools:
 
     @staticmethod
     def write_slicer_header(gcode: Gcode):
-        if 'Slicer' not in gcode.header.splitlines()[0]:
+        if not gcode.header or 'Slicer' not in gcode.header.splitlines()[0]:
             gcode.header = '; old Moonraker versions required typing PrusaSlicer - on here\n' + gcode.header
