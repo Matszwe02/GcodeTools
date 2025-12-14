@@ -232,6 +232,8 @@ class Gcode(list[Block]):
 
     def copy(self):
         gcode = self.new()
+        gcode.header = self.header
+        gcode.footer = self.footer
         
         for i in self:
             gcode.append(i.copy())
