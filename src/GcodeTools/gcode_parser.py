@@ -54,6 +54,8 @@ class MetaParser:
     def get_keyword_arg(line_no: int, gcode: Gcode, keyword: list[KW], seek_limit = 20):
         
         for offset in range(seek_limit):
+            if line_no - offset < 0: continue
+            if line_no - offset >= len(gcode): continue
             line_content = gcode[line_no - offset].command
             
             for option in keyword:
