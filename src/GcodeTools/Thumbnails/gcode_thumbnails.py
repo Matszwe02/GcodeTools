@@ -7,6 +7,8 @@ from PIL import Image
 import polyscope as ps
 import io
 
+SOFTWARE_RENDERING = False
+
 
 class Thumbnails:
 
@@ -173,12 +175,12 @@ class Thumbnails:
         ps.set_verbosity(6)
 
         ps.set_use_prefs_file(False)
-        try:
-            ps.init() # Try hardware rendering first
-            print('Polyscope initialized with default redering')
-        except Exception as e:
-            print(f"Hardware rendering initialization failed: {e}. Falling back to software rendering.")
-            ps.init(backend="osmesa") # Fallback to software rendering
+        if SOFTWARE_RENDERING:
+            ps.init(backend="osmesa")
+            print('Polyscope initialized with software redering')
+        else:
+            ps.init()
+            print('Polyscope initialized with hardware redering')
         ps.set_up_dir("z_up")
         ps.set_view_projection_mode("orthographic" if fov < 5 else "perspective")
         intrinsics = ps.CameraIntrinsics(fov_vertical_deg=fov if fov >= 5 else 35, aspect=1.)

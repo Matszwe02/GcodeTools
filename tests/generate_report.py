@@ -14,8 +14,9 @@ from PIL import Image, ImageDraw, ImageFont
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from GcodeTools import Gcode, Tools
-from GcodeTools.Thumbnails.gcode_thumbnails import Thumbnails
+from GcodeTools.Thumbnails import gcode_thumbnails
 
+gcode_thumbnails.SOFTWARE_RENDERING = True
 
 # This will store the data needed for the report
 processed_data = []
@@ -67,7 +68,7 @@ def process_gcode(name, id):
 
     if len(thumb_gcode_for_file) > 2: # Ensure there's enough data to generate a thumbnail
         try:
-            file_thumbnail_img = Thumbnails.generate_thumbnail(thumb_gcode_for_file, render_scale=2, resolution=1000) # Doubled resolution
+            file_thumbnail_img = gcode_thumbnails.Thumbnails.generate_thumbnail(thumb_gcode_for_file, render_scale=2, resolution=1000) # Doubled resolution
             if file_thumbnail_img.mode == 'RGBA':
                 background = Image.new('RGB', file_thumbnail_img.size, (255, 255, 255))
                 background.paste(file_thumbnail_img, mask=file_thumbnail_img.split()[3])
@@ -86,7 +87,7 @@ def process_gcode(name, id):
         # Ensure object name is valid and there's enough data for a thumbnail
         if obj_name and len(obj_gcode) > 2:
             try:
-                obj_thumb_img = Thumbnails.generate_thumbnail(obj_gcode, render_scale=1, resolution=1000, draw_bounding_box=True) # Doubled resolution for Objects
+                obj_thumb_img = gcode_thumbnails.Thumbnails.generate_thumbnail(obj_gcode, render_scale=1, resolution=1000, draw_bounding_box=True) # Doubled resolution for Objects
                 if obj_thumb_img.mode == 'RGBA':
                     background = Image.new('RGB', obj_thumb_img.size, (255, 255, 255))
                     background.paste(obj_thumb_img, mask=obj_thumb_img.split()[3])
