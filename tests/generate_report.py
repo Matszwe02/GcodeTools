@@ -304,13 +304,13 @@ def main():
         
         for future in as_completed(futures):
             gcode_name = futures[future]
-            try:
-                result_data = future.result() # Get the dictionary returned by process_gcode
-                if result_data:
-                    processed_data.append(result_data) # Append the dictionary to our list
-                print(f'                GCODE PROCESSING: finished processing {len(processed_data)} out of {total} for {gcode_name}')
-            except Exception as exc:
-                print(f'{gcode_name} generated an exception: {exc}')
+            # try:
+            result_data = future.result() # Get the dictionary returned by process_gcode
+            if result_data:
+                processed_data.append(result_data) # Append the dictionary to our list
+            print(f'                GCODE PROCESSING: finished processing {len(processed_data)} out of {total} for {gcode_name}')
+            # except Exception as exc:
+            #     print(f'{gcode_name} generated an exception: {exc}')
 
     print('Finished processing G-codes!')
     

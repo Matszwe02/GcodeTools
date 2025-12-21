@@ -158,6 +158,7 @@ class Thumbnails:
         camera_pos *= camera_dist
         camera_pos += middle
         
+        print('Setting up polyscope')
 
         w, h = ps.get_window_size()
         if w != resolution or h != resolution:
