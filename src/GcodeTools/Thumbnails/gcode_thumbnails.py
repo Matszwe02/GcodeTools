@@ -163,8 +163,10 @@ class Thumbnails:
         if w != resolution or h != resolution:
             ps.set_window_size(resolution, resolution)
 
+        print('Setting up polyscope environment')
         try:
             ps.set_allow_headless_backends(True) 
+            print('Polyscope set with headless backend')
         except:
             print('Warning: some features are not supported with this python version')
         ps.set_verbosity(6)
@@ -172,6 +174,7 @@ class Thumbnails:
         ps.set_use_prefs_file(False)
         try:
             ps.init() # Try hardware rendering first
+            print('Polyscope initialized with default redering')
         except Exception as e:
             print(f"Hardware rendering initialization failed: {e}. Falling back to software rendering.")
             ps.init(backend="osmesa") # Fallback to software rendering
