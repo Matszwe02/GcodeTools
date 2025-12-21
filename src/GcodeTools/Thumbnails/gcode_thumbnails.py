@@ -170,7 +170,11 @@ class Thumbnails:
         ps.set_verbosity(6)
 
         ps.set_use_prefs_file(False)
-        ps.init()
+        try:
+            ps.init() # Try hardware rendering first
+        except Exception as e:
+            print(f"Hardware rendering initialization failed: {e}. Falling back to software rendering.")
+            ps.init(backend="osmesa") # Fallback to software rendering
         ps.set_up_dir("z_up")
         ps.set_view_projection_mode("orthographic" if fov < 5 else "perspective")
         intrinsics = ps.CameraIntrinsics(fov_vertical_deg=fov if fov >= 5 else 35, aspect=1.)
