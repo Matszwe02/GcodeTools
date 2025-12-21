@@ -19,8 +19,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install .
           pip install .[Thumbnails]
-      - name: Install OSMesa for headless rendering
-        run: sudo apt update && sudo apt install -y libosmesa6 libosmesa6-dev
+      - name: Install rendering dependencies for headless environment
+        run: sudo apt update && sudo apt install -y libosmesa6 libosmesa6-dev libegl1-mesa-dev libgl1-mesa-dri libegl1-mesa libgbm1
       - name: Generate Gcode Report
         run: python tests/generate_report.py
       - name: Upload Gcode Report

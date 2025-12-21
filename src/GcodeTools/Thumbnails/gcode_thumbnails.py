@@ -7,9 +7,6 @@ from PIL import Image
 import polyscope as ps
 import io
 
-SOFTWARE_RENDERING = False
-
-
 class Thumbnails:
 
     MOVE_TYPE_COLORS = {
@@ -175,12 +172,8 @@ class Thumbnails:
         ps.set_verbosity(6)
 
         ps.set_use_prefs_file(False)
-        if SOFTWARE_RENDERING:
-            ps.init(backend="osmesa")
-            print('Polyscope initialized with software redering')
-        else:
-            ps.init()
-            print('Polyscope initialized with hardware redering')
+        ps.init("openGL3_egl")
+        print('Polyscope initialized with OpenGL3 EGL backend')
         ps.set_up_dir("z_up")
         ps.set_view_projection_mode("orthographic" if fov < 5 else "perspective")
         intrinsics = ps.CameraIntrinsics(fov_vertical_deg=fov if fov >= 5 else 35, aspect=1.)

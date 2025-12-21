@@ -16,8 +16,6 @@ from PIL import Image, ImageDraw, ImageFont
 from GcodeTools import Gcode, Tools
 from GcodeTools.Thumbnails import gcode_thumbnails
 
-gcode_thumbnails.SOFTWARE_RENDERING = True
-
 # This will store the data needed for the report
 processed_data = []
 
