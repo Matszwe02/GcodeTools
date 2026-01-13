@@ -176,9 +176,9 @@ for key in config.keys():
 # Supported Slicers
 
 Tested with:
-- Prusa Slicer `2.8.1`
+- Prusa Slicer `2.8.1`, `2.9.3`
 - Orca Slicer `2.1.1`
-- Super Slicer `2.5.59.12`
+- Super Slicer `2.5.59.12`, `2.7.61.10`
 - Slic3r `1.3.0`
 - Cura `5.8.1`
 - Simplify3D `4.0.0`
@@ -191,8 +191,8 @@ Tested with:
 | Keep track of coordinates |     ✅     |      |                   |                  |        |                   |            |              |
 | Temperature control       |     ✅     |      |                   |                  |        |                   |            |              |
 | Fan control               |     ✅     |      |                   |                  |        |                   |            |              |
-| Spliting Objects          |     ❌     |  ✅  |        ✅1        |        ✅        |   ❌   |        ✅         |     ✅     |     ✅      |
-| Extracting features       |     ❌     |  ➖  |        ✅         |        ✅        |   ❌   |        ✅        |     ✅     |      ✅      |
+| Spliting Objects          |     ➖     |  ✅  |        ✅1        |        ✅        |   ❌   |        ✅         |     ✅     |     ✅      |
+| Extracting features       |     ➖     |  ➖  |        ✅         |        ✅        |   ❌   |        ✅        |     ✅     |      ✅      |
 | Arc Moves                 |    🔜2    |      |                   |                  |        |                   |            |              |
 
 
