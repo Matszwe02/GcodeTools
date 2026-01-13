@@ -26,7 +26,7 @@ def process_gcode(name, id):
     """
     Processes a single G-code file, extracts relevant data, and generates thumbnails.
     """
-    print(f'analysing {name}...')
+    print(f'analising {name}...')
     
     gcode = Gcode()
     
@@ -48,9 +48,9 @@ def process_gcode(name, id):
     except FileNotFoundError:
         print(f"Error: G-code file not found at {gcode_path}")
         return None
-    except Exception as e:
-        print(f"Error reading G-code file {name}: {e}")
-        return None
+    # except Exception as e:
+    #     print(f"Error reading G-code file {name}: {e}")
+    #     return None
 
     # Calculate total material
     total_material = sum(block.block_data.position.E for block in out_gcode)
@@ -305,7 +305,7 @@ def main():
         print("No G-code files found.")
         return
 
-    print(f'Analysing {total} gcodes')
+    print(f'Analising {total} gcodes')
     
     num_processes = min(os.cpu_count() or 1, total) # Use all available CPU cores, up to total files
     # num_processes = 1
