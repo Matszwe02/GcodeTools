@@ -46,7 +46,7 @@ class MetaParser:
     
     OBJECT_START = [KW("^; printing object", None, "^EXCLUDE_OBJECT_START NAME="), KW("^EXCLUDE_OBJECT_START NAME=", "^;WIDTH:", None, -1), KW("^EXCLUDE_OBJECT_START NAME=", "^G1.*E", None, -1), KW("^;MESH:"), KW("^M486 S"), KW("^M624")]
     OBJECT_END = [KW("^; stop printing object", None, "^EXCLUDE_OBJECT_END"), KW("^EXCLUDE_OBJECT_END"), KW("^;MESH:NONMESH"), KW("^M486 S-1"), KW("^M625")]
-    OBJECT_NAME_DEFINE = [KW("^M486 A")]
+    OBJECT_NAME_DEFINE = [KW("^M486 A"), KW("^; object:{\"name\":\"")]
     # FIXME: Edge case scenarios, split travel moves perfectly
     # TODO: travel trimming, recalculation, preserve last travel vector at object
 
@@ -129,6 +129,9 @@ class MetaParser:
     def update_object_map(id: int, gcode: Gcode, current_object: str, object_map: dict):
         _, namedef = MetaParser.get_keyword_arg(id, gcode, MetaParser.OBJECT_NAME_DEFINE, seek_limit=1)
         if namedef is not None:
+            if '"' in namedef: # SuperSlicer naming
+                namedef = namedef.split('"')[0]
+                current_object = str(len(object_map.keys()))
             object_map[current_object] = namedef
             print(f'meta: Putting {namedef} to meta as {current_object}')
             print(f'Current object map: {object_map}')
