@@ -123,10 +123,12 @@ def generate_report_image(data: list[dict], output_filename: str):
     OBJECT_THUMBNAIL_SIZE = 200
     LINE_SPACING = 5
     FONT_SIZE = 24 # Increased from 16
+    OBJECT_NAME_FONT_SIZE = 10 # Smaller font size for object names
     OBJECT_THUMBNAIL_SPACING = 5  # Spacing between Objects vertically
     BOTTOM_MARGIN = 20 # Additional margin at the bottom of the report
 
     font = ImageFont.load_default(size=FONT_SIZE) # Load default font with specified size
+    obj_name_font = ImageFont.load_default(size=OBJECT_NAME_FONT_SIZE)
 
     # Create a dummy image and draw object to calculate text dimensions
     dummy_img = Image.new('RGB', (1, 1), color=(255, 255, 255))
@@ -138,6 +140,10 @@ def generate_report_image(data: list[dict], output_filename: str):
     # Ensure a minimum line height if the calculated one is too small
     if TEXT_LINE_HEIGHT < FONT_SIZE:
         TEXT_LINE_HEIGHT = FONT_SIZE + 4 # A bit more than font size for spacing
+
+    OBJECT_NAME_TEXT_HEIGHT = draw.textbbox((0, 0), "Tg", font=obj_name_font)[3] - draw.textbbox((0, 0), "Tg", font=obj_name_font)[1]
+    if OBJECT_NAME_TEXT_HEIGHT < OBJECT_NAME_FONT_SIZE:
+        OBJECT_NAME_TEXT_HEIGHT = OBJECT_NAME_FONT_SIZE + 2 # A bit more than font size for spacing
 
     num_files = len(data)
     
@@ -194,7 +200,9 @@ def generate_report_image(data: list[dict], output_filename: str):
     for item in data:
         max_objects_in_a_file = max(max_objects_in_a_file, len(item.get('objects', {})))
     
-    object_row_total_height = max_objects_in_a_file * OBJECT_THUMBNAIL_SIZE + \
+    # Each object now has a name and a thumbnail
+    object_content_height_per_obj = OBJECT_NAME_TEXT_HEIGHT + LINE_SPACING + OBJECT_THUMBNAIL_SIZE
+    object_row_total_height = max_objects_in_a_file * object_content_height_per_obj + \
                               max(0, max_objects_in_a_file - 1) * OBJECT_THUMBNAIL_SPACING + \
                               CELL_PADDING * 2
     row_heights["Objects"] = object_row_total_height
@@ -260,9 +268,17 @@ def generate_report_image(data: list[dict], output_filename: str):
                 obj_y_offset = row_start_y + CELL_PADDING
                 
                 for obj_name, obj_thumb_img in objects.items():
+                    # Draw object name
+                    obj_name_bbox = draw.textbbox((0,0), obj_name, font=obj_name_font)
+                    obj_name_width = obj_name_bbox[2] - obj_name_bbox[0]
+                    obj_name_x_pos = initial_obj_x_pos + (OBJECT_THUMBNAIL_SIZE - obj_name_width) / 2
+                    draw.text((int(obj_name_x_pos), int(obj_y_offset)), obj_name, fill=(0, 0, 0), font=obj_name_font)
+                    
+                    obj_y_offset += OBJECT_NAME_TEXT_HEIGHT + LINE_SPACING # Space for text and a line space
+
                     resized_obj_thumb = obj_thumb_img.resize((OBJECT_THUMBNAIL_SIZE, OBJECT_THUMBNAIL_SIZE))
                     img.paste(resized_obj_thumb, (int(initial_obj_x_pos), int(obj_y_offset)))
-                    obj_y_offset += OBJECT_THUMBNAIL_SIZE + OBJECT_THUMBNAIL_SPACING
+                    obj_y_offset += OBJECT_THUMBNAIL_SIZE + OBJECT_THUMBNAIL_SPACING # Space for thumbnail and spacing for next object
             
             current_x += file_col_widths[i] + CELL_PADDING
         
