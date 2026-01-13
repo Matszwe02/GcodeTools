@@ -46,6 +46,7 @@ class MetaParser:
     
     OBJECT_START = [KW("^; printing object", None, "^EXCLUDE_OBJECT_START NAME="), KW("^EXCLUDE_OBJECT_START NAME=", "^;WIDTH:", None, -1), KW("^EXCLUDE_OBJECT_START NAME=", "^G1.*E", None, -1), KW("^;MESH:"), KW("^M486 S"), KW("^M624")]
     OBJECT_END = [KW("^; stop printing object", None, "^EXCLUDE_OBJECT_END"), KW("^EXCLUDE_OBJECT_END"), KW("^;MESH:NONMESH"), KW("^M486 S-1"), KW("^M625")]
+    OBJECT_NAME_DEFINE = [KW("^M486 A")]
     # FIXME: Edge case scenarios, split travel moves perfectly
     # TODO: travel trimming, recalculation, preserve last travel vector at object
 
@@ -125,6 +126,16 @@ class MetaParser:
 
 
     @staticmethod
+    def update_object_map(id: int, gcode: Gcode, current_object: str, object_map: dict):
+        _, namedef = MetaParser.get_keyword_arg(id, gcode, MetaParser.OBJECT_NAME_DEFINE, seek_limit=1)
+        if namedef is not None:
+            object_map[current_object] = namedef
+            print(f'meta: Putting {namedef} to meta as {current_object}')
+            print(f'Current object map: {object_map}')
+        return object_map
+
+
+    @staticmethod
     def get_object(id: int, gcode: Gcode):
         
         def sanitize(name: str):
@@ -153,11 +164,13 @@ class MetaParser:
         move_type = -1
         move_object = ''
         len_gcode = len(gcode)
+        object_map = {}
         
         for id, block in enumerate(gcode):
                         
             move_type = MetaParser.get_type(block.command) or move_type
             move_object = MetaParser.get_object(id, gcode) or move_object
+            object_map = MetaParser.update_object_map(id, gcode, move_object, object_map)
             
             if MetaParser.get_keyword_line(id, gcode, MetaParser.LAYER_CHANGE):
                 layer += 1
@@ -169,7 +182,7 @@ class MetaParser:
                 move_type = Static.PRINT_END
             
             block.block_data.move_type = move_type
-            block.block_data.object = move_object if move_object != -1 else ''
+            block.block_data.object = object_map.get(move_object, move_object) if move_object != -1 else ''
             block.block_data.layer = layer
             
             if progress_callback:
