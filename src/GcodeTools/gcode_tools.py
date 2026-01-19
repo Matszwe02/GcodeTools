@@ -140,14 +140,14 @@ class Tools:
         
         for block in gcode:
             
-            if block.block_data.move_type == Static.PRINT_START:
+            if block.move_type == Static.PRINT_START:
                 start_gcode.append(block)
-            elif block.block_data.move_type == Static.PRINT_END:
+            elif block.move_type == Static.PRINT_END:
                 end_gcode.append(block)
             else:
                 object_gcode.append(block)
             
-            object_id = block.block_data.object
+            object_id = block.object
             if object_id >= 0:
                 object = gcode.objects[object_id]
             else:
@@ -169,10 +169,10 @@ class Tools:
         """
         
         gcode_new = gcode.new()
-        pos = gcode[0].block_data.position
+        pos = gcode[0].position
         for item in gcode:
-            if item.block_data.position != pos:
-                pos = item.block_data.position
+            if item.position != pos:
+                pos = item.position
                 it = item.copy()
                 it.emit_command = False
                 it.command = ''
@@ -191,7 +191,7 @@ class Tools:
         """
         gcode_new = gcode.copy()
         for i in gcode_new:
-            if force_extrusion or (i.block_data.position.E and i.block_data.position.E > 0):
+            if force_extrusion or (i.position.E and i.position.E > 0):
                 # i.move.set_flowrate(flowrate)
                 pass
         return gcode_new
@@ -201,7 +201,7 @@ class Tools:
     def translate(gcode: Gcode, vector: Vector) -> Gcode:
         gcode_new = gcode.copy()
         for i in gcode_new:
-            i.block_data.position += vector
+            i.position += vector
         gcode_new.order()
         return gcode_new
 
@@ -210,7 +210,7 @@ class Tools:
     def rotate(gcode: Gcode, deg: int) -> Gcode:
         gcode_new = gcode.copy()
         for i in gcode_new:
-            i.block_data.position.rotate(deg)
+            i.position.rotate(deg)
         return gcode_new
 
 
@@ -218,7 +218,7 @@ class Tools:
     def scale(gcode: Gcode, scale: int|Vector) -> Gcode:
         gcode_new = gcode.copy()
         for i in gcode_new:
-            i.block_data.position *= scale
+            i.position *= scale
         return gcode_new
 
 
@@ -239,15 +239,15 @@ class Tools:
         Returns:
             `tuple` of (low_corner, high_corner)
         """
-        low_corner: Vector = gcode[0].block_data.position.xyz()
-        high_corner: Vector = gcode[0].block_data.position.xyz()
+        low_corner: Vector = gcode[0].position.xyz()
+        high_corner: Vector = gcode[0].position.xyz()
         
         lower_bound = lambda a,b: a if a < b else b
         upper_bound = lambda a,b: a if a > b else b
         
         for item in gcode:
-            high_corner = high_corner.vector_op(item.block_data.position, upper_bound)
-            low_corner = low_corner.vector_op(item.block_data.position, lower_bound)
+            high_corner = high_corner.vector_op(item.position, upper_bound)
+            low_corner = low_corner.vector_op(item.position, lower_bound)
             
         return (low_corner.xyz(), high_corner.xyz())
 
@@ -262,7 +262,7 @@ class Tools:
         sum_e = 0
         
         for block in gcode:
-            pos = block.block_data.position
+            pos = block.position
             sum_e += pos.E or 0
             if sum_e > 0:
                 volume = (pos.E or 0) + sum_e
@@ -288,22 +288,22 @@ class Tools:
         for item in gcode:
             if is_first:
                 out_gcode.append(item.copy())
-                if item.block_data.object != None:
+                if item.object != None:
                     is_first = False
                 continue
             
-            if item.block_data.object == None:
+            if item.object == None:
                 if past_item is None:
                     out_gcode.append('G10; retract')
                 past_item = item.copy()
-                e_add += past_item.block_data.position.E
-                past_item.block_data.position.E = 0
+                e_add += past_item.position.E
+                past_item.position.E = 0
             else:
                 if past_item is not None:
                     if move_speed > 0:
-                        past_item.block_data.position.F = move_speed
+                        past_item.position.F = move_speed
                     out_gcode.append(past_item.copy())
-                    past_item.block_data.position.E = e_add
+                    past_item.position.E = e_add
                     out_gcode.append(past_item.copy())
                     out_gcode.append('G11; unretract')
                     e_add = 0

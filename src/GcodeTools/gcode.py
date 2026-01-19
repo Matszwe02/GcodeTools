@@ -43,28 +43,28 @@ class Gcode(list[Block]):
             self.ordered = True
 
 
-    def from_str(self, gcode_str: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> 'Gcode':
+    def from_str(self, gcode_str: str, block = Block(), progress_callback: typing.Callable|None = None) -> 'Gcode':
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
             gcode_str: `str` - string that will be parsed into `Gcode`
-            data: `BlockData` - initial printer state
+            block: `Block` - initial printer state
             progress_callback: `Callable(current: int, total: int)`
         """
-        self: Gcode = self.__get_parser__().from_str(self, gcode_str, data, progress_callback)
+        self: Gcode = self.__get_parser__().from_str(self, gcode_str, block, progress_callback)
         self.order()
         self.__fill_meta__()
         return self
 
-    def from_file(self, filename: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> 'Gcode':
+    def from_file(self, filename: str, block = Block(), progress_callback: typing.Callable|None = None) -> 'Gcode':
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
             filename: `str` - filename containing g-code to be parsed
-            data: `BlockData` - initial printer state
+            block: `Block` - initial printer state
             progress_callback: `Callable(current: int, total: int)`
         """
-        self: Gcode = self.__get_parser__().from_file(self, filename, data, progress_callback)
+        self: Gcode = self.__get_parser__().from_file(self, filename, block, progress_callback)
         self.order()
         self.__fill_meta__()
         return self
@@ -119,7 +119,7 @@ class Gcode(list[Block]):
             super().insert(index, block_obj)
 
 
-    def __add_str__(self, gcode: str, index: int = -1, data:BlockData|None=None, compile = False):
+    def __add_str__(self, gcode: str, index: int = -1, block:Block|None=None, compile = False):
         """
         The same as `Gcode.insert()`
         
@@ -129,7 +129,7 @@ class Gcode(list[Block]):
             gcode: `str`
             index: `int`
                 Default index = `-1` => append to the end of `Gcode`
-            data: `BlockData`
+            block: `Block`
             compile: `bool` - compile `Block` using `CoordSystem` and `GcodeParser` instead of only putting command into a block.
                 - compilation doesn't propagate forward, i.e. putting `M106` only affects newly created `Block`.
         """
@@ -138,23 +138,26 @@ class Gcode(list[Block]):
         idx = index if index < len(self) else -1
         
         if len(self) == 0:
-            if data is None: data = BlockData(config=self.config)
+            if block is None: block = Block(config=self.config)
         else:
             last_index = idx - 1 * (idx > 0)
             
-            if data is None: data = self[last_index].block_data
+            if block is None: block = self[last_index]
         
         if compile:
             parser = self.__get_parser__()
-            position = self[max(idx, 0) - 1].block_data.position if len(self) else Vector()
-            gcode_objs = parser._parse_line(parser.ParserData(CoordSystem(position=position), Block(None, gcode, True, data, self.config)))
+            position = self[max(idx, 0) - 1].position if len(self) else Vector()
+            gcode_objs = parser._parse_line(parser.ParserData(CoordSystem(position=position), Block(None, gcode, True, block, self.config)))
             for idx, obj in enumerate(gcode_objs):
                 if idx == -1:
                     super().append(obj.block)
                 else:
                     super().insert(index + idx, obj.block)
             return
-        gcode_obj = Block(None, gcode, True, data, self.config)
+        gcode_obj = block
+        gcode_obj.prev = None
+        gcode_obj.command = gcode
+        # gcode_obj.config = self.config
         
         if idx == -1:
             super().append(gcode_obj)
@@ -171,7 +174,6 @@ class Gcode(list[Block]):
             block: Block = self[i].unlink()
             block.prev = self[i - 1] if i > 0 else None
             i += 1
-            block.sync()
 
 
     def unlink(self):

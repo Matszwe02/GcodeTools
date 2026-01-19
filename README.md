@@ -57,10 +57,10 @@ Gcode (list[Block])
 │
 ├─ single Gcode instruction: Block
 │  │
-│  ├─ Object handling everything move-related: Move
-│  │  └─ Position: Vector
+│  ├─ Position: Vector
 │  │
-│  ├─ Every other standard G-code, plus slicer data: BlockData
+│  ├─ Other Gcode related properties
+│  │
 │  └─ Original command and if it's to be emitted: command, emit_command
 └─ ...
 ```

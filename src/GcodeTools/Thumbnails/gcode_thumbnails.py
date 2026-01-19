@@ -71,23 +71,23 @@ class Thumbnails:
             draw_color = np.array([color[0] / 255, color[1] / 255, color[2] / 255])
 
         for block in gcode:
-            new_position = np.array([block.block_data.position.X, block.block_data.position.Y, block.block_data.position.Z])
+            new_position = np.array([block.position.X, block.position.Y, block.position.Z])
             if current_position is None:
                 current_position = new_position
                 continuous = False
                 continue
-            if block.block_data.position.E <= 0:
+            if block.position.E <= 0:
                 current_position = new_position
                 continuous = False
                 continue
-            flowrate = 0.01 if block.block_data.move_type == Static.NO_OBJECT else .4
+            flowrate = 0.01 if block.move_type == Static.NO_OBJECT else .4
             flowrate *= e_scale
             if not continuous:
                 nodes.append(current_position)
                 sizes.append(flowrate)
             nodes.append(new_position)
             edges.append([len(nodes) - 2, len(nodes) - 1])
-            colors_arr = Thumbnails.MOVE_TYPE_COLORS.get(block.block_data.move_type, [127, 127, 127])
+            colors_arr = Thumbnails.MOVE_TYPE_COLORS.get(block.move_type, [127, 127, 127])
             if color is None:
                 draw_color = np.array([colors_arr[0]/255, colors_arr[1]/255, colors_arr[2]/255])
             sizes.append(flowrate)

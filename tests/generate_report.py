@@ -53,7 +53,7 @@ def process_gcode(name, id):
     #     return None
 
     # Calculate total material
-    total_material = sum(block.block_data.position.E for block in out_gcode)
+    total_material = sum(block.position.E for block in out_gcode)
 
     # Generate file thumbnail
     file_thumbnail_img = None
@@ -61,7 +61,7 @@ def process_gcode(name, id):
     thumb_gcode_for_file = Tools.split(out_gcode)[2]
     # Collect relevant blocks for file thumbnail generation (e.g., blocks with extrusion data)
     # for block in out_gcode:
-    #     if block.block_data.position.E is not None and block.block_data.position.E > 0:
+    #     if block.position.E is not None and block.position.E > 0:
     #         thumb_gcode_for_file.append(block.copy())
 
     if len(thumb_gcode_for_file) > 2: # Ensure there's enough data to generate a thumbnail

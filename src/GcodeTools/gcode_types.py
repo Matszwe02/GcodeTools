@@ -484,16 +484,14 @@ class Arc:
 
 
 
-class BlockData:
-
-    @staticmethod
-    def zero():
-        return BlockData(None, 0, False, 0, False, 0, 0)
-
-
-    def __init__(self, block_ref: 'Block|None'=None, position=Vector(), e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None, object=-1, move_type=None, layer=0):
+class Block:
+    
+    def __init__(self, prev:'Block|None' = None, command: str | None = None, emit_command = True, config: Config = None, position=Vector(), e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None, object=-1, move_type=None, layer=0):
         
-        self.block_ref = block_ref
+        self.prev = prev
+        self.command = command
+        self.emit_command = emit_command
+        self.config = config
         self.e_temp = e_temp
         self.e_wait = e_wait
         self.bed_temp = bed_temp
@@ -504,8 +502,8 @@ class BlockData:
         self.move_type = move_type
         self.layer = layer
         self.position = position
-    
-    
+
+
     def set_fan(self, fan: int):
         """
         Set fan with index to desired speed.
@@ -540,118 +538,23 @@ class BlockData:
             self.T = tool
 
 
-    def get_prev(self) -> 'BlockData':
-        return getattr(getattr(self.block_ref, 'prev', None), 'block_data', BlockData())
-
-
-    def to_str(self):
-        """Returns gcode string of `BlockData`"""
-        prev = self.get_prev()
-        
-        out = ''
-        if self.layer != prev.layer:
-            out += ';LAYER_CHANGE\n'
-        if self.move_type != prev.move_type:
-            out += f';TYPE:{Static.MOVE_TYPES.get(self.move_type, Static.MOVE_TYPES[-1])}\n'
-        if self.object != prev.object:
-            if prev.object > -1:
-                if not self.block_ref.config.enable_exclude_object: out += ';'
-                out += f'EXCLUDE_OBJECT_END NAME={prev.object}\n'
-            if self.object > -1:
-                if not self.block_ref.config.enable_exclude_object: out += ';'
-                out += f'EXCLUDE_OBJECT_START NAME={self.object}\n'
-        
-        if self.e_temp != prev.e_temp and self.e_temp is not None:
-            out += f'{Static.E_TEMP_DESC.format(self.e_temp)}\n'
-        if self.bed_temp != prev.bed_temp and self.bed_temp is not None:
-            out += f'{Static.BED_TEMP_DESC.format(self.bed_temp)}\n'
-        
-        if self.e_temp != prev.e_temp and self.e_temp is not None and self.e_wait:
-            out += f'{Static.E_TEMP_WAIT_DESC.format(self.e_temp)}\n'
-        if self.bed_temp != prev.bed_temp and self.bed_temp is not None and self.bed_wait:
-            out += f'{Static.BED_TEMP_WAIT_DESC.format(self.bed_temp)}\n'
-        
-        if self.fan != prev.fan and self.fan is not None:
-            out += f'{Static.FAN_SPEED_DESC.format(self.fan)}\n'
-        if self.T != prev.T and self.T is not None:
-            out += f'{Static.TOOL_CHANGE_DESC.format(self.T)}\n'
-        
-        print_coord = lambda param, a: '' f' {param}{a:.{self.block_ref.config.precision}f}'.rstrip('0').rstrip('.')
-        move = ''
-
-        if self.position.X != prev.position.X: move += print_coord('X', self.position.X)
-        if self.position.Y != prev.position.Y: move += print_coord('Y', self.position.Y)
-        if self.position.Z != prev.position.Z: move += print_coord('Z', self.position.Z)
-        if self.position.E != 0: move += print_coord('E', self.position.E)
-        if self.position.F != prev.position.F: move += print_coord('F', self.position.F)
-        
-        if move != '': out += 'G1' + move + '\n'
-        
-        if self.position != Vector() and prev.position == Vector(): out = Static.HOME_DESC + '\n' + out
-        
-        return out
-
-
-    def to_dict(self):
-        return {
-                'position': self.position.to_dict(),
-                'e_temp': self.e_temp,
-                'bed_temp': self.bed_temp,
-                'fan': self.fan,
-                'T': self.T,
-                'object': self.object,
-                'move_type': self.move_type,
-                'layer': self.layer
-            }
-
-
-    def copy(self):
-        return BlockData(self.block_ref, self.position, self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T, self.object, self.move_type, self.layer)
-
-    def __str__(self):
-        return dict_to_pretty_str(self.to_dict())
-    
-    def __eq__(self, other: 'BlockData') -> bool:
-        return self.to_dict() == other.to_dict()
-
-
-
-class Block:
-    
-    def __init__(self, prev:'Block|None' = None, command: str | None = None, emit_command = True, block_data = BlockData(), config: Config = None):
-        
-        self.prev = prev
-        self.command = command
-        self.emit_command = emit_command
-        self.block_data = block_data.copy()
-        self.config = config
-
-
     def as_origin(self):
         """
         Treat as origin to the next `Block`
         
         Used to ensure that move path is deterministic, when splitting `Gcode`
         """
-        new = Block(None, self.block_data.position.copy(), block_data=self.block_data.copy())
-        new.block_data.position.E = 0
-        new.block_data.position.F = 0
+        new = self.copy()
+        new.prev = None
+        new.position.E = 0
+        new.position.F = 0
         return new
-
-
-    def sync(self):
-        """
-        Sync objects inside `Block` to refer to it
-        """
-        self.block_data.block_ref = self
-        return self
 
 
     def unlink(self):
         """
         Inverse of `sync`. Used to make object serializable
         """
-        self.block_data.block_ref = None
         self.prev = None
         return self
 
@@ -660,31 +563,75 @@ class Block:
         return {
                 'command': self.command,
                 'emit_command': self.emit_command,
-                'data': self.block_data.to_dict(),
+                'data': self.to_dict(),
             }
 
 
     def to_str(self, verbose=False):
         """Returns gcode string of `Block`"""
         
-        line_str = ''
+        if not self.prev: self.prev = Block()
+
+        out = ''
+        if self.layer != self.prev.layer:
+            out += ';LAYER_CHANGE\n'
+        if self.move_type != self.prev.move_type:
+            out += f';TYPE:{Static.MOVE_TYPES.get(self.move_type, Static.MOVE_TYPES[-1])}\n'
+        if self.object != self.prev.object:
+            if self.prev.object > -1:
+                if not self.config.enable_exclude_object: out += ';'
+                out += f'EXCLUDE_OBJECT_END NAME={self.prev.object}\n'
+            if self.object > -1:
+                if not self.config.enable_exclude_object: out += ';'
+                out += f'EXCLUDE_OBJECT_START NAME={self.object}\n'
         
-        line_str += self.block_data.to_str()
+        if self.e_temp != self.prev.e_temp and self.e_temp is not None:
+            out += f'{Static.E_TEMP_DESC.format(self.e_temp)}\n'
+        if self.bed_temp != self.prev.bed_temp and self.bed_temp is not None:
+            out += f'{Static.BED_TEMP_DESC.format(self.bed_temp)}\n'
+        
+        if self.e_temp != self.prev.e_temp and self.e_temp is not None and self.e_wait:
+            out += f'{Static.E_TEMP_WAIT_DESC.format(self.e_temp)}\n'
+        if self.bed_temp != self.prev.bed_temp and self.bed_temp is not None and self.bed_wait:
+            out += f'{Static.BED_TEMP_WAIT_DESC.format(self.bed_temp)}\n'
+        
+        if self.fan != self.prev.fan and self.fan is not None:
+            out += f'{Static.FAN_SPEED_DESC.format(self.fan)}\n'
+        if self.T != self.prev.T and self.T is not None:
+            out += f'{Static.TOOL_CHANGE_DESC.format(self.T)}\n'
+        
+        print_coord = lambda param, a: '' f' {param}{a:.{self.config.precision}f}'.rstrip('0').rstrip('.')
+        move = ''
+
+        if self.position.X != self.prev.position.X: move += print_coord('X', self.position.X)
+        if self.position.Y != self.prev.position.Y: move += print_coord('Y', self.position.Y)
+        if self.position.Z != self.prev.position.Z: move += print_coord('Z', self.position.Z)
+        if self.position.E != 0: move += print_coord('E', self.position.E)
+        if self.position.F != self.prev.position.F: move += print_coord('F', self.position.F)
+        
+        if move != '': out += 'G1' + move + '\n'
+        
+        if self.position != Vector() and self.prev.position == Vector(): out = Static.HOME_DESC + '\n' + out
+        
         
         if self.emit_command and self.command:
-            line_str += self.command + '\n'
+            out += self.command + '\n'
         
-        if line_str != '':
+        if out != '':
             if verbose:
-                line_str += '; '
-                line_str += remove_chars(json.dumps(self.block_data.to_dict()), '{} \"').replace(",", " ")
-                line_str += '\n'
+                out += '; '
+                out += remove_chars(json.dumps(self.to_dict()), '{} \"').replace(",", " ")
+                out += '\n'
         
-        return line_str
+        return out
 
 
     def copy(self):
-        return Block(self.prev, self.command, self.emit_command, self.block_data, self.config)
+        return Block(self.prev, self.command, self.emit_command, self.config, self.position.copy(), self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T, self.object, self.move_type, self.layer)
 
     def __str__(self):
         return dict_to_pretty_str(self.to_dict())
+
+
+    def __eq__(self, other: 'Block') -> bool:
+        return self.to_dict() == other.to_dict()

@@ -185,16 +185,16 @@ class MetaParser:
             if MetaParser.get_keyword_line(id, gcode, MetaParser.GCODE_END):
                 move_type = Static.PRINT_END
             
-            block.block_data.move_type = move_type
+            block.move_type = move_type
             if move_object and isinstance(move_object, str) and not move_object.isdigit() and move_object not in gcode.objects:
                 gcode.objects.append(move_object)
             try:
-                block.block_data.object = gcode.objects.index(move_object)
+                block.object = gcode.objects.index(move_object)
             except ValueError:
-                block.block_data.object = -1
+                block.object = -1
 
-            # block.block_data.object = object_map.get(move_object, move_object) if move_object != -1 else ''
-            block.block_data.layer = layer
+            # block.object = object_map.get(move_object, move_object) if move_object != -1 else ''
+            block.layer = layer
             
             if progress_callback:
                 progress_callback(id, len_gcode)
@@ -219,28 +219,28 @@ class GcodeParser:
 
 
     @staticmethod
-    def from_str(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> Gcode:
+    def from_str(gcode: Gcode, gcode_str: str, block = Block(), progress_callback: typing.Callable|None = None) -> Gcode:
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
             gcode_str: `str` - string that will be parsed into `Gcode`
-            data: `BlockData` - initial printer state
+            block: `Block` - initial printer state
             progress_callback: `Callable(current: int, total: int)`
         """
-        return GcodeParser._generate_moves(gcode, gcode_str, data, progress_callback)
+        return GcodeParser._generate_moves(gcode, gcode_str, block, progress_callback)
 
 
     @staticmethod
-    def from_file(gcode: Gcode, filename: str, data = BlockData(), progress_callback: typing.Callable|None = None) -> Gcode:
+    def from_file(gcode: Gcode, filename: str, block = Block(), progress_callback: typing.Callable|None = None) -> Gcode:
         """
         Args:
             gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
             filename: `str` - filename containing g-code to be parsed
-            data: `BlockData` - initial printer state
+            block: `Block` - initial printer state
             progress_callback: `Callable(current: int, total: int)`
         """
         with open(filename, 'r') as f:
-            return GcodeParser.from_str(gcode, f.read(), data, progress_callback)
+            return GcodeParser.from_str(gcode, f.read(), block, progress_callback)
 
 
     @staticmethod
@@ -338,17 +338,17 @@ class GcodeParser:
         arc = None
         emit_command = False
         
-        pd.block.block_data.clear_wait()
+        pd.block.clear_wait()
         
         line_dict: dict = GcodeParser._line_to_dict(pd.block.command)
         command: str = line_dict['0']
         
         if command in ['G0', 'G1', 'G2', 'G3']:
             if command in ['G2', 'G3']:
-                arc = Arc(pd.block.block_data.position.copy(), int(command[1])).from_params(line_dict)
+                arc = Arc(pd.block.position.copy(), int(command[1])).from_params(line_dict)
                 pass
                 
-            pd.block.block_data.position = pd.coord_system.apply_move(line_dict)
+            pd.block.position = pd.coord_system.apply_move(line_dict)
         
         elif command in [Static.ABSOLUTE_COORDS, Static.RELATIVE_COORDS]:
             pd.coord_system.set_abs_xyz(command == Static.ABSOLUTE_COORDS)
@@ -361,19 +361,19 @@ class GcodeParser:
             pd.coord_system.set_offset(c.X, c.Y, c.Z, c.E)
         
         elif command == Static.FAN_SPEED:
-            pd.block.block_data.set_fan(line_dict.get('S', None))
+            pd.block.set_fan(line_dict.get('S', None))
         
         elif command == Static.FAN_OFF:
-            pd.block.block_data.set_fan(0)
+            pd.block.set_fan(0)
         
         elif command == Static.E_TEMP or command == Static.E_TEMP_WAIT:
-            pd.block.block_data.set_e_temp(line_dict.get('S', None), (command == Static.E_TEMP_WAIT))
+            pd.block.set_e_temp(line_dict.get('S', None), (command == Static.E_TEMP_WAIT))
         
         elif command == Static.BED_TEMP or command == Static.BED_TEMP_WAIT:
-            pd.block.block_data.set_bed_temp(line_dict.get('S', None), (command == Static.BED_TEMP_WAIT))
+            pd.block.set_bed_temp(line_dict.get('S', None), (command == Static.BED_TEMP_WAIT))
         
         elif command.startswith(Static.TOOL_CHANGE) and command[1:].isdigit():
-            pd.block.block_data.set_tool(int(command[1:]))
+            pd.block.set_tool(int(command[1:]))
         
         elif command in Static.ARC_PLANES.keys():
             pd.coord_system.arc_plane = Static.ARC_PLANES[command]
@@ -387,30 +387,39 @@ class GcodeParser:
         if arc is not None:
             listdata = []
             pd_new = pd.copy()
-            for section in arc.subdivide(pd.block.block_data.position, pd.block.config.step):
-                block = Block(None, pd.block.command.strip(), emit_command, pd.block.block_data)
-                block.block_data.position = section
+            for section in arc.subdivide(pd.block.position, pd.block.config.step):
+                # block = Block(None, pd.block.command.strip(), emit_command)
+                block = pd.block.copy()
+                block.prev = None
+                block.command = pd.block.command.strip()
+                block.emit_command = emit_command
+                block.position = section
                 pd_new.block = block
                 listdata.append(pd_new.copy())
             return listdata
         
         else:
-            pd.block = Block(None, pd.block.command.strip(), emit_command, pd.block.block_data)
+            # pd.block = Block(None, pd.block.command.strip(), emit_command)
+            block = pd.block.copy()
+            block.prev = None
+            block.command = pd.block.command.strip()
+            block.emit_command = emit_command
+            pd.block = block
             return [pd]
 
 
     @staticmethod
-    def _generate_moves(gcode: Gcode, gcode_str: str, data = BlockData(), progress_callback = None) -> Gcode:
+    def _generate_moves(gcode: Gcode, gcode_str: str, block = Block(), progress_callback = None) -> Gcode:
 
         coord_system = CoordSystem(position=Vector(F=gcode.config.speed))
-        block_data = data.copy()
-        block_data.position = coord_system.position
+        block = block.copy()
+        block.position = coord_system.position
         
         gcode_lines = list(filter(str.strip, gcode_str.split('\n')))
         
         len_gcode_lines = len(gcode_lines)
         
-        pd = GcodeParser.ParserData(coord_system, Block(block_data=block_data))
+        pd = GcodeParser.ParserData(coord_system, block)
         
         for i, line in enumerate(gcode_lines):
             
