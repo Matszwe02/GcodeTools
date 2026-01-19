@@ -16,6 +16,7 @@ class Gcode(list[Block]):
         self.ordered = False
         self.header = ''
         self.footer = ''
+        self.objects: list[str] = []
         super().__init__()
         if filename:
             self.from_file(filename)
@@ -102,6 +103,7 @@ class Gcode(list[Block]):
         """
         new = Gcode()
         new.config = self.config
+        new.objects = self.objects
         return new
 
 
@@ -234,6 +236,7 @@ class Gcode(list[Block]):
         gcode = self.new()
         gcode.header = self.header
         gcode.footer = self.footer
+        gcode.objects = self.objects
         
         for i in self:
             gcode.append(i.copy())

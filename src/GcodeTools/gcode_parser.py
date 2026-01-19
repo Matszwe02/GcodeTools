@@ -125,17 +125,17 @@ class MetaParser:
         return None
 
 
-    @staticmethod
-    def update_object_map(id: int, gcode: Gcode, current_object: str, object_map: dict):
-        _, namedef = MetaParser.get_keyword_arg(id, gcode, MetaParser.OBJECT_NAME_DEFINE, seek_limit=1)
-        if namedef is not None:
-            if '"' in namedef: # SuperSlicer naming
-                namedef = namedef.split('"')[0]
-                current_object = str(len(object_map.keys()))
-            object_map[current_object] = namedef
-            print(f'meta: Putting {namedef} to meta as {current_object}')
-            print(f'Current object map: {object_map}')
-        return object_map
+    # @staticmethod
+    # def update_object_map(id: int, gcode: Gcode, current_object: str, object_map: dict):
+    #     _, namedef = MetaParser.get_keyword_arg(id, gcode, MetaParser.OBJECT_NAME_DEFINE, seek_limit=1)
+    #     if namedef is not None:
+    #         if '"' in namedef: # SuperSlicer naming
+    #             namedef = namedef.split('"')[0]
+    #             current_object = str(len(object_map.keys()))
+    #         object_map[current_object] = namedef
+    #         print(f'meta: Putting {namedef} to meta as {current_object}')
+    #         print(f'Current object map: {object_map}')
+    #     return object_map
 
 
     @staticmethod
@@ -167,13 +167,14 @@ class MetaParser:
         move_type = -1
         move_object = ''
         len_gcode = len(gcode)
-        object_map = {}
+        # object_map = {}
+        gcode.objects = []
         
         for id, block in enumerate(gcode):
                         
             move_type = MetaParser.get_type(block.command) or move_type
             move_object = MetaParser.get_object(id, gcode) or move_object
-            object_map = MetaParser.update_object_map(id, gcode, move_object, object_map)
+            # object_map = MetaParser.update_object_map(id, gcode, move_object, object_map)
             
             if MetaParser.get_keyword_line(id, gcode, MetaParser.LAYER_CHANGE):
                 layer += 1
@@ -185,11 +186,19 @@ class MetaParser:
                 move_type = Static.PRINT_END
             
             block.block_data.move_type = move_type
-            block.block_data.object = object_map.get(move_object, move_object) if move_object != -1 else ''
+            if move_object and isinstance(move_object, str) and not move_object.isdigit() and move_object not in gcode.objects:
+                gcode.objects.append(move_object)
+            try:
+                block.block_data.object = gcode.objects.index(move_object)
+            except ValueError:
+                block.block_data.object = -1
+
+            # block.block_data.object = object_map.get(move_object, move_object) if move_object != -1 else ''
             block.block_data.layer = layer
             
             if progress_callback:
                 progress_callback(id, len_gcode)
+        return gcode
 
 
 

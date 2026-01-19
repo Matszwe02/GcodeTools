@@ -491,7 +491,7 @@ class BlockData:
         return BlockData(None, 0, False, 0, False, 0, 0)
 
 
-    def __init__(self, block_ref: 'Block|None'=None, position=Vector(), e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None, object='', move_type=None, layer=0):
+    def __init__(self, block_ref: 'Block|None'=None, position=Vector(), e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None, object=-1, move_type=None, layer=0):
         
         self.block_ref = block_ref
         self.e_temp = e_temp
@@ -554,12 +554,12 @@ class BlockData:
         if self.move_type != prev.move_type:
             out += f';TYPE:{Static.MOVE_TYPES.get(self.move_type, Static.MOVE_TYPES[-1])}\n'
         if self.object != prev.object:
-            if prev.object:
+            if prev.object > -1:
                 if not self.block_ref.config.enable_exclude_object: out += ';'
-                out += f'EXCLUDE_OBJECT_END NAME={prev.object.replace(" ", "_")}\n'
-            if self.object:
+                out += f'EXCLUDE_OBJECT_END NAME={prev.object}\n'
+            if self.object > -1:
                 if not self.block_ref.config.enable_exclude_object: out += ';'
-                out += f'EXCLUDE_OBJECT_START NAME={self.object.replace(" ", "_")}\n'
+                out += f'EXCLUDE_OBJECT_START NAME={self.object}\n'
         
         if self.e_temp != prev.e_temp and self.e_temp is not None:
             out += f'{Static.E_TEMP_DESC.format(self.e_temp)}\n'

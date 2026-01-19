@@ -147,7 +147,11 @@ class Tools:
             else:
                 object_gcode.append(block)
             
-            object = block.block_data.object
+            object_id = block.block_data.object
+            if object_id >= 0:
+                object = gcode.objects[object_id]
+            else:
+                object = None
             if object not in objects.keys():
                 objects[object] = gcode.new()
             
