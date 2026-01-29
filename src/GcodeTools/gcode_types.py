@@ -486,9 +486,8 @@ class Arc:
 
 class Block:
     
-    def __init__(self, prev:'Block|None' = None, command: str | None = None, emit_command = True, config: Config = None, position=Vector(), e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None, object=-1, move_type=None, layer=0):
+    def __init__(self, command: str | None = None, emit_command = True, config: Config = None, position=Vector(), e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None, object=-1, move_type=None, layer=0):
         
-        self.prev = prev
         self.command = command
         self.emit_command = emit_command
         self.config = config
@@ -504,134 +503,5 @@ class Block:
         self.position = position
 
 
-    def set_fan(self, fan: int):
-        """
-        Set fan with index to desired speed.
-        
-        Args:
-            fan: `int` - speed in range 0..255
-        """
-        
-        if type(fan) == int and fan in range(256):
-            self.fan = fan
-
-
-    def set_e_temp(self, temp: int, wait=False):
-        if temp is not None:
-            self.e_temp = temp
-        self.e_wait = wait
-
-
-    def set_bed_temp(self, temp: int, wait=False):
-        if temp is not None:
-            self.bed_temp = temp
-        self.bed_wait = wait
-
-
-    def clear_wait(self):
-        self.e_wait = False
-        self.bed_wait = False
-
-
-    def set_tool(self, tool: int):
-        if tool is not None and tool in range(10):
-            self.T = tool
-
-
-    def as_origin(self):
-        """
-        Treat as origin to the next `Block`
-        
-        Used to ensure that move path is deterministic, when splitting `Gcode`
-        """
-        new = self.copy()
-        new.prev = None
-        new.position.E = 0
-        new.position.F = 0
-        return new
-
-
-    def unlink(self):
-        """
-        Inverse of `sync`. Used to make object serializable
-        """
-        self.prev = None
-        return self
-
-
-    def to_dict(self):
-        return {
-                'command': self.command,
-                'emit_command': self.emit_command,
-                'data': self.to_dict(),
-            }
-
-
-    def to_str(self, verbose=False):
-        """Returns gcode string of `Block`"""
-        
-        if not self.prev: self.prev = Block()
-
-        out = ''
-        if self.layer != self.prev.layer:
-            out += ';LAYER_CHANGE\n'
-        if self.move_type != self.prev.move_type:
-            out += f';TYPE:{Static.MOVE_TYPES.get(self.move_type, Static.MOVE_TYPES[-1])}\n'
-        if self.object != self.prev.object:
-            if self.prev.object > -1:
-                if not self.config.enable_exclude_object: out += ';'
-                out += f'EXCLUDE_OBJECT_END NAME={self.prev.object}\n'
-            if self.object > -1:
-                if not self.config.enable_exclude_object: out += ';'
-                out += f'EXCLUDE_OBJECT_START NAME={self.object}\n'
-        
-        if self.e_temp != self.prev.e_temp and self.e_temp is not None:
-            out += f'{Static.E_TEMP_DESC.format(self.e_temp)}\n'
-        if self.bed_temp != self.prev.bed_temp and self.bed_temp is not None:
-            out += f'{Static.BED_TEMP_DESC.format(self.bed_temp)}\n'
-        
-        if self.e_temp != self.prev.e_temp and self.e_temp is not None and self.e_wait:
-            out += f'{Static.E_TEMP_WAIT_DESC.format(self.e_temp)}\n'
-        if self.bed_temp != self.prev.bed_temp and self.bed_temp is not None and self.bed_wait:
-            out += f'{Static.BED_TEMP_WAIT_DESC.format(self.bed_temp)}\n'
-        
-        if self.fan != self.prev.fan and self.fan is not None:
-            out += f'{Static.FAN_SPEED_DESC.format(self.fan)}\n'
-        if self.T != self.prev.T and self.T is not None:
-            out += f'{Static.TOOL_CHANGE_DESC.format(self.T)}\n'
-        
-        print_coord = lambda param, a: '' f' {param}{a:.{self.config.precision}f}'.rstrip('0').rstrip('.')
-        move = ''
-
-        if self.position.X != self.prev.position.X: move += print_coord('X', self.position.X)
-        if self.position.Y != self.prev.position.Y: move += print_coord('Y', self.position.Y)
-        if self.position.Z != self.prev.position.Z: move += print_coord('Z', self.position.Z)
-        if self.position.E != 0: move += print_coord('E', self.position.E)
-        if self.position.F != self.prev.position.F: move += print_coord('F', self.position.F)
-        
-        if move != '': out += 'G1' + move + '\n'
-        
-        if self.position != Vector() and self.prev.position == Vector(): out = Static.HOME_DESC + '\n' + out
-        
-        
-        if self.emit_command and self.command:
-            out += self.command + '\n'
-        
-        if out != '':
-            if verbose:
-                out += '; '
-                out += remove_chars(json.dumps(self.to_dict()), '{} \"').replace(",", " ")
-                out += '\n'
-        
-        return out
-
-
     def copy(self):
-        return Block(self.prev, self.command, self.emit_command, self.config, self.position.copy(), self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T, self.object, self.move_type, self.layer)
-
-    def __str__(self):
-        return dict_to_pretty_str(self.to_dict())
-
-
-    def __eq__(self, other: 'Block') -> bool:
-        return self.to_dict() == other.to_dict()
+        return Block(self.command, self.emit_command, self.config, self.position.copy(), self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T, self.object, self.move_type, self.layer)

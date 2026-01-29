@@ -260,9 +260,9 @@ class GcodeParser:
 
         len_blocks = len(gcode)
 
-        for i, block in enumerate(gcode):
+        for i in range(len_blocks):
             
-            line_str = block.to_str(verbose)
+            line_str = gcode.block_to_str(i, verbose)
             
             out_str += line_str
             
@@ -291,9 +291,9 @@ class GcodeParser:
 
             len_blocks = len(gcode)
 
-            for i, block in enumerate(gcode):
+            for i in range(len_blocks):
                 
-                line_str = block.to_str(verbose)
+                line_str = gcode.block_to_str(i, verbose)
                 
                 f.write(line_str)
                 
@@ -338,7 +338,8 @@ class GcodeParser:
         arc = None
         emit_command = False
         
-        pd.block.clear_wait()
+        pd.block.e_wait = 0
+        pd.block.bed_wait = 0
         
         line_dict: dict = GcodeParser._line_to_dict(pd.block.command)
         command: str = line_dict['0']
@@ -361,19 +362,21 @@ class GcodeParser:
             pd.coord_system.set_offset(c.X, c.Y, c.Z, c.E)
         
         elif command == Static.FAN_SPEED:
-            pd.block.set_fan(line_dict.get('S', None))
+            pd.block.fan = line_dict.get('S', pd.block.fan)
         
         elif command == Static.FAN_OFF:
-            pd.block.set_fan(0)
+            pd.block.fan = 0
         
         elif command == Static.E_TEMP or command == Static.E_TEMP_WAIT:
-            pd.block.set_e_temp(line_dict.get('S', None), (command == Static.E_TEMP_WAIT))
+            pd.block.e_temp = line_dict.get('S', pd.block.e_temp)
+            pd.block.e_wait = command == Static.E_TEMP_WAIT
         
         elif command == Static.BED_TEMP or command == Static.BED_TEMP_WAIT:
-            pd.block.set_bed_temp(line_dict.get('S', None), (command == Static.BED_TEMP_WAIT))
+            pd.block.bed_temp = line_dict.get('S', pd.block.bed_temp)
+            pd.block.bed_wait = (command == Static.BED_TEMP_WAIT)
         
         elif command.startswith(Static.TOOL_CHANGE) and command[1:].isdigit():
-            pd.block.set_tool(int(command[1:]))
+            pd.block.T = int(command[1:])
         
         elif command in Static.ARC_PLANES.keys():
             pd.coord_system.arc_plane = Static.ARC_PLANES[command]
@@ -390,7 +393,6 @@ class GcodeParser:
             for section in arc.subdivide(pd.block.position, pd.block.config.step):
                 # block = Block(None, pd.block.command.strip(), emit_command)
                 block = pd.block.copy()
-                block.prev = None
                 block.command = pd.block.command.strip()
                 block.emit_command = emit_command
                 block.position = section
