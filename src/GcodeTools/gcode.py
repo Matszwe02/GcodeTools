@@ -142,9 +142,7 @@ class Gcode(list[Block]):
                     super().insert(index + idx, obj.block)
             return
         gcode_obj = block
-        gcode_obj.prev = None
         gcode_obj.command = gcode
-        # gcode_obj.config = self.config
         
         if idx == -1:
             super().append(gcode_obj)
@@ -298,7 +296,6 @@ class Gcode(list[Block]):
         return {
             'command': current.command,
             'emit_command': current.emit_command,
-            'config': current.config,
             'e_temp': current.e_temp,
             'e_wait': current.e_wait,
             'bed_temp': current.bed_temp,

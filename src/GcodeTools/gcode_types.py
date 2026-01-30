@@ -486,11 +486,10 @@ class Arc:
 
 class Block:
     
-    def __init__(self, command: str | None = None, emit_command = True, config: Config = None, position=Vector(), e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None, object=-1, move_type=None, layer=0):
+    def __init__(self, command: str | None = None, emit_command = True, position=Vector(), e_temp=None, e_wait=None, bed_temp=None, bed_wait=None, fan=None, T=None, object=-1, move_type=None, layer=0):
         
         self.command = command
         self.emit_command = emit_command
-        self.config = config
         self.e_temp = e_temp
         self.e_wait = e_wait
         self.bed_temp = bed_temp
@@ -504,4 +503,4 @@ class Block:
 
 
     def copy(self):
-        return Block(self.command, self.emit_command, self.config, self.position.copy(), self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T, self.object, self.move_type, self.layer)
+        return Block(self.command, self.emit_command, self.position.copy(), self.e_temp, self.e_wait, self.bed_temp, self.bed_wait, self.fan, self.T, self.object, self.move_type, self.layer)

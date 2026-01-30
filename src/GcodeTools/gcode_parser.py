@@ -331,7 +331,7 @@ class GcodeParser:
 
 
     @staticmethod
-    def _parse_line(parser_data: 'GcodeParser.ParserData') -> list['GcodeParser.ParserData']:
+    def _parse_line(parser_data: 'GcodeParser.ParserData', config: Config) -> list['GcodeParser.ParserData']:
 
         pd = parser_data.copy()
         command = None
@@ -390,7 +390,7 @@ class GcodeParser:
         if arc is not None:
             listdata = []
             pd_new = pd.copy()
-            for section in arc.subdivide(pd.block.position, pd.block.config.step):
+            for section in arc.subdivide(pd.block.position, config.step):
                 # block = Block(None, pd.block.command.strip(), emit_command)
                 block = pd.block.copy()
                 block.command = pd.block.command.strip()
@@ -401,9 +401,7 @@ class GcodeParser:
             return listdata
         
         else:
-            # pd.block = Block(None, pd.block.command.strip(), emit_command)
             block = pd.block.copy()
-            block.prev = None
             block.command = pd.block.command.strip()
             block.emit_command = emit_command
             pd.block = block
@@ -426,10 +424,9 @@ class GcodeParser:
         for i, line in enumerate(gcode_lines):
             
             pd.block.command = line
-            list_pd:list[GcodeParser.ParserData] = GcodeParser._parse_line(pd)
+            list_pd:list[GcodeParser.ParserData] = GcodeParser._parse_line(pd, gcode.config)
             
             for num in list_pd:
-                num.block.config = gcode.config
                 gcode.append(num.block)
             pd = list_pd[-1]
             
