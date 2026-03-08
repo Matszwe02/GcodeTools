@@ -47,7 +47,7 @@ class Tools:
             delimeter = line.find('=')
             if delimeter < 0: delimeter = line.find(',')
             key = line[1:delimeter].strip()
-            value = line[delimeter + 1:].strip()
+            value = line[delimeter + 1:].strip().replace('\\"', "'''").replace('"', '').replace("'''", '\\"')
             metadata[key] = value
         
         return metadata
