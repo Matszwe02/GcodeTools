@@ -3,6 +3,7 @@ from GcodeTools.gcode_types import *
 from GcodeTools.gcode import Gcode
 import base64
 import textwrap
+import os
 from GcodeTools.gcode_parser import MetaParser
 
 
@@ -47,22 +48,25 @@ class Tools:
             delimeter = line.find('=')
             if delimeter < 0: delimeter = line.find(',')
             key = line[1:delimeter].strip()
-            value = line[delimeter + 1:].strip().replace('\\"', "'''").replace('"', '').replace("'''", '\\"')
+            value = line[delimeter + 1:].strip()
             metadata[key] = value
         
         return metadata
 
 
     @staticmethod
-    def generate_config_files(gcode: Gcode) -> dict[str, str]:
+    def generate_config_files(gcode: Gcode, path: str|None = None):
         """
         Generate configuration file(s) for slicer which generated the gcode.
 
+        Args:
+            path: `str|None` - path to which write config files. Leave empty to not write files.
         Returns:
             {`filename`, `contents`}
         """
         slicer, version = Tools.get_slicer_name(gcode)
         config = Tools.read_config(gcode)
+        output_files = {}
         if slicer.lower() in ['cura']:
             print(f'{slicer.lower()} doesn\'t generate configuration')
             return {}
@@ -77,12 +81,12 @@ class Tools:
                     filament[key] = config[key]
 
             try:
-                inherit_groups = config['inherits_group'].split(';')
+                inherit_groups = [g.replace('"', '') for g in config['inherits_group'].split(';')]
                 if inherit_groups[0]:
                     process['inherits'] = inherit_groups[0]
-                if inherit_groups[1]:
+                if len(inherit_groups) > 1 and inherit_groups[1]:
                     filament['inherits'] = inherit_groups[1]
-                if inherit_groups[2]:
+                if len(inherit_groups) > 2 and inherit_groups[2]:
                     machine['inherits'] = inherit_groups[2]
                     process['compatible_printers'] = [inherit_groups[2]]
                     filament['compatible_printers'] = [inherit_groups[2]]
@@ -107,19 +111,26 @@ class Tools:
             process['version'] = version
             process['name'] = config['print_settings_id']
 
-            filament_str = json.dumps(filament, indent=4)
-            machine_str = json.dumps(machine, indent=4)
-            process_str = json.dumps(process, indent=4)
-
-            return {'filament.json': filament_str, 'machine.json': machine_str, 'process.json': process_str}
+            output_files = {
+                'filament.json': json.dumps(filament, indent=4),
+                'machine.json': json.dumps(machine, indent=4),
+                'process.json': json.dumps(process, indent=4)
+            }
 
         else:
             if slicer.lower() not in ['prusaslicer', 'slic3r', 'superslicer']:
                 print('Unsupported slicer: trying generating slic3r config')
             output = ''
             for key in config.keys():
-                output += key + ' = ' + config[key] + '\n'
-            return {'config.ini': output}
+                output += key + f' = {config[key]}\n'
+            output_files = {'config.ini': output}
+
+        if path:
+            os.makedirs(path, exist_ok=True)
+            for key in output_files.keys():
+                with open(os.path.join(path, key), 'w') as f:
+                    f.write(output_files[key])
+        return output_files
 
 
     @staticmethod

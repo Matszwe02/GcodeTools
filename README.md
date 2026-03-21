@@ -166,10 +166,7 @@ Generate configuration files for slicer
 ```py
 gcode = GcodeTools.Gcode('gcode.gcode')
 
-config = Tools.generate_config_files(gcode)
-for key in config.keys():
-    with open(key, 'w') as f:
-        f.write(config[key])
+config = Tools.generate_config_files(gcode, './config')
 ```
 
 
