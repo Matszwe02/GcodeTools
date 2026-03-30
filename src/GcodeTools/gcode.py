@@ -3,14 +3,16 @@ from GcodeTools.gcode_types import *
 
 class Gcode(list[Block]):
     
-    def __init__(self, filename = None, *, gcode_str = None, config = Config()):
+    def __init__(self, filename = None, *, gcode_str = None, config = Config(), block = Block(), progress_callback: typing.Callable|None = None):
         """
         Initializes a `Gcode` object.
 
         Args:
-            filename: `str` - Path to a G-code file to load.
-            gcode_str: `str` - A string containing G-code to parse.
-            config: `Config` - Printer configuration for G-code.
+            filename: `str` - Path to a G-code file to load
+            gcode_str: `str` - A string containing G-code to parse
+            config: `Config` - Printer configuration for G-code
+            block: `Block` - initial printer state
+            progress_callback: `Callable(current: int, total: int)`
         """
         self.config = config
         self.header = ''
@@ -18,9 +20,12 @@ class Gcode(list[Block]):
         self.objects: list[str] = []
         super().__init__()
         if filename:
-            self.from_file(filename)
+            with open(filename, 'r') as f:
+                self = self.__get_parser__().generate_moves(self, f.read(), block, progress_callback)
+            self.__fill_meta__()
         elif gcode_str:
-            self.from_str(gcode_str)
+            self = self.__get_parser__().generate_moves(self, gcode_str, block, progress_callback)
+            self.__fill_meta__()
 
 
     def __get_parser__(self):
@@ -35,30 +40,6 @@ class Gcode(list[Block]):
     def __fill_meta__(self):
         self.__get_meta_parser__().fill_meta(self)
 
-
-    def from_str(self, gcode_str: str, block = Block(), progress_callback: typing.Callable|None = None) -> 'Gcode':
-        """
-        Args:
-            gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
-            gcode_str: `str` - string that will be parsed into `Gcode`
-            block: `Block` - initial printer state
-            progress_callback: `Callable(current: int, total: int)`
-        """
-        self: Gcode = self.__get_parser__().from_str(self, gcode_str, block, progress_callback)
-        self.__fill_meta__()
-        return self
-
-    def from_file(self, filename: str, block = Block(), progress_callback: typing.Callable|None = None) -> 'Gcode':
-        """
-        Args:
-            gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
-            filename: `str` - filename containing g-code to be parsed
-            block: `Block` - initial printer state
-            progress_callback: `Callable(current: int, total: int)`
-        """
-        self: Gcode = self.__get_parser__().from_file(self, filename, block, progress_callback)
-        self.__fill_meta__()
-        return self
 
     def write_str(self, verbose = False, progress_callback: typing.Callable|None = None):
         """

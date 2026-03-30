@@ -23,7 +23,7 @@ pip install GcodeTools
 | subdivide Gcode                                      |   ✅   |                     `move.subdivide(step)`                      |
 | Get move's flowrate                                  |   ✅   |                      `move.get_flowrate()`                      |
 | Set flowrate <br> (in mm^2, use `scale` to set in %) |   ✅   |                   `move.set_flowrate(float)`                    |
-| Detect Gcode features                                |   ✅   | `block_data.layer`, `block_data.object`, `block_data.move_type` |
+| Detect Gcode features                                |   ✅   | `block.layer`, `block.object`, `block.move_type` |
 | Split layers                                         |   ✅   |                        `Gcode.layers[n]`                        |
 | Split bodies                                         |  🔜   |                      `Tools.split(gcode)`                       |
 | Insert custom Gcode                                  |   ✅   |            `Gcode.(insert, append, extend, __add__)`            |
@@ -95,23 +95,23 @@ gcode = Gcode().from_file('file.gcode', update)
 
 Example to move objects that have `benchy` in their name, by `translation` vector. It will also trim gcode (minify).
 ```py
-from GcodeTools import Gcode, Tools, Vector
+from GcodeTools import Gcode, Tools, Vector, Config
 
-do_verbose = False
+verbose = False
 
-gcode = Gcode()
-gcode.config.speed = 1200 # initial speed before first Gcode's `F` parameter
+config = Config(speed=1200) # initial speed before first Gcode's `F` parameter
 
-gcode.from_file('file.gcode')
+gcode = Gcode('file.gcode', config=config)
+
 out_gcode: Gcode = Tools.trim(gcode)
 
 translation = Vector(-200, -100, 0)
 
 for x in out_gcode:
-    if 'benchy' in x.block_data.object.lower():
+    if 'benchy' in x.object.lower():
         x.move.translate(translation)
 
-out_gcode.write_file('out.gcode', do_verbose)
+out_gcode.write_file('out.gcode', verbose)
 ```
 
 
@@ -123,13 +123,13 @@ from GcodeTools import *
 gcode = Gcode('file.gcode')
 
 for block in gcode:
-    if block.block_data.move_type == MoveTypes.SPARSE_INFILL:
-        block.block_data.set_tool(1)
+    if block.move_type == MoveTypes.SPARSE_INFILL:
+        block.T = 1
     else:
-        block.block_data.set_tool(0)
+        block.T = 0
     
-    if block.block_data.move_type == MoveTypes.BRIDGE:
-        block.block_data.set_fan(255)
+    if block.move_type == MoveTypes.BRIDGE:
+        block.fan = 255
 
 gcode.write_file('out.gcode')
 ```
@@ -141,9 +141,7 @@ Plot histogram of flow ratios. Useful for checking arachne settings.
 from GcodeTools import Gcode
 import matplotlib.pyplot as plt
 
-gcode_file = "1.gcode"
-
-gcode = Gcode(gcode_file)
+gcode = Gcode('file.gcode')
 
 flowrates = []
 for block in gcode:
@@ -154,7 +152,7 @@ plt.figure(figsize=(12, 6))
 plt.hist(flowrates, bins=100)
 plt.xlabel("Flowrate (mm E / mm XYZ)")
 plt.ylabel("Frequency")
-plt.title(f"Flowrate Distribution for {gcode_file}")
+plt.title(f"Flowrate Distribution")
 plt.grid(axis='y', alpha=0.75)
 plt.show()
 plt.close()
@@ -164,7 +162,7 @@ plt.close()
 Generate configuration files for slicer
 
 ```py
-gcode = GcodeTools.Gcode('gcode.gcode')
+gcode = Gcode('gcode.gcode')
 
 config = Tools.generate_config_files(gcode, './config')
 ```

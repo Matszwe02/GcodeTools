@@ -58,17 +58,17 @@ def check_null_except(obj, obj_type, on_none: typing.Callable|Exception|None = E
 class Config:
     """G-Code configuration"""
     
-    def __init__(self):
-        self.precision = 5
+    def __init__(self, precision = 5, speed = 1200, step = 0.1, enable_exclude_object = True):
+        self.precision = precision
         """N decimal digits"""
         
-        self.speed = 1200
+        self.speed = speed
         """Default speed in mm/min"""
         
-        self.step = 0.1
+        self.step = step
         """Step over which maths iterate"""
 
-        self.enable_exclude_object = True
+        self.enable_exclude_object = enable_exclude_object
 
 
 

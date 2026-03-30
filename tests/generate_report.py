@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw, ImageFont
 # import sys
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from GcodeTools import Gcode, Tools
+from GcodeTools import Gcode, Tools, Config
 from GcodeTools.Thumbnails import gcode_thumbnails
 
 # This will store the data needed for the report
@@ -28,11 +28,7 @@ def process_gcode(name, id):
     """
     print(f'analising {name}...')
     
-    gcode = Gcode()
-    
-    gcode.config.speed = 1440
-    gcode.config.step = 0.01
-    gcode.config.precision = 5
+    config = Config(speed=1440, step=0.01, precision=5)
     
     # Read Gcode from gcodes/ directory
     # The path needs to be relative to the current working directory or absolute
@@ -44,7 +40,7 @@ def process_gcode(name, id):
     # update = lambda i, length: (setattr(tq, 'total', length), tq.update(1))
     
     try:
-        out_gcode = Tools.trim(gcode.from_file(gcode_path))
+        out_gcode = Tools.trim(Gcode(gcode_path, config=config))
     except FileNotFoundError:
         print(f"Error: G-code file not found at {gcode_path}")
         return None

@@ -219,31 +219,6 @@ class GcodeParser:
 
 
     @staticmethod
-    def from_str(gcode: Gcode, gcode_str: str, block = Block(), progress_callback: typing.Callable|None = None) -> Gcode:
-        """
-        Args:
-            gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
-            gcode_str: `str` - string that will be parsed into `Gcode`
-            block: `Block` - initial printer state
-            progress_callback: `Callable(current: int, total: int)`
-        """
-        return GcodeParser._generate_moves(gcode, gcode_str, block, progress_callback)
-
-
-    @staticmethod
-    def from_file(gcode: Gcode, filename: str, block = Block(), progress_callback: typing.Callable|None = None) -> Gcode:
-        """
-        Args:
-            gcode: `Gcode` or `None`. When `Gcode`, uses its config. When `None`, creates an empty `Gcode`
-            filename: `str` - filename containing g-code to be parsed
-            block: `Block` - initial printer state
-            progress_callback: `Callable(current: int, total: int)`
-        """
-        with open(filename, 'r') as f:
-            return GcodeParser.from_str(gcode, f.read(), block, progress_callback)
-
-
-    @staticmethod
     def write_str(gcode: Gcode, verbose = False, progress_callback: typing.Callable|None = None):
         """
         Write G-Code as a string
@@ -409,7 +384,7 @@ class GcodeParser:
 
 
     @staticmethod
-    def _generate_moves(gcode: Gcode, gcode_str: str, block = Block(), progress_callback = None) -> Gcode:
+    def generate_moves(gcode: Gcode, gcode_str: str, block = Block(), progress_callback = None) -> Gcode:
 
         coord_system = CoordSystem(position=Vector(F=gcode.config.speed))
         block = block.copy()
