@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Literal
 from GcodeTools.gcode_types import *
 from GcodeTools.gcode import Gcode
 from GcodeTools.gcode_tools import Tools
@@ -22,8 +22,8 @@ class Thumbnails:
     }
 
     @staticmethod
-    def generate_thumbnail(gcode: Gcode, *, e_scale = 1, color: tuple[int, int, int]|None = None, yaw = 45, pitch = 45, fov = 45, resolution = 500, render_scale = 1, fit_in_viewport = True, draw_bounding_box = False):
-        ps = Thumbnails._generate_scene(gcode, draw_bounding_box, yaw, pitch, fov, resolution * render_scale)
+    def generate_thumbnail(gcode: Gcode, *, e_scale = 1, color: tuple[int, int, int]|None = None, yaw = 45, pitch = 45, fov = 45, resolution = 500, render_scale = 1, fit_in_viewport = True, draw_bounding_box = False, backend:Literal['auto', 'openGL3_glfw', 'openGL3_egl', 'openGL_mock'] = "auto"):
+        ps = Thumbnails._generate_scene(gcode, draw_bounding_box, yaw, pitch, fov, resolution * render_scale, backend=backend)
         Thumbnails._create_gcode_object(gcode, e_scale, color)
         buf = ps.screenshot_to_buffer()
         image = Image.fromarray(buf)
@@ -34,11 +34,11 @@ class Thumbnails:
 
 
     @staticmethod
-    def interactive(gcode: Gcode = None, gcodes: List[Gcode] = None, e_scale = 1, color_moves = False):
+    def interactive(gcode: Gcode = None, gcodes: List[Gcode] = None, e_scale = 1, color_moves = False, backend:Literal['auto', 'openGL3_glfw', 'openGL3_egl', 'openGL_mock'] = "auto"):
         if not gcodes:
             gcodes = [gcode]
         colors = [(255,0,0),(255,255,0),(0,255,0),(0,255,255),(0,0,255),(255,0,255)]
-        ps = Thumbnails._generate_scene(gcodes[0], len(gcodes) < 2, 45, 45, 45, 300)
+        ps = Thumbnails._generate_scene(gcodes[0], len(gcodes) < 2, 45, 45, 45, 300, backend=backend)
         for idx, g in enumerate(gcodes):
             Thumbnails._create_gcode_object(g, e_scale, None if color_moves else colors[idx % len(colors)], idx)
         ps.show()
@@ -137,7 +137,7 @@ class Thumbnails:
 
 
     @staticmethod
-    def _generate_scene(gcode: Gcode, draw_bounding_box: bool, yaw: float, pitch: float, fov: float, resolution: int):
+    def _generate_scene(gcode: Gcode, draw_bounding_box: bool, yaw: float, pitch: float, fov: float, resolution: int, backend:Literal['auto', 'openGL3_glfw', 'openGL3_egl', 'openGL_mock'] = "auto"):
 
         bounding_box = Tools.get_bounding_box(gcode)
 
@@ -172,8 +172,9 @@ class Thumbnails:
         ps.set_verbosity(6)
 
         ps.set_use_prefs_file(False)
-        ps.init("openGL3_egl")
-        print('Polyscope initialized with OpenGL3 EGL backend')
+        print(f'Initializing "{backend}" backend')
+        ps.init(backend)
+        print(f'Polyscope initialized with "{backend}" backend')
         ps.set_up_dir("z_up")
         ps.set_view_projection_mode("orthographic" if fov < 5 else "perspective")
         intrinsics = ps.CameraIntrinsics(fov_vertical_deg=fov if fov >= 5 else 35, aspect=1.)
