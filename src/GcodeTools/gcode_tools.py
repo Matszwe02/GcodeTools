@@ -213,7 +213,6 @@ class Tools:
         gcode_new = gcode.copy()
         for i in gcode_new:
             i.position += vector
-        gcode_new.order()
         return gcode_new
 
 
