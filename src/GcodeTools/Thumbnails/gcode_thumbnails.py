@@ -48,15 +48,15 @@ class Thumbnails:
     @staticmethod
     def _draw_origin(length: float):
 
-        x = ps.register_curve_network("X", [[0, 0, 0], [length, 0, 0]], [[0, 1]], material="flat")
+        x = ps.register_curve_network("X", np.array([[0, 0, 0], [length, 0, 0]]), np.array([[0, 1]]), material="flat")
         x.set_color((1, 0, 0))
         x.set_radius(0.001)
 
-        y = ps.register_curve_network("Y", [[0, 0, 0], [0, length, 0]], [[0, 1]], material="flat")
+        y = ps.register_curve_network("Y", np.array([[0, 0, 0], [0, length, 0]]), np.array([[0, 1]]), material="flat")
         y.set_color((0, 1, 0))
         y.set_radius(0.001)
 
-        z = ps.register_curve_network("Z", [[0, 0, 0], [0, 0, length]], [[0, 1]], material="flat")
+        z = ps.register_curve_network("Z", np.array([[0, 0, 0], [0, 0, length]]), np.array([[0, 1]]), material="flat")
         z.set_color((0, 0, 1))
         z.set_radius(0.001)
 
