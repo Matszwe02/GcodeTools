@@ -359,7 +359,10 @@ class CoordSystem:
 
 
     def apply_move(self, params: dict[str, str]):
-        c = Coords(params)
+        if params.get('0') in ['G0', 'G1', 'G2', 'G3']:
+            c = Coords(params)
+        else:
+            c = Coords({})
 
         self.position.set_value(F = c.F)
         

@@ -323,9 +323,7 @@ class GcodeParser:
             if command in ['G2', 'G3']:
                 arc = Arc(pd.block.position.copy(), int(command[1])).from_params(line_dict)
                 pass
-                
-            pd.block.position = pd.coord_system.apply_move(line_dict)
-        
+
         elif command in [Static.ABSOLUTE_COORDS, Static.RELATIVE_COORDS]:
             pd.coord_system.set_abs_xyz(command == Static.ABSOLUTE_COORDS)
 
@@ -361,7 +359,9 @@ class GcodeParser:
         
         else:
             emit_command = True
-        
+
+        pd.block.position = pd.coord_system.apply_move(line_dict)
+
         if arc is not None:
             listdata = []
             pd_new = pd.copy()
