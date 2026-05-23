@@ -244,6 +244,7 @@ class Vector:
     def duration(self):
         dist = float(self)
         if dist == 0: dist = abs(self.E)
+        if self.F == 0: return 0
         return dist * 60 / self.F
 
 
