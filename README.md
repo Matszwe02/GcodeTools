@@ -167,6 +167,31 @@ gcode = Gcode('gcode.gcode')
 config = Tools.generate_config_files(gcode, './config')
 ```
 
+Generate thumbnails (experimental, and in current version slow)
+
+```py
+# For this feature you need to install additional package:
+# pip install GcodeTools[thumbnails]
+
+# If this code fails, try setting `backend` to one of: ['openGL3_glfw', 'openGL3_egl', 'openGL_mock']
+
+backend = 'auto'
+
+import GcodeTools
+from GcodeTools.Thumbnails import gcode_thumbnails
+
+gcode = Gcode('gcode.gcode')
+
+img = gcode_thumbnails.Thumbnails.generate_thumbnail(gcode, backend=backend)
+thumb_gcode = gcode_thumbnails.Thumbnails.set_thumbnail(gcode, img)
+
+img.save('thumb.png')
+thumb_gcode.write_file('out.gcode')
+
+# gcode_thumbnails.Thumbnails.interactive(gcode, color_moves = True, backend=backend) # to open gcode viewer
+
+```
+
 
 # Supported Slicers
 
