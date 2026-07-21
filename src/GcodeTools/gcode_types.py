@@ -258,19 +258,19 @@ class Vector:
 
 
     def add_value(self, X = None, Y = None, Z = None, E = None, F = None):
-        if X: self.X += X
-        if Y: self.Y += Y
-        if Z: self.Z += Z
-        if E: self.E += E
-        if F: self.F += F
+        if X is not None: self.X += X
+        if Y is not None: self.Y += Y
+        if Z is not None: self.Z += Z
+        if E is not None: self.E += E
+        if F is not None: self.F += F
 
 
     def set_value(self, X = None, Y = None, Z = None, E = None, F = None):
-        if X: self.X = X
-        if Y: self.Y = Y
-        if Z: self.Z = Z
-        if E: self.E = E
-        if F: self.F = F
+        if X is not None: self.X = X
+        if Y is not None: self.Y = Y
+        if Z is not None: self.Z = Z
+        if E is not None: self.E = E
+        if F is not None: self.F = F
 
 
     def copy(self):
