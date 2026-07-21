@@ -138,14 +138,14 @@ gcode.write_file('out.gcode')
 Plot histogram of flow ratios. Useful for checking arachne settings.
 
 ```py
-from GcodeTools import Gcode
+from GcodeTools import Gcode, Tools
 import matplotlib.pyplot as plt
 
 gcode = Gcode('file.gcode')
 
 flowrates = []
-for block in gcode:
-    if flowrate := block.move.get_flowrate():
+for i in range(len(gcode)):
+    if flowrate := Tools.get_flowrate(gcode, i):
         flowrates.append(flowrate)
 
 plt.figure(figsize=(12, 6))

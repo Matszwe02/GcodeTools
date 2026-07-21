@@ -218,29 +218,6 @@ class Vector:
         return self 
 
 
-    def get_flowrate(self, config: Config, filament_offset = 0.0):
-        """
-        Returns flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement
-        
-        Args:
-            filament_offset: `float` - amount of filament already extruding or that's retracted
-        """
-        
-        distance = float(self)
-        if distance < config.step: return None
-        return (self.E - filament_offset) / distance
-
-
-    def set_flowrate(self, config: Config, flowrate: float):
-        """Sets flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement, otherwise returns E mm"""
-        
-        distance = float(self)
-        if distance < config.step: return None
-        flow = distance * flowrate
-        self.E = flow
-        return flow
-
-
     def duration(self):
         dist = float(self)
         if dist == 0: dist = abs(self.E)

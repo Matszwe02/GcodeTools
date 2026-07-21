@@ -192,20 +192,46 @@ class Tools:
 
 
     @staticmethod
-    def set_flowrate(gcode: Gcode, flowrate: float, force_extrusion = False) -> Gcode:
+    def set_flowrate(gcode: Gcode, flowrate: float, index = None, force_extrusion = False) -> Gcode:
         """
         Sets flowrate (mm in E over mm in XYZ)
         
         Args:
             flowrate: `float` - desired flowrate
+            index: `int|None` - which block to affect (default `None` = all of them)
             force_extrusion: `bool` - on `True` forces flowrate even on non-extrusion moves
         """
+
         gcode_new = gcode.copy()
-        for i in gcode_new:
-            if force_extrusion or (i.position.E and i.position.E > 0):
-                # i.move.set_flowrate(flowrate)
-                pass
+        def set_for_index(idx):
+            nonlocal gcode_new
+            if (force_extrusion or gcode_new[idx].position.E > 0) and idx > 0:
+                distance = float(gcode_new[idx].position.xyz() - gcode_new[idx - 1].position.xyz())
+                if distance < gcode.config.step: return
+                flow = distance * flowrate
+                gcode_new[idx].position.E = flow
+
+        if index:
+            set_for_index(index)
+            return gcode_new
+        for idx in range(len(gcode_new)):
+            set_for_index(idx)
         return gcode_new
+
+
+    @staticmethod
+    def get_flowrate(gcode: Gcode, index = None, filament_offset = 0) -> Gcode:
+        """
+        Returns flowrate (mm in E over mm in XYZ). Returns None if no XYZ movement
+        
+        Args:
+            index: `int` - which block to read
+            filament_offset: `float` - amount of filament already extruding or that's retracted
+        """
+        
+        distance = float(gcode[index].position.xyz() - gcode[index - 1].position.xyz())
+        if distance < gcode.config.step: return None
+        return (gcode[index].position.E - filament_offset) / distance
 
 
     @staticmethod
