@@ -199,6 +199,7 @@ class Thumbnails:
         new_params = ps.CameraParameters(intrinsics, extrinsics)
         ps.set_view_camera_parameters(new_params)
         ps.look_at((camera_pos.X, camera_pos.Y, camera_pos.Z), (middle.X, middle.Y, middle.Z))
+        ps.remove_all_structures()
 
         if draw_bounding_box:
             Thumbnails._create_bounding_box_object(bounding_box[0], bounding_box[1])
