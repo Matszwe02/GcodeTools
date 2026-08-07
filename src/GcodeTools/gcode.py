@@ -124,6 +124,7 @@ class Gcode(list[Block]):
             return
         gcode_obj = block
         gcode_obj.command = gcode
+        gcode_obj.emit_command = True
         
         if idx == -1:
             super().append(gcode_obj)
